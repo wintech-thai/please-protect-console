@@ -48,7 +48,7 @@ export default function SignInView() {
             <div className="text-white"><LockIcon /></div>
           </div>
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-cyan-600 tracking-wider">
-            PLEASE PROTECT
+            PROTECT SENSOR
           </h1>
           <p className="text-slate-500 text-sm mt-2 tracking-widest">SENSOR CONSOLE ACCESS</p>
         </div>
