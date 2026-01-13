@@ -1,4 +1,3 @@
-// src/app/(auth)/login/page.tsx
 import SignInView from "@/modules/auth/view/sign-in.view";
 import { Metadata } from "next";
 

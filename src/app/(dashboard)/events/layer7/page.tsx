@@ -17,13 +17,12 @@ export default function Layer7Page() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Globe className="w-6 h-6 text-emerald-500" />
             Layer 7 Events
           </h1>
           <p className="text-slate-500 text-sm mt-1">HTTP/HTTPS Application Traffic Logs</p>
         </div>
-        {/* ลบปุ่ม Export CSV ออกแล้ว */}
       </div>
 
       {/* Filter Bar */}

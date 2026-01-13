@@ -1,10 +1,43 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
+import localFont from "next/font/local"; 
 import "./globals.css";
+import { LanguageProvider } from "@/context/LanguageContext"; 
+
+const prompt = localFont({
+  src: [
+    {
+      path: './fonts/Prompt-Light.ttf',
+      weight: '300',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Prompt-Regular.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Prompt-Medium.ttf',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Prompt-Bold.ttf',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-prompt', 
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: "Please-Protect-Sensor",
-  description: "Please-Protect Sensor Web Interface",
+  title: "Protect Sensor | Cyber Security Center",
+  description: "Royal Thai Armed Forces Cyber Security Center",
+  icons: {
+    icon: "/img/rtarf.png",
+    shortcut: "/img/rtarf.png",
+    apple: "/img/rtarf.png",
+  },
 };
 
 export default function RootLayout({
@@ -14,8 +47,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased bg-slate-50 text-slate-900 font-sans">
-        {children}
+      <body 
+        className={`
+          ${prompt.className} 
+          ${prompt.variable} 
+          antialiased 
+          bg-[#020617] 
+          text-blue-100 
+          selection:bg-cyan-500/30
+        `}
+      >
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );
