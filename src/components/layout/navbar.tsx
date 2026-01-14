@@ -79,7 +79,7 @@ export function Navbar() {
         children: [
           { label: "ผู้ใช้งาน", href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
           { label: "สิทธิ์การใช้งาน", href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
-          { label: "API Keys", href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
+          { label: "คีย์ API", href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
           { label: "บันทึกการใช้งาน", href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
         ]
       },

@@ -17,3 +17,6 @@
     font-family: var(--font-prompt), sans-serif !important;
   }
 }
+@theme {
+  --font-sans: var(--font-prompt), ui-sans-serif, system-ui, sans-serif;
+}

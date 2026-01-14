@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment } from "react"; // 1. Import Fragment เพิ่ม
+import { useState, Fragment } from "react";
 import { 
   Search, 
   Filter, 
@@ -9,7 +9,6 @@ import {
   ChevronDown, 
   ChevronRight, 
   Monitor, 
-  Server,
   ShieldAlert 
 } from "lucide-react";
 
@@ -17,7 +16,7 @@ import {
 const EVENTS = [
   { 
     id: 1, 
-    time: "2024-01-12 10:42:01", 
+    time: "2024-01-12T10:42:01.452Z", 
     method: "GET", 
     path: "/login", 
     fullPath: "/login?redirect=/dashboard",
@@ -33,7 +32,7 @@ const EVENTS = [
   },
   { 
     id: 2, 
-    time: "2024-01-12 10:41:55", 
+    time: "2024-01-12T10:41:55.891Z", 
     method: "POST", 
     path: "/api/auth", 
     fullPath: "/api/auth/v1/token",
@@ -49,7 +48,7 @@ const EVENTS = [
   },
   { 
     id: 3, 
-    time: "2024-01-12 10:40:12", 
+    time: "2024-01-12T10:40:12.123Z", 
     method: "GET", 
     path: "/dashboard", 
     fullPath: "/dashboard/overview",
@@ -65,7 +64,7 @@ const EVENTS = [
   },
   { 
     id: 4, 
-    time: "2024-01-12 10:38:45", 
+    time: "2024-01-12T10:38:45.005Z", 
     method: "POST", 
     path: "/upload", 
     fullPath: "/upload/files/shell.php",
@@ -81,7 +80,7 @@ const EVENTS = [
   },
   { 
     id: 5, 
-    time: "2024-01-12 10:35:20", 
+    time: "2024-01-12T10:35:20.999Z", 
     method: "DELETE", 
     path: "/users/1", 
     fullPath: "/api/users/1?force=true",
@@ -99,10 +98,48 @@ const EVENTS = [
 
 export default function Layer7Page() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState(""); 
 
   const toggleRow = (id: number) => {
     setExpandedRow(expandedRow === id ? null : id);
   };
+
+  const formatDetailedTime = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      
+      const timeStr = date.toLocaleTimeString('th-TH', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+      });
+
+      const ms = date.getMilliseconds().toString().padStart(3, '0');
+
+      const dateStr = date.toLocaleDateString('th-TH', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+
+      return { timeStr, ms, dateStr };
+    } catch (e) {
+      return { timeStr: isoString, ms: "000", dateStr: "-" };
+    }
+  };
+
+  const filteredEvents = EVENTS.filter((event) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      event.srcIp.includes(term) ||
+      event.path.toLowerCase().includes(term) ||
+      event.method.toLowerCase().includes(term) ||
+      event.host.toLowerCase().includes(term) ||
+      event.userAgent.toLowerCase().includes(term) ||
+      event.status.toString().includes(term)
+    );
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
@@ -110,7 +147,7 @@ export default function Layer7Page() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2"> 
             <Globe className="w-6 h-6 text-emerald-600" />
             Layer 7 Events
           </h1>
@@ -124,8 +161,10 @@ export default function Layer7Page() {
           <Search className="w-4 h-4 text-slate-400" />
           <input 
             type="text" 
-            placeholder="Search IP, Host, User-Agent..." 
+            placeholder="Search IP, Path, Host, User-Agent..." 
             className="w-full text-sm outline-none text-slate-700 placeholder:text-slate-400 py-1.5"
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
           />
         </div>
         <div className="w-[1px] bg-slate-200 my-1"></div>
@@ -150,113 +189,139 @@ export default function Layer7Page() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {EVENTS.map((event) => (
-                // แก้ไขจุดนี้: ใช้ Fragment และใส่ key ที่นี่แทน
-                <Fragment key={event.id}>
-                  {/* Main Row */}
-                  <tr 
-                    onClick={() => toggleRow(event.id)}
-                    className={`cursor-pointer transition-colors ${
-                      expandedRow === event.id ? "bg-blue-50/50" : "hover:bg-slate-50"
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-slate-400">
-                      {expandedRow === event.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 font-mono text-xs whitespace-nowrap">
-                      {event.time.split(' ')[1]}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        event.method === "GET" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                        event.method === "POST" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                        event.method === "DELETE" ? "bg-red-50 text-red-700 border-red-200" : 
-                        "bg-slate-50 text-slate-700 border-slate-200"
-                      }`}>
-                        {event.method}
-                      </span>
-                    </td>
-                    
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                            <span className="font-mono text-slate-700">{event.srcIp}</span>
-                            <span className="text-[10px] px-1 bg-slate-100 border border-slate-200 rounded text-slate-500">{event.srcCountry}</span>
-                        </div>
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                            <Monitor className="w-3 h-3" /> Port: {event.srcPort}
-                        </span>
-                      </div>
-                    </td>
+              {filteredEvents.length > 0 ? (
+                filteredEvents.map((event) => (
+                    <Fragment key={event.id}>
+                    {/* Main Row */}
+                    <tr 
+                        onClick={() => toggleRow(event.id)}
+                        className={`cursor-pointer transition-colors ${
+                        expandedRow === event.id ? "bg-blue-50/50" : "hover:bg-slate-50"
+                        }`}
+                    >
+                        <td className="px-4 py-3 text-slate-400">
+                        {expandedRow === event.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </td>
+                        
+                        <td className="px-4 py-3 whitespace-nowrap">
+                            {(() => {
+                                const { timeStr, ms, dateStr } = formatDetailedTime(event.time);
+                                return (
+                                <div className="flex flex-col">
+                                    <div className="flex items-baseline gap-0.5">
+                                    <span className="text-slate-700 font-mono font-medium text-sm">
+                                        {timeStr}
+                                    </span>
+                                    <span className="text-slate-400 font-mono text-[10px]">
+                                        .{ms}
+                                    </span>
+                                    </div>
+                                    <span className="text-slate-400 text-[10px]">
+                                    {dateStr}
+                                    </span>
+                                </div>
+                                );
+                            })()}
+                        </td>
 
-                    <td className="px-4 py-3 text-slate-300">
-                        <ArrowRight className="w-4 h-4" />
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                         <span className="font-semibold text-slate-700 text-xs">{event.host}</span>
-                         <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-                            {event.dstIp}:{event.dstPort}
-                         </div>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${
-                            event.status >= 200 && event.status < 300 ? "bg-emerald-500" :
-                            event.status >= 400 ? "bg-red-500" : "bg-amber-500"
-                        }`}></span>
-                        <span className={`font-mono font-medium ${
-                            event.status >= 400 ? "text-red-600" : "text-slate-600"
+                        <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            event.method === "GET" ? "bg-blue-50 text-blue-700 border-blue-200" :
+                            event.method === "POST" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                            event.method === "DELETE" ? "bg-red-50 text-red-700 border-red-200" : 
+                            "bg-slate-50 text-slate-700 border-slate-200"
                         }`}>
-                            {event.status}
+                            {event.method}
                         </span>
-                      </div>
-                    </td>
-                  </tr>
-
-                  {/* Expanded Detail Row */}
-                  {expandedRow === event.id && (
-                    <tr className="bg-slate-50/50">
-                        <td colSpan={7} className="px-4 py-4 border-b border-slate-100 shadow-inner">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm px-8">
-                                
-                                <div className="space-y-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs text-slate-400 uppercase font-semibold">Full Path</span>
-                                        <code className="bg-white border border-slate-200 p-1.5 rounded text-slate-700 font-mono text-xs break-all">
-                                            {event.fullPath}
-                                        </code>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs text-slate-400 uppercase font-semibold">Latency</span>
-                                        <span className="text-slate-700">{event.latency}</span>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs text-slate-400 uppercase font-semibold">User Agent</span>
-                                        <div className="bg-white border border-slate-200 p-2 rounded text-slate-600 text-xs break-words">
-                                            {event.userAgent}
-                                        </div>
-                                    </div>
-                                    {event.status === 401 && (
-                                        <div className="flex items-center gap-2 text-red-600 text-xs mt-2 bg-red-50 p-2 rounded border border-red-100">
-                                            <ShieldAlert className="w-4 h-4" />
-                                            <span>Potential Unauthorized Access Attempt</span>
-                                        </div>
-                                    )}
-                                </div>
-
+                        </td>
+                        
+                        <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono text-slate-700">{event.srcIp}</span>
+                                <span className="text-[10px] px-1 bg-slate-100 border border-slate-200 rounded text-slate-500">{event.srcCountry}</span>
                             </div>
+                            <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <Monitor className="w-3 h-3" /> Port: {event.srcPort}
+                            </span>
+                        </div>
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-300">
+                            <ArrowRight className="w-4 h-4" />
+                        </td>
+
+                        <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                            <span className="font-semibold text-slate-700 text-xs">{event.host}</span>
+                            <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+                                {event.dstIp}:{event.dstPort}
+                            </div>
+                        </div>
+                        </td>
+
+                        <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${
+                                event.status >= 200 && event.status < 300 ? "bg-emerald-500" :
+                                event.status >= 400 ? "bg-red-500" : "bg-amber-500"
+                            }`}></span>
+                            <span className={`font-mono font-medium ${
+                                event.status >= 400 ? "text-red-600" : "text-slate-600"
+                            }`}>
+                                {event.status}
+                            </span>
+                        </div>
                         </td>
                     </tr>
-                  )}
-                </Fragment>
-              ))}
+
+                    {/* Expanded Detail Row */}
+                    {expandedRow === event.id && (
+                        <tr className="bg-slate-50/50">
+                            <td colSpan={7} className="px-4 py-4 border-b border-slate-100 shadow-inner">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm px-8">
+                                    
+                                    <div className="space-y-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-slate-400 uppercase font-semibold">Full Path</span>
+                                            <code className="bg-white border border-slate-200 p-1.5 rounded text-slate-700 font-mono text-xs break-all">
+                                                {event.fullPath}
+                                            </code>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-slate-400 uppercase font-semibold">Latency</span>
+                                            <span className="text-slate-700">{event.latency}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-slate-400 uppercase font-semibold">User Agent</span>
+                                            <div className="bg-white border border-slate-200 p-2 rounded text-slate-600 text-xs break-words">
+                                                {event.userAgent}
+                                            </div>
+                                        </div>
+                                        {event.status === 401 && (
+                                            <div className="flex items-center gap-2 text-red-600 text-xs mt-2 bg-red-50 p-2 rounded border border-red-100">
+                                                <ShieldAlert className="w-4 h-4" />
+                                                <span>Potential Unauthorized Access Attempt</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                    </Fragment>
+                ))
+              ) : (
+                <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400 text-sm">
+                        No events found matching "{searchTerm}"
+                    </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
