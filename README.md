@@ -38,3 +38,10 @@ cd please-protect-console
 
 # ติดตั้ง Dependencies
 npm install
+
+# build docker image 
+docker build -t please-protect-console .
+
+# start container
+docker run -d -p 3000:3000 --name protect-console-app please-protect-console
+ 
