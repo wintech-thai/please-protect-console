@@ -34,13 +34,13 @@ export default function AlertsPage() {
         <p className="text-blue-400/70 text-sm mt-1">{t.subHeader}</p>
       </div>
 
-      <div className="h-[60vh] w-full flex flex-col items-center justify-center p-8 bg-white border border-slate-200 rounded-xl shadow-sm">
+      <div className="h-[70vh] w-full flex flex-col items-center justify-center p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-sm">
          
-         <div className="bg-slate-100 p-4 rounded-full mb-4">
+         <div className="bg-slate-900 border border-slate-800 p-4 rounded-full mb-4">
             <Construction className="w-8 h-8 text-slate-400" />
          </div>
 
-         <h2 className="text-xl font-bold text-slate-900 mb-2">{t.cardTitle}</h2>
+         <h2 className="text-xl font-bold text-white mb-2">{t.cardTitle}</h2>
          
          <p className="text-slate-500 mb-6">{t.description}</p>
 

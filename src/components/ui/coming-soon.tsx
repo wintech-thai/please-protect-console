@@ -7,11 +7,11 @@ interface ComingSoonProps {
 
 export function ComingSoon({ title, description }: ComingSoonProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-white border border-slate-200 rounded-xl shadow-sm animate-in fade-in zoom-in duration-500">
-      <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-slate-900 border border-slate-800 rounded-xl shadow-sm animate-in fade-in zoom-in duration-500">
+      <div className="w-20 h-20 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
         <Construction className="w-10 h-10 text-slate-400" />
       </div>
-      <h2 className="text-2xl font-bold text-slate-800 mb-2">{title}</h2>
+      <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
       <p className="text-slate-500 max-w-md">
         {description || "This feature is currently under development. Stay tuned for updates!"}
       </p>

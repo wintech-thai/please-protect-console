@@ -2,9 +2,15 @@
 
 import { Activity, ShieldCheck, AlertTriangle, Server, Wifi } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
+import { useEffect, useState } from "react";
 
 export default function OverviewView() {
   const { language } = useLanguage();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const content = {
     EN: {
@@ -19,7 +25,8 @@ export default function OverviewView() {
       chartTitle: "Traffic Analysis (Layer 7)",
       recentAlertsTitle: "Recent Alerts",
       alertMessage: "Suspicious Activity Detected",
-      timeAgo: "2m ago"
+      timeAgo: "2m ago",
+      waitingForData: "Waiting for traffic data..."
     },
     TH: {
       title: "ภาพรวมระบบ",
@@ -33,7 +40,8 @@ export default function OverviewView() {
       chartTitle: "วิเคราะห์จราจรข้อมูล (Layer 7)",
       recentAlertsTitle: "การแจ้งเตือนล่าสุด",
       alertMessage: "ตรวจพบกิจกรรมน่าสงสัย",
-      timeAgo: "2 นาทีที่แล้ว"
+      timeAgo: "2 นาทีที่แล้ว",
+      waitingForData: "กำลังรอข้อมูลจราจร..."
     }
   };
 
@@ -75,10 +83,12 @@ export default function OverviewView() {
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-10">
       
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div 
+        className={`flex items-center justify-between mb-8 transition-all duration-700 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+      >
         <div>
           <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-md">
             {t.title} 
@@ -92,13 +102,16 @@ export default function OverviewView() {
         {STATS_DATA.map((stat, index) => (
           <div 
             key={index} 
-            className="p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.5)] hover:border-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all duration-300 group"
+            className={`p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.5)] hover:border-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all duration-500 transform group cursor-default hover:-translate-y-1
+              ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+            `}
+            style={{ transitionDelay: `${index * 100}ms` }}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-lg ${stat.bg} ${stat.text} border ${stat.border} shadow-inner`}>
+              <div className={`p-3 rounded-lg ${stat.bg} ${stat.text} border ${stat.border} shadow-inner transition-transform group-hover:scale-110 duration-300`}>
                 {stat.icon}
               </div>
-              <Wifi className="w-4 h-4 text-blue-800 group-hover:text-cyan-500 transition-colors" />
+              <Wifi className="w-4 h-4 text-blue-800 group-hover:text-cyan-500 transition-colors animate-pulse" />
             </div>
             <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider group-hover:text-blue-200 transition-colors">{stat.label}</h3>
             <div className="mt-2 flex items-baseline gap-2">
@@ -113,23 +126,32 @@ export default function OverviewView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         
         {/* Main Chart Area */}
-        <div className="lg:col-span-2 p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-lg">
+        <div 
+          className={`lg:col-span-2 p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-lg transition-all duration-700 delay-300 transform
+            ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+          `}
+        >
           <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.8)]"></span>
             {t.chartTitle} 
           </h3>
           
-          {/* Bar Chart Mockup */}
-          <div className="flex items-end justify-between h-64 gap-2 px-4 border-b border-blue-900/30 pb-2">
-             {[40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 50, 65, 80, 95, 60].map((h, i) => (
-               <div key={i} className="w-full bg-[#162032] rounded-t-sm relative group overflow-hidden">
-                  <div 
-                    style={{ height: `${h}%` }} 
-                    className="absolute bottom-0 w-full bg-gradient-to-t from-blue-600 to-cyan-400 opacity-80 group-hover:opacity-100 transition-all duration-300 rounded-t-sm shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-                  ></div>
-               </div>
-             ))}
+          {/* Empty State for Chart */}
+          <div className="flex items-center justify-center h-64 gap-2 px-4 border-b border-blue-900/30 pb-2 relative">
+             <div className="absolute inset-0 grid grid-rows-4 w-full h-full pointer-events-none">
+                <div className="border-t border-blue-900/10 w-full"></div>
+                <div className="border-t border-blue-900/10 w-full"></div>
+                <div className="border-t border-blue-900/10 w-full"></div>
+                <div className="border-t border-blue-900/10 w-full"></div>
+             </div>
+
+             {/* ข้อความ Placeholder */}
+             <div className="flex flex-col items-center gap-3 opacity-50 animate-pulse">
+                <Activity className="w-10 h-10 text-blue-400" />
+                <span className="text-sm font-medium text-blue-300">{t.waitingForData}</span>
+             </div>
           </div>
+
           <div className="flex justify-between mt-4 text-xs text-blue-500/60 font-mono">
             <span>00:00</span>
             <span>06:00</span>
@@ -140,17 +162,32 @@ export default function OverviewView() {
         </div>
 
         {/* Recent Alerts */}
-        <div className="p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-lg">
-          <h3 className="text-lg font-bold text-white mb-6">{t.recentAlertsTitle} {/* ✅ เปลี่ยนภาษา */}</h3>
-          <div className="space-y-4">
+        <div 
+          className={`p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-lg transition-all duration-700 delay-500 transform
+            ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+          `}
+        >
+          <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+             <AlertTriangle className="w-5 h-5 text-amber-500" />
+             {t.recentAlertsTitle}
+          </h3>
+          <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((_, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-900/20 transition-colors cursor-pointer border border-transparent hover:border-blue-800/50 group">
-                  <div className={`w-2 h-2 mt-2 rounded-full ${i === 0 ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-blue-500'}`}></div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-100 group-hover:text-cyan-300 transition-colors">{t.alertMessage} {/* ✅ เปลี่ยนภาษา */}</p>
+                <div 
+                  key={i} 
+                  className={`flex items-start gap-3 p-3 rounded-lg hover:bg-blue-900/20 transition-all duration-300 cursor-pointer border border-transparent hover:border-blue-800/50 group transform hover:translate-x-1
+                    ${mounted ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}
+                  `}
+                  style={{ transitionDelay: `${700 + (i * 100)}ms` }}
+                >
+                  <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${i === 0 ? 'bg-red-500 animate-ping' : 'bg-blue-500'}`}></div>
+                  {i === 0 && <div className="absolute left-3 top-[18px] w-2 h-2 bg-red-500 rounded-full"></div>}
+                  
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-blue-100 group-hover:text-cyan-300 transition-colors truncate">{t.alertMessage}</p>
                     <p className="text-xs text-blue-400/60 group-hover:text-blue-400">192.168.1.{100 + i} • Port 443</p>
                   </div>
-                  <span className="text-[10px] text-blue-600 group-hover:text-cyan-500 ml-auto whitespace-nowrap font-mono">{t.timeAgo} {/* ✅ เปลี่ยนภาษา */}</span>
+                  <span className="text-[10px] text-blue-600 group-hover:text-cyan-500 whitespace-nowrap font-mono">{t.timeAgo}</span>
                 </div>
               ))}
           </div>

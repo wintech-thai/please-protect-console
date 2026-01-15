@@ -1,11 +1,10 @@
-// src/modules/auth/view/sign-in.view.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-// SVG Icons
+
 const LockIcon = ({ className }: { className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -66,7 +65,7 @@ export default function SignInView() {
       <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,transparent_0%,#020617_100%)]"></div>
       <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-700/20 rounded-full blur-[120px] animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-cyan-700/10 rounded-full blur-[120px] animate-pulse delay-700"></div>
-      {/* Card Container - เพิ่ม Animation ตรงนี้ครับ */}
+      {/* Card Container */}
       <div className="relative z-10 w-full max-w-md p-8 bg-[#0B1120]/80 backdrop-blur-xl border border-blue-900/30 rounded-2xl shadow-[0_0_50px_-12px_rgba(29,78,216,0.25)] animate-slide-up">
         {/* Header */}
         <div className="text-center mb-10">
