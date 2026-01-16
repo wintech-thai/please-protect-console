@@ -52,142 +52,167 @@ export default function OverviewView() {
       ...t.stats[0], 
       value: "2.4 GB", 
       icon: <Activity />, 
-      bg: "bg-blue-500/20", 
+      bg: "bg-blue-500/10", 
       text: "text-blue-400", 
-      border: "border-blue-500/30"
+      border: "border-blue-500/20"
     },
     { 
       ...t.stats[1],
       value: "1,024", 
       icon: <ShieldCheck />, 
-      bg: "bg-cyan-500/20", 
+      bg: "bg-cyan-500/10", 
       text: "text-cyan-400",
-      border: "border-cyan-500/30" 
+      border: "border-cyan-500/20" 
     },
     { 
       ...t.stats[2],
       value: "12/12", 
       icon: <Server />, 
-      bg: "bg-emerald-500/20", 
+      bg: "bg-emerald-500/10", 
       text: "text-emerald-400",
-      border: "border-emerald-500/30" 
+      border: "border-emerald-500/20" 
     },
     { 
       ...t.stats[3],
       value: "5", 
       icon: <AlertTriangle />, 
-      bg: "bg-amber-500/20", 
+      bg: "bg-amber-500/10", 
       text: "text-amber-400",
-      border: "border-amber-500/30" 
+      border: "border-amber-500/20" 
     },
   ];
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="w-full h-full flex flex-col gap-6 pt-6 px-8 md:px-12 pb-10 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500">
       
+      {/* ✅ CSS: รวม Style ไว้ที่นี่ที่เดียว เพื่อแก้ Error Nested Tag */}
+      <style jsx>{`
+        /* Scrollbar หลัก */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; border: 2px solid #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Scrollbar แบบบาง (สำหรับ Alerts) */
+        .custom-scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+      `}</style>
+
       {/* Page Header */}
       <div 
-        className={`flex items-center justify-between mb-8 transition-all duration-700 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
+        className={`flex items-center justify-between transition-all duration-700 transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}
       >
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-md">
+          <h1 className="text-3xl font-bold text-slate-100 tracking-wide drop-shadow-md">
             {t.title} 
           </h1>
-          <p className="text-blue-400/70 text-sm mt-1">{t.subtitle} </p>
+          <p className="text-slate-400 text-sm mt-1">{t.subtitle} </p>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-shrink-0">
         {STATS_DATA.map((stat, index) => (
           <div 
             key={index} 
-            className={`p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.5)] hover:border-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all duration-500 transform group cursor-default hover:-translate-y-1
+            className={`p-6 bg-slate-900 border border-slate-800 rounded-xl shadow-lg hover:border-slate-700 hover:shadow-xl transition-all duration-300 transform group cursor-default hover:-translate-y-1
               ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
             `}
             style={{ transitionDelay: `${index * 100}ms` }}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-lg ${stat.bg} ${stat.text} border ${stat.border} shadow-inner transition-transform group-hover:scale-110 duration-300`}>
+              <div className={`p-3 rounded-lg ${stat.bg} ${stat.text} border ${stat.border} shadow-sm transition-transform group-hover:scale-110 duration-300`}>
                 {stat.icon}
               </div>
-              <Wifi className="w-4 h-4 text-blue-800 group-hover:text-cyan-500 transition-colors animate-pulse" />
+              <Wifi className="w-4 h-4 text-slate-700 group-hover:text-slate-500 transition-colors" />
             </div>
-            <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider group-hover:text-blue-200 transition-colors">{stat.label}</h3>
+            <h3 className="text-slate-500 text-sm font-medium uppercase tracking-wider">{stat.label}</h3>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-white tracking-tight">{stat.value}</span>
+              <span className="text-3xl font-bold text-slate-100 tracking-tight">{stat.value}</span>
             </div>
-            <p className="text-xs text-blue-500/80 mt-2">{stat.sub}</p>
+            <p className="text-xs text-slate-500 mt-2">{stat.sub}</p>
           </div>
         ))}
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-shrink-0">
         
         {/* Main Chart Area */}
         <div 
-          className={`lg:col-span-2 p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-lg transition-all duration-700 delay-300 transform
+          className={`lg:col-span-2 p-6 bg-slate-900 border border-slate-800 rounded-xl shadow-lg transition-all duration-700 delay-300 transform h-[400px] flex flex-col
             ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
           `}
         >
-          <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.8)]"></span>
-            {t.chartTitle} 
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+             <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.8)]"></span>
+                {t.chartTitle} 
+             </h3>
+          </div>
           
           {/* Empty State for Chart */}
-          <div className="flex items-center justify-center h-64 gap-2 px-4 border-b border-blue-900/30 pb-2 relative">
-             <div className="absolute inset-0 grid grid-rows-4 w-full h-full pointer-events-none">
-                <div className="border-t border-blue-900/10 w-full"></div>
-                <div className="border-t border-blue-900/10 w-full"></div>
-                <div className="border-t border-blue-900/10 w-full"></div>
-                <div className="border-t border-blue-900/10 w-full"></div>
+          <div className="flex-1 flex flex-col justify-end relative">
+             {/* Grid Lines */}
+             <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
+                <div className="border-t border-slate-800 w-full h-full"></div>
+                <div className="border-t border-slate-800 w-full h-full"></div>
+                <div className="border-t border-slate-800 w-full h-full"></div>
+                <div className="border-t border-slate-800 w-full h-full"></div>
              </div>
 
-             {/* ข้อความ Placeholder */}
-             <div className="flex flex-col items-center gap-3 opacity-50 animate-pulse">
-                <Activity className="w-10 h-10 text-blue-400" />
-                <span className="text-sm font-medium text-blue-300">{t.waitingForData}</span>
+             {/* Placeholder Content */}
+             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 opacity-40">
+                <Activity className="w-12 h-12 text-slate-600" />
+                <span className="text-sm font-medium text-slate-500">{t.waitingForData}</span>
              </div>
-          </div>
 
-          <div className="flex justify-between mt-4 text-xs text-blue-500/60 font-mono">
-            <span>00:00</span>
-            <span>06:00</span>
-            <span>12:00</span>
-            <span>18:00</span>
-            <span>23:59</span>
+             {/* Time Labels */}
+             <div className="flex justify-between mt-auto pt-4 text-xs text-slate-600 font-mono z-10">
+                <span>00:00</span>
+                <span>06:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+                <span>23:59</span>
+             </div>
           </div>
         </div>
 
         {/* Recent Alerts */}
         <div 
-          className={`p-6 bg-[#0B1120]/80 backdrop-blur-sm border border-blue-900/30 rounded-xl shadow-lg transition-all duration-700 delay-500 transform
+          className={`p-6 bg-slate-900 border border-slate-800 rounded-xl shadow-lg transition-all duration-700 delay-500 transform h-[400px] overflow-hidden flex flex-col
             ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
           `}
         >
-          <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-             <AlertTriangle className="w-5 h-5 text-amber-500" />
-             {t.recentAlertsTitle}
-          </h3>
-          <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((_, i) => (
+          <div className="flex items-center justify-between mb-6">
+             <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                 <AlertTriangle className="w-5 h-5 text-amber-500" />
+                 {t.recentAlertsTitle}
+             </h3>
+             <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">Today</span>
+          </div>
+
+          {/* ✅ ใช้ class 'custom-scrollbar-thin' ที่ประกาศไว้ด้านบน (เอา style tag ออกแล้ว) */}
+          <div className="space-y-3 overflow-y-auto custom-scrollbar-thin pr-2 -mr-2">
+              {[1, 2, 3, 4, 5, 6].map((_, i) => (
                 <div 
                   key={i} 
-                  className={`flex items-start gap-3 p-3 rounded-lg hover:bg-blue-900/20 transition-all duration-300 cursor-pointer border border-transparent hover:border-blue-800/50 group transform hover:translate-x-1
+                  className={`flex items-start gap-3 p-3 rounded-lg hover:bg-slate-800/50 transition-all duration-200 cursor-pointer group border border-transparent hover:border-slate-700/50
                     ${mounted ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}
                   `}
                   style={{ transitionDelay: `${700 + (i * 100)}ms` }}
                 >
-                  <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${i === 0 ? 'bg-red-500 animate-ping' : 'bg-blue-500'}`}></div>
-                  {i === 0 && <div className="absolute left-3 top-[18px] w-2 h-2 bg-red-500 rounded-full"></div>}
+                  <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${i === 0 ? 'bg-red-500 animate-pulse' : 'bg-blue-500'}`}></div>
                   
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-blue-100 group-hover:text-cyan-300 transition-colors truncate">{t.alertMessage}</p>
-                    <p className="text-xs text-blue-400/60 group-hover:text-blue-400">192.168.1.{100 + i} • Port 443</p>
+                    <p className="text-sm font-medium text-slate-300 group-hover:text-cyan-400 transition-colors truncate">{t.alertMessage}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] bg-slate-800 px-1.5 rounded text-slate-500 font-mono">192.168.1.{100 + i}</span>
+                        <span className="text-[10px] text-slate-600">• Port 443</span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-blue-600 group-hover:text-cyan-500 whitespace-nowrap font-mono">{t.timeAgo}</span>
+                  <span className="text-[10px] text-slate-600 group-hover:text-slate-400 whitespace-nowrap font-mono">{t.timeAgo}</span>
                 </div>
               ))}
           </div>

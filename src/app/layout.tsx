@@ -31,7 +31,7 @@ const prompt = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Protect Sensor | Cyber Security Center",
+  title: "RTARF SENSOR",
   description: "Royal Thai Armed Forces Cyber Security Center",
   icons: {
     icon: "/img/rtarf.png",

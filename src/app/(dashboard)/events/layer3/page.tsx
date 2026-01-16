@@ -13,29 +13,81 @@ import {
   ChevronRight,
   Network,
   Info,
-  ChevronLeft,
+  ChevronLeft, 
   ChevronsLeft,
   ChevronsRight
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext"; 
 
 // Mock Data
-const EVENTS = [
-  { id: 1, time: "2024-01-12T10:42:05.123Z", proto: "TCP", srcIp: "192.168.1.50", srcPort: 54412, srcCountry: "TH", srcAsn: "TRUE-INTERNET", dstIp: "104.21.55.2", dstPort: 443, dstCountry: "US", dstAsn: "CLOUDFLARENET", action: "ALLOW", size: "1.2 KB", info: "HTTPS Traffic", flags: ["SYN", "ACK"], ttl: 64, interface: "eth0" },
-  { id: 2, time: "2024-01-12T10:42:03.881Z", proto: "UDP", srcIp: "45.155.204.18", srcPort: 4441, srcCountry: "RU", srcAsn: "MALICIOUS-VPS-LTD", dstIp: "10.0.0.5", dstPort: 53, dstCountry: "TH", dstAsn: "INTERNAL-NET", action: "BLOCK", size: "512 B", info: "Potential DNS Attack", flags: [], ttl: 128, interface: "eth0" },
-  { id: 3, time: "2024-01-12T10:41:50.402Z", proto: "TCP", srcIp: "192.168.1.100", srcPort: 55662, srcCountry: "TH", srcAsn: "INTERNAL-NET", dstIp: "10.0.0.2", dstPort: 22, dstCountry: "LOC", dstAsn: "INTERNAL-NET", action: "ALLOW", size: "2.4 KB", info: "SSH Remote Access", flags: ["PSH", "ACK"], ttl: 64, interface: "eth0" },
-  { id: 4, time: "2024-01-12T10:41:12.005Z", proto: "ICMP", srcIp: "10.0.0.5", srcPort: 0, srcCountry: "LOC", srcAsn: "INTERNAL-NET", dstIp: "8.8.8.8", dstPort: 0, dstCountry: "US", dstAsn: "GOOGLE", action: "ALLOW", size: "64 B", info: "Ping Check", flags: [], ttl: 64, interface: "eth0" },
-  { id: 5, time: "2024-01-12T10:40:00.952Z", proto: "TCP", srcIp: "112.55.66.77", srcPort: 44211, srcCountry: "CN", srcAsn: "CHINANET", dstIp: "10.0.0.5", dstPort: 3389, dstCountry: "TH", dstAsn: "INTERNAL-NET", action: "BLOCK", size: "0 B", info: "RDP Brute Force Attempt", flags: ["SYN"], ttl: 52, interface: "eth0" },
-  { id: 6, time: "2024-01-12T10:39:00.123Z", proto: "TCP", srcIp: "192.168.1.101", srcPort: 54321, srcCountry: "TH", srcAsn: "TRUE-INTERNET", dstIp: "8.8.4.4", dstPort: 53, dstCountry: "US", dstAsn: "GOOGLE", action: "ALLOW", size: "128 B", info: "DNS Query", flags: ["SYN"], ttl: 64, interface: "eth0" },
-  { id: 7, time: "2024-01-12T10:38:00.456Z", proto: "UDP", srcIp: "10.0.0.9", srcPort: 123, srcCountry: "LOC", srcAsn: "INTERNAL-NET", dstIp: "1.1.1.1", dstPort: 123, dstCountry: "US", dstAsn: "CLOUDFLARENET", action: "ALLOW", size: "76 B", info: "NTP Sync", flags: [], ttl: 64, interface: "eth0" },
-];
+const BASE_TIME = new Date("2024-01-16T12:00:00Z").getTime();
+
+const EVENTS = Array.from({ length: 200 }, (_, i) => ({
+  id: i + 1,
+  time: new Date(BASE_TIME - i * 60000).toISOString(),
+  proto: i % 3 === 0 ? "UDP" : i % 5 === 0 ? "ICMP" : "TCP",
+  srcIp: `192.168.1.${50 + (i % 200)}`,
+  srcPort: 54412 + i,
+  srcCountry: i % 4 === 0 ? "RU" : "TH",
+  srcAsn: i % 2 === 0 ? "TRUE-INTERNET" : "3BB-BROADBAND",
+  dstIp: "104.21.55.2",
+  dstPort: 443,
+  dstCountry: "US",
+  dstAsn: "CLOUDFLARENET",
+  action: i % 5 === 0 ? "BLOCK" : "ALLOW",
+  size: `${(i + 1) * 128} B`,
+  info: i % 5 === 0 ? "Potential Attack Blocked" : "Normal Traffic Flow",
+  flags: i % 3 === 0 ? ["SYN"] : ["PSH", "ACK"],
+  ttl: 64,
+  interface: "eth0"
+}));
 
 export default function Layer3Page() {
+  const { language } = useLanguage(); 
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(25); 
+
+  // ✅ กำหนดคำแปลภาษา
+  const content = {
+    EN: {
+      title: "Layer 3 Traffic Analysis",
+      subtitle: "Network Layer Monitoring (TCP/UDP/ICMP)",
+      placeholder: "Search IP, Port, Protocol...", // ไม่แปล
+      filters: "Filters",
+      rowsPerPage: "Rows per page:",
+      of: "of",
+      tableHeaders: {
+        timestamp: "Timestamp",
+        protocol: "Protocol",
+        source: "Source",
+        destination: "Destination",
+        status: "Status",
+        size: "Size"
+      }
+    },
+    TH: {
+      title: "วิเคราะห์จราจรข้อมูล Layer 3",
+      subtitle: "การตรวจสอบ Network Layer (TCP/UDP/ICMP)",
+      placeholder: "Search IP, Port, Protocol...", // ✅ แก้ไข: ไม่แปล (ใช้ภาษาอังกฤษ)
+      filters: "ตัวกรอง",
+      rowsPerPage: "แถวต่อหน้า:",
+      of: "จาก",
+      tableHeaders: {
+        timestamp: "เวลา",
+        protocol: "โปรโตคอล",
+        source: "ต้นทาง",
+        destination: "ปลายทาง",
+        status: "สถานะ",
+        size: "ขนาด"
+      }
+    }
+  };
+
+  const t = language === "EN" ? content.EN : content.TH;
 
   const toggleRow = (id: number) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -43,7 +95,7 @@ export default function Layer3Page() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, itemsPerPage]);
 
   const formatDetailedTime = (isoString: string) => {
     try {
@@ -85,10 +137,20 @@ export default function Layer3Page() {
   };
 
   return (
-    <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+    // ✅ Main Wrapper: Full Height
+    <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Header Section */}
-      <div className="flex flex-col gap-4">
+      {/* CSS Custom Scrollbar */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; border: 2px solid #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .custom-scrollbar::-webkit-scrollbar-corner { background: #0f172a; }
+      `}</style>
+
+      {/* ✅ Header Section */}
+      <div className="flex-none flex flex-col gap-4 pt-6 px-2 md:px-6 mb-4">
         
         {/* Title */}
         <div className="flex items-center gap-3">
@@ -97,21 +159,21 @@ export default function Layer3Page() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2 tracking-tight">
-              Layer 3 Traffic Analysis
+              {t.title}
             </h1>
             <p className="text-slate-400 text-xs mt-0.5 flex items-center gap-1.5">
-               <Network className="w-3 h-3" /> Network Layer Monitoring (TCP/UDP/ICMP)
+               <Network className="w-3 h-3" /> {t.subtitle}
             </p>
           </div>
         </div>
 
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-900/50 border border-slate-700/50 rounded-lg shadow-sm focus-within:border-blue-500/50 transition-colors">
+          <div className="w-full sm:w-96 flex items-center gap-2 px-3 py-2 bg-slate-900/50 border border-slate-700/50 rounded-lg shadow-sm focus-within:border-blue-500/50 transition-colors">
             <Search className="w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search IP, Port, Protocol..." 
+              placeholder={t.placeholder} // ✅ ใช้ placeholder (English)
               className="w-full bg-transparent text-sm outline-none text-slate-200 placeholder:text-slate-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -119,34 +181,36 @@ export default function Layer3Page() {
           </div>
           <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap">
             <Filter className="w-4 h-4" /> 
-            <span>Filters</span>
+            <span>{t.filters}</span>
           </button>
         </div>
 
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden backdrop-blur-sm flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-950/50 text-slate-400 font-medium border-b border-slate-800 uppercase text-[11px] tracking-wider">
+      {/* ✅ Main Table Card */}
+      <div className="flex-1 bg-slate-900 border-y border-slate-800 shadow-2xl overflow-hidden backdrop-blur-sm flex flex-col min-h-0 relative">
+        
+        {/* Table Body */}
+        <div className="flex-1 overflow-auto custom-scrollbar relative">
+          <table className="w-full text-sm text-left relative">
+            <thead className="sticky top-0 z-10 bg-slate-950 text-slate-400 font-medium border-b border-slate-800 uppercase text-[11px] tracking-wider shadow-md">
               <tr>
-                <th className="w-10 px-4 py-4 text-center">#</th>
-                <th className="px-4 py-4 min-w-[140px]">Timestamp</th>
-                <th className="px-4 py-4 w-24 text-center">Protocol</th>
-                <th className="px-4 py-4 min-w-[180px]">Source</th>
+                <th className="w-10 px-6 py-4 pl-4 text-center">#</th>
+                <th className="px-4 py-4 min-w-[140px]">{t.tableHeaders.timestamp}</th>
+                <th className="px-4 py-4 w-24 text-center">{t.tableHeaders.protocol}</th>
+                <th className="px-4 py-4 min-w-[180px]">{t.tableHeaders.source}</th>
                 <th className="px-2 py-4 w-8"></th>
-                <th className="px-4 py-4 min-w-[180px]">Destination</th>
-                <th className="px-4 py-4 w-28 text-center">Status</th>
-                <th className="px-4 py-4 text-right">Size</th>
+                <th className="px-4 py-4 min-w-[180px]">{t.tableHeaders.destination}</th>
+                <th className="px-4 py-4 w-28 text-center">{t.tableHeaders.status}</th>
+                <th className="px-6 py-4 pr-4 text-right">{t.tableHeaders.size}</th>
               </tr>
             </thead>
+            
             <tbody className="divide-y divide-slate-800/50">
-              
-              {/* (Render Rows) */}
-              {currentEvents.length > 0 && currentEvents.map((event) => (
+              {currentEvents.length > 0 ? (
+                currentEvents.map((event) => (
                 <Fragment key={event.id}>
-                  {/* Main Row */}
+                  {/* ... (Row Content เหมือนเดิม) ... */}
                   <tr 
                     onClick={() => toggleRow(event.id)}
                     className={`cursor-pointer transition-all duration-200 border-l-2 ${
@@ -155,7 +219,7 @@ export default function Layer3Page() {
                         : "hover:bg-slate-800/40 border-l-transparent hover:border-l-blue-500/50"
                     }`}
                   >
-                    <td className="px-4 py-4 text-slate-500 text-center">
+                    <td className="px-6 py-4 pl-4 text-slate-500 text-center">
                       {expandedRow === event.id ? <ChevronDown className="w-4 h-4 mx-auto" /> : <ChevronRight className="w-4 h-4 mx-auto" />}
                     </td>
                     
@@ -228,17 +292,14 @@ export default function Layer3Page() {
                       )}
                     </td>
 
-                    <td className="px-4 py-4 text-right text-slate-400 font-mono text-xs">{event.size}</td>
+                    <td className="px-6 py-4 pr-4 text-right text-slate-400 font-mono text-xs">{event.size}</td>
                   </tr>
 
-                  {/* Expanded Detail Row */}
                   {expandedRow === event.id && (
                     <tr className="bg-slate-900/40 border-t border-slate-800/50">
                         <td colSpan={8} className="px-0 py-0">
-                            <div className="p-6 bg-slate-950/40 shadow-inner grid grid-cols-1 md:grid-cols-2 gap-8 text-sm border-b border-slate-800/50 relative overflow-hidden">
-                                {/* Decoration Line */}
+                            <div className="p-6 bg-slate-950/40 shadow-inner grid grid-cols-1 md:grid-cols-2 gap-8 text-sm border-b border-slate-800/50 relative overflow-hidden px-16">
                                 <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500/30"></div>
-
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
                                         <Network className="w-3.5 h-3.5 text-blue-500" /> Packet Details
@@ -255,7 +316,7 @@ export default function Layer3Page() {
                                             </div>
                                         </div>
                                         <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                                            <span className="text-slate-500 block mb-1">TTL (Time To Live)</span>
+                                            <span className="text-slate-500 block mb-1">TTL</span>
                                             <span className="font-mono text-slate-200 font-bold">{event.ttl || "-"}</span>
                                         </div>
                                         <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 col-span-2">
@@ -266,7 +327,6 @@ export default function Layer3Page() {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
                                         <Info className="w-3.5 h-3.5 text-emerald-500" /> Context & Info
@@ -290,9 +350,8 @@ export default function Layer3Page() {
                     </tr>
                   )}
                 </Fragment>
-              ))}
-
-              {currentEvents.length === 0 && (
+              ))
+              ) : (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-slate-500 text-sm">
                     <div className="flex flex-col items-center gap-2">
@@ -306,50 +365,71 @@ export default function Layer3Page() {
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        {totalItems > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-slate-800 bg-slate-950/30 gap-4">
+        {/* ✅ Pagination Footer */}
+        <div className="flex-none flex flex-col sm:flex-row items-center justify-end px-4 py-4 border-t border-slate-800 bg-slate-950/50 z-20 gap-6">
+            
+            {/* Rows per page */}
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+                <span>{t.rowsPerPage}</span>
+                <div className="relative">
+                    <select 
+                        value={itemsPerPage}
+                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                        className="appearance-none bg-slate-900 border border-slate-700 text-slate-200 rounded px-2 py-1 pr-8 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                    >
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={200}>200</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2 top-1.5 pointer-events-none" />
+                </div>
+            </div>
+
+            {/* Info & Buttons */}
+            <div className="flex items-center gap-4">
                 <div className="text-xs text-slate-500 font-medium">
-                    Showing <span className="text-slate-200 font-bold">{startIndex + 1}</span> to <span className="text-slate-200 font-bold">{Math.min(endIndex, totalItems)}</span> of <span className="text-slate-200 font-bold">{totalItems}</span> events
+                    {totalItems > 0 ? (
+                        <>
+                            <span className="text-slate-200">{startIndex + 1}-{Math.min(endIndex, totalItems)}</span> {t.of} <span className="text-slate-200">{totalItems}</span>
+                        </>
+                    ) : (
+                        `0-0 ${t.of} 0`
+                    )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                     <button 
                         onClick={() => goToPage(1)}
-                        disabled={currentPage === 1}
-                        className="p-2 rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        disabled={currentPage === 1 || totalItems === 0}
+                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                        <ChevronsLeft className="w-4 h-4" />
+                        <ChevronsLeft className="w-5 h-5" />
                     </button>
                     <button 
                         onClick={() => goToPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="p-2 rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        disabled={currentPage === 1 || totalItems === 0}
+                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft className="w-5 h-5" />
                     </button>
-                    
-                    <span className="text-sm font-medium text-slate-300 px-2 min-w-[60px] text-center">
-                        Page {currentPage} / {totalPages}
-                    </span>
-
                     <button 
                         onClick={() => goToPage(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="p-2 rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        disabled={currentPage === totalPages || totalItems === 0}
+                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-5 h-5" />
                     </button>
                     <button 
                         onClick={() => goToPage(totalPages)}
-                        disabled={currentPage === totalPages}
-                        className="p-2 rounded-lg border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        disabled={currentPage === totalPages || totalItems === 0}
+                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                        <ChevronsRight className="w-4 h-4" />
+                        <ChevronsRight className="w-5 h-5" />
                     </button>
                 </div>
             </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ export default function SignInView() {
           </div>
 
           <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-lg">
-            Protect Sensor
+            RTARF SENSOR
           </h1>
           <p className="text-blue-400/60 text-sm mt-2 font-medium tracking-wider">
             SECURE CONSOLE ACCESS

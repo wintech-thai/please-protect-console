@@ -2,7 +2,7 @@ import OverviewView from "@/modules/dashboard/view/overview.view";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Please-Protect-Sensor",
+  title: "RTARF SENSOR",
 };
 
 export default function OverviewPage() {

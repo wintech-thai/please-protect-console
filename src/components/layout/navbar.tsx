@@ -17,7 +17,11 @@ import {
   X,
   Mail,
   Briefcase,
-  Camera 
+  Camera,
+  Users,
+  Key,
+  FileText,
+  ShieldAlert
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react"; 
 import { 
@@ -66,7 +70,12 @@ export function Navbar() {
       enterNew: "Enter new password",
       confirmNew: "Confirm new password",
       updatePassDesc: "Please update your password to continue.",
-      clickToChange: "Click image to change avatar"
+      clickToChange: "Click image to change avatar",
+      // Administrator Submenu
+      adminUsers: "Users",
+      adminRoles: "Custom Roles",
+      adminApi: "API Keys",
+      adminAudit: "Audit Log"
     },
     TH: {
       profile: "ข้อมูลส่วนตัว",
@@ -87,7 +96,12 @@ export function Navbar() {
       enterNew: "กรอกรหัสผ่านใหม่",
       confirmNew: "ยืนยันรหัสผ่านใหม่",
       updatePassDesc: "กรุณาอัปเดตรหัสผ่านเพื่อดำเนินการต่อ",
-      clickToChange: "คลิกที่รูปเพื่อเปลี่ยนโปรไฟล์"
+      clickToChange: "คลิกที่รูปเพื่อเปลี่ยนโปรไฟล์",
+      // Administrator Submenu
+      adminUsers: "ผู้ใช้งาน",
+      adminRoles: "สิทธิ์การใช้งาน",
+      adminApi: "คีย์ API",
+      adminAudit: "บันทึกการใช้งาน"
     }
   };
 
@@ -105,9 +119,16 @@ export function Navbar() {
           { label: "Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
         ]
       },
+      // Administrator with Submenu restored
       { 
         label: "Administrator", 
         href: "/admin/users", 
+        children: [
+          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
+          { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
+          { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
+          { label: text.adminAudit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
+        ]
       },
     ],
     TH: [
@@ -121,9 +142,16 @@ export function Navbar() {
           { label: "การแจ้งเตือน", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
         ]
       },
+      // Administrator with Submenu restored
       { 
         label: "ผู้ดูแลระบบ", 
         href: "/admin/users", 
+        children: [
+          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
+          { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
+          { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
+          { label: text.adminAudit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
+        ]
       },
     ]
   };
@@ -181,7 +209,7 @@ export function Navbar() {
             </div>
             
             <span className="text-2xl font-bold tracking-tight text-white">
-              PROTECT-<span className="text-cyan-400">SENSOR</span>
+              RTARF <span className="text-cyan-400">SENSOR</span>
             </span>
           </div>
 
