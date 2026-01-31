@@ -40,10 +40,8 @@ export default function AuditLogPage() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   return (
-    // ✅ Main Wrapper: h-[calc(100vh-64px)]
     <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Header Section: px-2 md:px-6 (ตามมาตรฐานหน้า Users/Alerts) */}
       <div className="flex-none flex flex-col gap-4 pt-6 px-2 md:px-6 mb-4">
         
         {/* Title */}

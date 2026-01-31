@@ -81,7 +81,6 @@ export default function AlertsPage() {
       {/* Main Content Card */}
       <div className="flex-1 bg-slate-900 border-y border-slate-800 shadow-2xl overflow-hidden backdrop-blur-sm flex flex-col min-h-0 relative">
         
-        {/* ✅ Middle Content: เปลี่ยนเป็น overflow-hidden เพื่อไม่ให้มี Scrollbar */}
         <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden">
              <ComingSoon 
                 title={t.cardTitle} 

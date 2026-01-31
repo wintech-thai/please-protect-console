@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local"; 
+import { Toaster } from "sonner"; // ✅ 1. เพิ่ม Import Toaster
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext"; 
 
@@ -59,6 +60,15 @@ export default function RootLayout({
       >
         <LanguageProvider>
           {children}
+          
+          {/* ✅ 2. เพิ่ม Component Toaster ตรงนี้ */}
+          <Toaster 
+            richColors        // ให้สีเขียว/แดง สดใส
+            position="top-center" // ย้ายมาอยู่ตรงกลางด้านบน
+            closeButton       // มีปุ่มปิด
+            theme="dark"      // ปรับธีมให้เข้ากับพื้นหลังสีเข้มของเว็บ
+          />
+          
         </LanguageProvider>
       </body>
     </html>

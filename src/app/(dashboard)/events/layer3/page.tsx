@@ -51,12 +51,11 @@ export default function Layer3Page() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25); 
 
-  // ✅ กำหนดคำแปลภาษา
   const content = {
     EN: {
       title: "Layer 3 Traffic Analysis",
       subtitle: "Network Layer Monitoring (TCP/UDP/ICMP)",
-      placeholder: "Search IP, Port, Protocol...", // ไม่แปล
+      placeholder: "Search IP, Port, Protocol...", 
       filters: "Filters",
       rowsPerPage: "Rows per page:",
       of: "of",
@@ -72,7 +71,7 @@ export default function Layer3Page() {
     TH: {
       title: "วิเคราะห์จราจรข้อมูล Layer 3",
       subtitle: "การตรวจสอบ Network Layer (TCP/UDP/ICMP)",
-      placeholder: "Search IP, Port, Protocol...", // ✅ แก้ไข: ไม่แปล (ใช้ภาษาอังกฤษ)
+      placeholder: "Search IP, Port, Protocol...", 
       filters: "ตัวกรอง",
       rowsPerPage: "แถวต่อหน้า:",
       of: "จาก",
@@ -137,7 +136,6 @@ export default function Layer3Page() {
   };
 
   return (
-    // ✅ Main Wrapper: Full Height
     <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* CSS Custom Scrollbar */}
@@ -149,7 +147,6 @@ export default function Layer3Page() {
         .custom-scrollbar::-webkit-scrollbar-corner { background: #0f172a; }
       `}</style>
 
-      {/* ✅ Header Section */}
       <div className="flex-none flex flex-col gap-4 pt-6 px-2 md:px-6 mb-4">
         
         {/* Title */}
@@ -187,7 +184,6 @@ export default function Layer3Page() {
 
       </div>
 
-      {/* ✅ Main Table Card */}
       <div className="flex-1 bg-slate-900 border-y border-slate-800 shadow-2xl overflow-hidden backdrop-blur-sm flex flex-col min-h-0 relative">
         
         {/* Table Body */}
@@ -210,7 +206,6 @@ export default function Layer3Page() {
               {currentEvents.length > 0 ? (
                 currentEvents.map((event) => (
                 <Fragment key={event.id}>
-                  {/* ... (Row Content เหมือนเดิม) ... */}
                   <tr 
                     onClick={() => toggleRow(event.id)}
                     className={`cursor-pointer transition-all duration-200 border-l-2 ${
@@ -365,7 +360,6 @@ export default function Layer3Page() {
           </table>
         </div>
 
-        {/* ✅ Pagination Footer */}
         <div className="flex-none flex flex-col sm:flex-row items-center justify-end px-4 py-4 border-t border-slate-800 bg-slate-950/50 z-20 gap-6">
             
             {/* Rows per page */}
