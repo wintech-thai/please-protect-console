@@ -1,4 +1,3 @@
-// src/lib/axios.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
@@ -24,11 +23,26 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Helper Encode Base64
+const encodeBase64 = (str: string) => {
+  try {
+    if (typeof window !== "undefined") {
+      return window.btoa(str);
+    } else {
+      return Buffer.from(str).toString("base64");
+    }
+  } catch (e) {
+    console.error("Base64 encode failed", e);
+    return str;
+  }
+};
+
 client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("accessToken");
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+      const encodedToken = encodeBase64(token);
+      config.headers.Authorization = `Bearer ${encodedToken}`;
     }
   }
   return config;
@@ -38,14 +52,22 @@ client.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
+    const errorData = error.response?.data as any;
+    
+    const isTokenExpired = 
+        error.response?.status === 401 || 
+        (errorData?.raw && typeof errorData.raw === 'string' && (errorData.raw.includes("IDX10223") || errorData.raw.includes("expired"))) ||
+        (typeof errorData === 'string' && (errorData.includes("IDX10223") || errorData.includes("expired")));
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (isTokenExpired && !originalRequest._retry) {
+      
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            originalRequest.headers["Authorization"] = "Bearer " + token;
+            const encodedToken = encodeBase64(token as string);
+            originalRequest.headers["Authorization"] = "Bearer " + encodedToken;
             return client(originalRequest);
           })
           .catch((err) => {
@@ -63,30 +85,40 @@ client.interceptors.response.use(
           throw new Error("No refresh token available");
         }
 
-        // ✅ 1. แก้ Endpoint Refresh
-        const res = await axios.post(`${API_URL}/api/Auth/org/temp/action/Refresh`, { 
+        const res = await axios.post(`/api/proxy/api/Auth/org/temp/action/Refresh`, { 
           refreshToken 
         });
         
-        // ✅ 2. แก้วิธีดึงค่า Token (เจาะเข้าไปใน object token)
-        const { access_token, refresh_token } = res.data.token;
+        const { access_token, refresh_token } = res.data.token || res.data; 
 
         localStorage.setItem("accessToken", access_token);
+        document.cookie = `accessToken=${access_token}; path=/; max-age=86400; SameSite=Lax`;
         
-        // ถ้าได้ Refresh Token ตัวใหม่มาด้วย ให้บันทึกทับ
         if (refresh_token) {
             localStorage.setItem("refreshToken", refresh_token);
+            document.cookie = `refreshToken=${refresh_token}; path=/; max-age=604800; SameSite=Lax`;
         }
 
         processQueue(null, access_token);
         
-        originalRequest.headers["Authorization"] = "Bearer " + access_token;
+        const newEncodedToken = encodeBase64(access_token);
+        originalRequest.headers["Authorization"] = "Bearer " + newEncodedToken;
+        
         return client(originalRequest);
 
       } catch (refreshError) {
         processQueue(refreshError, null);
+        
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
+        localStorage.removeItem("username");
+        localStorage.removeItem("orgId");
+        
+        document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
+        document.cookie = "refreshToken=; path=/; max-age=0; SameSite=Lax";
+        document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
+        document.cookie = "orgId=; path=/; max-age=0; SameSite=Lax";
+
         window.location.href = "/login";
         return Promise.reject(refreshError);
       } finally {

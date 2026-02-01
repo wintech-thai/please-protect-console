@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LogOut, 
   Menu, 
@@ -14,16 +14,12 @@ import {
   Check,
   User,      
   Lock,
-  X,
-  Mail,
-  Briefcase,
-  Camera,
   Users,
   Key,
   FileText,
   ShieldAlert
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react"; 
+import { useState } from "react"; 
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -32,6 +28,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext"; 
+import { authApi } from "@/modules/auth/api/auth.api";
+import { toast } from "sonner";
+import { UpdateProfileModal } from "@/components/modals/update-profile-modal";
+import { ChangePasswordModal } from "@/components/modals/change-password-modal";
 
 interface NavItem {
   label: string;
@@ -41,37 +41,42 @@ interface NavItem {
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null); 
 
   const { language, setLanguage } = useLanguage(); 
+
+  const handleLogout = async () => {
+    try {
+      await authApi.signOut();
+    } catch (error) {
+      console.error("Logout API failed:", error);
+    } finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("username");
+      localStorage.removeItem("orgId");
+
+      document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "refreshToken=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "orgId=; path=/; max-age=0; SameSite=Lax";
+
+      toast.success(language === "EN" ? "Logged out successfully" : "ออกจากระบบเรียบร้อยแล้ว");
+      setIsMobileMenuOpen(false);
+      router.push("/login");
+    }
+  };
 
   const translations = {
     EN: {
       profile: "Profile",
       changePassword: "Change Password",
       logout: "Logout",
-      updateProfile: "Update Profile",
-      manageAccount: "Manage your account information.",
-      fullName: "Full Name",
-      email: "Email Address",
-      role: "Role",
-      cancel: "Cancel",
-      saveProfile: "Save Profile",
-      saveChanges: "Save Changes",
-      currentPass: "Current Password",
-      newPass: "New Password",
-      confirmPass: "Confirm New Password",
-      enterCurrent: "Enter current password",
-      enterNew: "Enter new password",
-      confirmNew: "Confirm new password",
-      updatePassDesc: "Please update your password to continue.",
-      clickToChange: "Click image to change avatar",
-      // Administrator Submenu
       adminUsers: "Users",
       adminRoles: "Custom Roles",
       adminApi: "API Keys",
@@ -81,23 +86,6 @@ export function Navbar() {
       profile: "ข้อมูลส่วนตัว",
       changePassword: "เปลี่ยนรหัสผ่าน",
       logout: "ออกจากระบบ",
-      updateProfile: "แก้ไขข้อมูลส่วนตัว",
-      manageAccount: "จัดการข้อมูลบัญชีผู้ใช้ของคุณ",
-      fullName: "ชื่อ-นามสกุล",
-      email: "อีเมล",
-      role: "สิทธิ์การใช้งาน",
-      cancel: "ยกเลิก",
-      saveProfile: "บันทึกข้อมูล",
-      saveChanges: "บันทึกการเปลี่ยนแปลง",
-      currentPass: "รหัสผ่านปัจจุบัน",
-      newPass: "รหัสผ่านใหม่",
-      confirmPass: "ยืนยันรหัสผ่านใหม่",
-      enterCurrent: "กรอกรหัสผ่านปัจจุบัน",
-      enterNew: "กรอกรหัสผ่านใหม่",
-      confirmNew: "ยืนยันรหัสผ่านใหม่",
-      updatePassDesc: "กรุณาอัปเดตรหัสผ่านเพื่อดำเนินการต่อ",
-      clickToChange: "คลิกที่รูปเพื่อเปลี่ยนโปรไฟล์",
-      // Administrator Submenu
       adminUsers: "ผู้ใช้งาน",
       adminRoles: "สิทธิ์การใช้งาน",
       adminApi: "คีย์ API",
@@ -119,7 +107,6 @@ export function Navbar() {
           { label: "Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
         ]
       },
-      // Administrator with Submenu restored
       { 
         label: "Administrator", 
         href: "/admin/users", 
@@ -142,7 +129,6 @@ export function Navbar() {
           { label: "การแจ้งเตือน", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
         ]
       },
-      // Administrator with Submenu restored
       { 
         label: "ผู้ดูแลระบบ", 
         href: "/admin/users", 
@@ -171,25 +157,6 @@ export function Navbar() {
     }
     return false;
   };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  useEffect(() => {
-    if (showPasswordModal || showProfileModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-  }, [showPasswordModal, showProfileModal]);
 
   return (
     <>
@@ -224,8 +191,8 @@ export function Navbar() {
                         className={`
                           flex items-center gap-1 px-4 py-2 text-base font-medium transition-all duration-200 rounded-md outline-none
                           ${isParentActive(item) 
-                              ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]" 
-                              : "text-slate-400 hover:text-blue-200 hover:bg-blue-900/20" 
+                            ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]" 
+                            : "text-slate-400 hover:text-blue-200 hover:bg-blue-900/20" 
                           }
                         `} 
                       >
@@ -322,8 +289,8 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                   <button className="flex items-center justify-center outline-none group">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-900 to-slate-800 border border-blue-700/50 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.15)] group-hover:border-cyan-500/50 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 overflow-hidden">
-                          {avatarPreview ? (
-                             <img src={avatarPreview} alt="User Avatar" className="w-full h-full object-cover" />
+                          {userAvatar ? (
+                             <img src={userAvatar} alt="User Avatar" className="w-full h-full object-cover" />
                           ) : (
                              <User className="w-5 h-5 text-blue-200 group-hover:text-cyan-400 transition-colors" />
                           )}
@@ -353,14 +320,20 @@ export function Navbar() {
                       <Lock className="w-4 h-4" />
                       <span>{text.changePassword}</span>
                   </DropdownMenuItem>
+
+                  {/* Logout */}
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleLogout();
+                    }}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-md cursor-pointer outline-none text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors border-t border-blue-900/30 mt-1"
+                  >
+                      <LogOut className="w-4 h-4" />
+                      <span>{text.logout}</span>
+                  </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <div className="h-6 w-[1px] bg-blue-900/30 mx-1"></div>
-
-            <Link href="/login" className="flex items-center justify-center w-9 h-9 rounded-full text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors" title={text.logout}>
-              <LogOut className="w-5 h-5" />
-            </Link>
 
             <button 
               className="md:hidden text-slate-300 hover:text-white p-1"
@@ -420,26 +393,33 @@ export function Navbar() {
               >
                   <Lock className="w-5 h-5" /> {text.changePassword}
               </button>
+
+              <button 
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 px-4 py-4 text-base text-red-400 hover:text-red-300 hover:bg-red-900/10 outline-none"
+              >
+                  <LogOut className="w-5 h-5" /> {text.logout}
+              </button>
             </div>
 
             <div className="p-4 bg-[#020617]/50">
               <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Language</p>
               <div className="grid grid-cols-2 gap-2">
                   <button 
-                      onClick={() => setLanguage("EN")}
-                      className={cn(
-                          "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
-                          language === "EN" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
-                      )}
+                    onClick={() => setLanguage("EN")}
+                    className={cn(
+                        "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
+                        language === "EN" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
+                    )}
                   >
                     🇬🇧 English
                   </button>
                   <button 
-                      onClick={() => setLanguage("TH")}
-                      className={cn(
-                          "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
-                          language === "TH" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
-                      )}
+                    onClick={() => setLanguage("TH")}
+                    className={cn(
+                        "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
+                        language === "TH" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
+                    )}
                   >
                     🇹🇭 ไทย
                   </button>
@@ -449,134 +429,16 @@ export function Navbar() {
         )}
       </nav>
 
-      {/* CHANGE PASSWORD MODAL */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0B1120] border border-blue-900/30 rounded-xl shadow-2xl shadow-black w-full max-w-[500px] mx-4 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-start p-6 pb-2 border-b border-blue-900/20">
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">{text.changePassword}</h2>
-                <p className="text-sm text-slate-400 mt-1">{text.updatePassDesc}</p>
-              </div>
-              <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">{text.currentPass}</label>
-                <input type="password" placeholder={text.enterCurrent} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"/>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">{text.newPass}</label>
-                <input type="password" placeholder={text.enterNew} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"/>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">{text.confirmPass}</label>
-                <input type="password" placeholder={text.confirmNew} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"/>
-              </div>
-            </div>
-            <div className="p-4 px-6 border-t border-blue-900/20 flex justify-end gap-3 bg-[#020617]/30">
-              <button onClick={() => setShowPasswordModal(false)} className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:text-white transition-colors">{text.cancel}</button>
-              <button className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all shadow-lg shadow-blue-500/20">{text.saveChanges}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ✅ เรียกใช้ Modal ทั้งคู่ตรงนี้ */}
+      <ChangePasswordModal 
+        isOpen={showPasswordModal} 
+        onClose={() => setShowPasswordModal(false)} 
+      />
 
-      {/* PROFILE MODAL */}
-      {showProfileModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0B1120] border border-blue-900/30 rounded-xl shadow-2xl shadow-black w-full max-w-[500px] mx-4 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
-            
-            {/* Header */}
-            <div className="flex justify-between items-start p-6 pb-2 border-b border-blue-900/20">
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">{text.updateProfile}</h2>
-                <p className="text-sm text-slate-400 mt-1">{text.manageAccount}</p>
-              </div>
-              <button onClick={() => setShowProfileModal(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-5">
-              
-              {/* Profile Picture */}
-              <div className="flex flex-col items-center mb-6">
-                 <div 
-                    className="relative group cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                 >
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-900 to-slate-800 border-2 border-blue-700/50 flex items-center justify-center shadow-lg shadow-blue-500/10 overflow-hidden relative">
-                        {avatarPreview ? (
-                           <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
-                        ) : (
-                           <User className="w-10 h-10 text-cyan-400" />
-                        )}
-                    </div>
-                    
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <Camera className="w-8 h-8 text-white/90" />
-                    </div>
-                 </div>
-                 
-                 {/* Hidden Input */}
-                 <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={handleImageChange}
-                 />
-                 <p className="mt-3 text-sm font-medium text-slate-300">Administrator</p>
-                 <p className="text-xs text-slate-500">{text.clickToChange}</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                   <User className="w-3.5 h-3.5 text-cyan-500" /> {text.fullName}
-                </label>
-                <input 
-                  type="text" 
-                  placeholder={text.fullName}
-                  className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                   <Mail className="w-3.5 h-3.5 text-cyan-500" /> {text.email}
-                </label>
-                <input 
-                  type="email" 
-                  placeholder={text.email}
-                  className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                   <Briefcase className="w-3.5 h-3.5 text-slate-500" /> {text.role}
-                </label>
-                <input 
-                  type="text" 
-                  placeholder={text.role}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-500 placeholder:text-slate-600"
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 px-6 border-t border-blue-900/20 flex justify-end gap-3 bg-[#020617]/30">
-              <button onClick={() => setShowProfileModal(false)} className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:text-white transition-colors">{text.cancel}</button>
-              <button className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all shadow-lg shadow-blue-500/20">{text.saveProfile}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UpdateProfileModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+      />
     </>
   );
 }

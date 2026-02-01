@@ -85,7 +85,6 @@ export default function OverviewView() {
   return (
     <div className="w-full h-full flex flex-col gap-6 pt-6 px-8 md:px-12 pb-10 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* ✅ CSS: รวม Style ไว้ที่นี่ที่เดียว เพื่อแก้ Error Nested Tag */}
       <style jsx>{`
         /* Scrollbar หลัก */
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
@@ -193,7 +192,6 @@ export default function OverviewView() {
              <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">Today</span>
           </div>
 
-          {/* ✅ ใช้ class 'custom-scrollbar-thin' ที่ประกาศไว้ด้านบน (เอา style tag ออกแล้ว) */}
           <div className="space-y-3 overflow-y-auto custom-scrollbar-thin pr-2 -mr-2">
               {[1, 2, 3, 4, 5, 6].map((_, i) => (
                 <div 

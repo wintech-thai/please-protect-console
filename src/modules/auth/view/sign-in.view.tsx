@@ -59,21 +59,43 @@ export default function SignInView() {
 
   const onSubmit = async (data: LoginSchemaType) => {
     try {
+      //เรียก API Login
       const res = await authApi.signIn(data);
-
       const token = res?.token?.access_token;
 
       if (token) {
         localStorage.setItem("accessToken", token);
+        document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
 
         if (res.token?.refresh_token) {
-          localStorage.setItem("refreshToken", res.token.refresh_token);
+          const refreshToken = res.token.refresh_token;
+          localStorage.setItem("refreshToken", refreshToken);
+          document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
         }
 
         if (res.userName) {
           localStorage.setItem("username", res.userName);
+          document.cookie = `user_name=${res.userName}; path=/; max-age=604800; SameSite=Lax`;
         }
-        document.cookie = `accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+
+        try {
+          const orgs = await authApi.getUserAllowedOrg();
+          
+          if (Array.isArray(orgs) && orgs.length > 0) {
+            const firstOrg = orgs[0] as any;
+            const orgIdToSave = firstOrg.orgCustomId || "default";
+            localStorage.setItem("orgId", orgIdToSave);
+            document.cookie = `orgId=${orgIdToSave}; path=/; max-age=604800; SameSite=Lax`;
+            console.log("🏢 Organization ID set to:", orgIdToSave);
+          } else {
+             localStorage.setItem("orgId", "default");
+          }
+        } catch (orgError) {
+          console.error("⚠️ Failed to fetch allowed org:", orgError);
+          localStorage.setItem("orgId", "default");
+        }
+
+        // --- Success Toast ---
         toast.success("Login successful", {
           duration: 2000,
         });
@@ -82,6 +104,7 @@ export default function SignInView() {
         setTimeout(() => {
           window.location.href = "/overview";
         }, 800);
+
       } else {
         throw new Error("Token not found in response");
       }
