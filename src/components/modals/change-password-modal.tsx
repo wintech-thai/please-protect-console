@@ -42,11 +42,41 @@ export function ChangePasswordModal({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const validatePassword = (password: string) => {
+    if (password.length < 7 || password.length > 15) {
+      return language === "EN" 
+        ? "Password length must be between 7-15 characters" 
+        : "รหัสผ่านต้องมีความยาว 7-15 ตัวอักษร";
+    }
+    if (!/[a-z]/.test(password)) {
+      return language === "EN" 
+        ? "Password must contain at least 1 lowercase letter" 
+        : "รหัสผ่านต้องมีตัวพิมพ์เล็กอย่างน้อย 1 ตัว";
+    }
+    if (!/[A-Z]/.test(password)) {
+      return language === "EN" 
+        ? "Password must contain at least 1 uppercase letter" 
+        : "รหัสผ่านต้องมีตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว";
+    }
+    if (!/[!@#]/.test(password)) {
+      return language === "EN" 
+        ? "Password must contain special character (!, @, #)" 
+        : "รหัสผ่านต้องมีอักขระพิเศษ (!, @, #) อย่างน้อย 1 ตัว";
+    }
+    return null;
+  };
+
   const handleSubmit = async () => {
     const { currentPassword, newPassword, confirmPassword } = formData;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error(language === "EN" ? "Please fill in all fields" : "กรุณากรอกข้อมูลให้ครบถ้วน");
+      return;
+    }
+
+    const validationError = validatePassword(newPassword);
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
@@ -74,9 +104,15 @@ export function ChangePasswordModal({
 
     } catch (error: any) {
       console.error("Change password failed:", error);
-      const errorMsg = error?.response?.data?.message || 
-                       error?.response?.data?.description || 
-                       (language === "EN" ? "Failed to change password" : "เปลี่ยนรหัสผ่านไม่สำเร็จ");
+      
+      let errorMsg = error?.response?.data?.message || error?.response?.data?.description;
+      
+      if (errorMsg && typeof errorMsg === 'string') {
+        errorMsg = errorMsg.replace(/\n/g, " ").trim();
+      } else {
+        errorMsg = language === "EN" ? "Failed to change password" : "เปลี่ยนรหัสผ่านไม่สำเร็จ";
+      }
+                       
       toast.error(errorMsg);
     } finally {
       setIsLoading(false);
@@ -86,7 +122,7 @@ export function ChangePasswordModal({
   const t = {
     EN: {
       title: "Change Password",
-      desc: "Please update your password to continue.",
+      desc: "Password must be 7-15 chars, contain A-Z, a-z, and special (!@#)",
       current: "Current Password",
       new: "New Password",
       confirm: "Confirm New Password",
@@ -98,7 +134,7 @@ export function ChangePasswordModal({
     },
     TH: {
       title: "เปลี่ยนรหัสผ่าน",
-      desc: "กรุณาอัปเดตรหัสผ่านเพื่อดำเนินการต่อ",
+      desc: "รหัสผ่านต้องมี 7-15 ตัวอักษร, มี A-Z, a-z และอักขระพิเศษ (!@#)",
       current: "รหัสผ่านปัจจุบัน",
       new: "รหัสผ่านใหม่",
       confirm: "ยืนยันรหัสผ่านใหม่",
@@ -139,7 +175,7 @@ export function ChangePasswordModal({
             <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
               {text.title}
             </h2>
-            <p className="text-sm text-slate-400 mt-1">{text.desc}</p>
+            <p className="text-xs text-yellow-500/80 mt-1 font-medium">{text.desc}</p>
           </div>
           <button
             onClick={onClose}
@@ -191,7 +227,6 @@ export function ChangePasswordModal({
           <button
             onClick={onClose}
             disabled={isLoading}
-            // ✅ แก้ไข: ใช้ Style สีแดงแบบ Update Profile Modal
             className="px-4 py-2 text-sm font-medium text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50"
           >
             {text.cancel}
