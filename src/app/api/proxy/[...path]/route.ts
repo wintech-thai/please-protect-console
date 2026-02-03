@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
-import https from "https"; 
 
-const insecureAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
-
-const BACKEND_URL = "https://api-dev.rtarf-censor.dev-hubs.com";
+const BACKEND_URL = "http://tunnel-api-dev.rtarf-censor.dev-hubs.com";
 
 async function handleProxy(
   req: NextRequest,
@@ -51,7 +46,6 @@ async function handleProxy(
         url: targetUrl,
         headers: headers,
         data: body,
-        httpsAgent: insecureAgent, 
         validateStatus: () => true, 
     });
 

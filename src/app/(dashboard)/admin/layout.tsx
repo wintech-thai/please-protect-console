@@ -11,8 +11,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const ADMIN_TABS: { label: string; href: string; icon: React.ReactNode }[] = [];
 
   return (
+    // Outer Container: รับความสูงมาจาก DashboardLayout
     <div className="h-full w-full flex flex-col">
       
+      {/* ส่วน Tabs (ถ้ามี) */}
       {ADMIN_TABS.length > 0 && (
         <div className="flex-none border-b border-blue-900/30 mb-6">
           <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
@@ -39,7 +41,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      <div className="flex-1 min-h-0">
+      {/* ✅ แก้ไขตรงนี้: เพิ่ม h-full เข้าไปด้วย เพื่อให้ UsersPage (ที่เป็น h-full) ยืดตัวได้เต็มที่ */}
+      <div className="flex-1 min-h-0 h-full flex flex-col">
         {children}
       </div>
     </div>
