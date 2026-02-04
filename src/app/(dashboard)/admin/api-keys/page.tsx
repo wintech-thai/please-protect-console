@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
+import Link from "next/link"; // Import Link
 import { 
   Search, 
   ChevronDown, 
@@ -77,6 +77,9 @@ export default function ApiKeysPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); 
 
   const [page, setPage] = useState(1);
@@ -315,9 +318,30 @@ export default function ApiKeysPage() {
                             <tr><td colSpan={7} className="p-20 text-center text-slate-500">{t.noData}</td></tr>
                         ) : (
                             apiKeys.map((key, idx) => (
-                                <tr key={key.id || idx} className="hover:bg-slate-800/40 transition-colors group text-sm">
-                                    <td className="p-4"><input type="checkbox" checked={selectedIds.includes(key.id)} onChange={() => handleSelectOne(key.id)} /></td>
-                                    <td className="p-4 font-medium text-blue-400">{key.keyName}</td>
+                                <tr 
+                                    key={key.id || idx} 
+                                    onClick={() => setSelectedRowId(key.id)}
+                                    className={`transition-colors group text-sm cursor-pointer
+                                      ${selectedRowId === key.id 
+                                        ? "bg-blue-900/20" 
+                                        : "hover:bg-slate-800/40"
+                                      }
+                                    `}
+                                >
+                                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                                      <input type="checkbox" checked={selectedIds.includes(key.id)} onChange={() => handleSelectOne(key.id)} />
+                                    </td>
+                                    
+                                    <td className="p-4 font-medium">
+                                      <Link 
+                                        href={`/admin/api-keys/${key.id}/update`} 
+                                        className="text-blue-400 hover:text-blue-300 hover:underline"
+                                        onClick={(e) => e.stopPropagation()} 
+                                      >
+                                        {key.keyName}
+                                      </Link>
+                                    </td>
+
                                     <td className="p-4 text-slate-300 max-w-[200px] truncate">{key.description}</td>
                                     <td className="p-4 text-slate-400">{key.customRoleName || "-"}</td>
                                     <td className="p-4">
@@ -328,7 +352,8 @@ export default function ApiKeysPage() {
                                             {key.status || "Inactive"}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-center">
+                                    
+                                    <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu modal={false}>
                                           <DropdownMenuTrigger asChild>
                                             <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">

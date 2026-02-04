@@ -24,6 +24,16 @@ export const apiKeyApi = {
     return response.data;
   },
 
+  getApiKeyById: async (keyId: string) => {
+    const response = await client.get(`/api/ApiKey/org/${getOrgId()}/action/GetApiKeyById/${keyId}`);
+    return response.data;
+  },
+
+  updateApiKeyById: async (keyId: string, data: any) => {
+    const response = await client.post(`/api/ApiKey/org/${getOrgId()}/action/UpdateApiKeyById/${keyId}`, data);
+    return response.data;
+  },
+
   createApiKey: async (data: CreateApiKeyPayload): Promise<ApiKeyResponse> => {
     const payload = {
       keyName: data.keyName,

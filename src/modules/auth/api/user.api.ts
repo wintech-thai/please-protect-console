@@ -41,8 +41,18 @@ export const userApi = {
     return response.data;
   },
 
+  getUserById: async (userId: string) => {
+    const response = await client.get(`/api/OrganizationUser/org/${getOrgId()}/action/GetUserById/${userId}`);
+    return response.data;
+  },
+
   updateUser: async (userName: string, data: UpdateUserPayload) => {
     const response = await client.post(`/api/OnlyUser/org/${getOrgId()}/action/UpdateUserByUserName/${userName}`, data);
+    return response.data;
+  },
+
+  updateUserById: async (userId: string, data: any) => {
+    const response = await client.post(`/api/OrganizationUser/org/${getOrgId()}/action/UpdateUserById/${userId}`, data);
     return response.data;
   },
 

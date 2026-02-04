@@ -89,6 +89,9 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+
   const [roleMap, setRoleMap] = useState<Record<string, string>>({});
 
   const [page, setPage] = useState(1);
@@ -105,7 +108,6 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchMasterRoles = async () => {
       try {
-        // Change: ใช้ roleApi
         const rolesData = await roleApi.getRoles();
         const map: Record<string, string> = {};
         const rolesArray = Array.isArray(rolesData) ? rolesData : (rolesData?.data || []);
@@ -290,9 +292,30 @@ export default function UsersPage() {
                             <tr><td colSpan={9} className="p-20 text-center text-slate-500">{t.noData}</td></tr>
                         ) : (
                             users.map((user, idx) => (
-                                <tr key={user.orgUserId || idx} className="hover:bg-slate-800/40 transition-colors group text-sm">
-                                    <td className="p-4"><input type="checkbox" checked={selectedIds.includes(user.orgUserId)} onChange={() => handleSelectOne(user.orgUserId)} /></td>
-                                    <td className="p-4 font-medium text-blue-400">{user.userName}</td>
+                                <tr 
+                                    key={user.orgUserId || idx} 
+                                    onClick={() => setSelectedRowId(user.orgUserId)}
+                                    className={`transition-colors group text-sm cursor-pointer
+                                      ${selectedRowId === user.orgUserId 
+                                        ? "bg-blue-900/20" 
+                                        : "hover:bg-slate-800/40"
+                                      }
+                                    `}
+                                >
+                                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                                      <input type="checkbox" checked={selectedIds.includes(user.orgUserId)} onChange={() => handleSelectOne(user.orgUserId)} />
+                                    </td>
+                                    
+                                    <td className="p-4 font-medium">
+                                      <Link 
+                                        href={`/admin/users/${user.orgUserId}/update`} 
+                                        className="text-blue-400 hover:text-blue-300 hover:underline"
+                                        onClick={(e) => e.stopPropagation()} 
+                                      >
+                                        {user.userName}
+                                      </Link>
+                                    </td>
+
                                     <td className="p-4 text-slate-300">{user.userEmail || user.tmpUserEmail || "-"}</td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
@@ -309,7 +332,7 @@ export default function UsersPage() {
                                     <td className="p-4 font-medium">
                                         <span className={user.userStatus === 'Disabled' ? 'text-slate-500' : 'text-green-400'}>{user.userStatus}</span>
                                     </td>
-                                    <td className="p-4 text-center">
+                                    <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu modal={false}>
                                           <DropdownMenuTrigger asChild>
                                             <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
@@ -340,6 +363,7 @@ export default function UsersPage() {
                     </tbody>
                 </table>
             </div>
+            
             <div className="flex-none flex items-center justify-between sm:justify-end px-4 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-4 sm:gap-6">
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                     <span>{t.rowsPerPage}</span>
