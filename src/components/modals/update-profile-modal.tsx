@@ -3,7 +3,7 @@
 import { X, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { authApi } from "@/modules/auth/api/auth.api";
+import { userApi } from "@/modules/auth/api/user.api";
 import { toast } from "sonner";
 
 interface UpdateProfileModalProps {
@@ -30,7 +30,6 @@ export function UpdateProfileModal({
     secondaryEmail: "",
   });
 
-  // เช็คว่ามีการแก้ไขหรือไม่
   const isDirty = JSON.stringify(formData) !== JSON.stringify(initialData);
 
   useEffect(() => {
@@ -51,8 +50,7 @@ export function UpdateProfileModal({
       const currentUsername = typeof window !== 'undefined' ? localStorage.getItem("username") : null;
 
       if (currentUsername) {
-        // เรียก API ดึงรายละเอียด User (GetUserByUserName)
-        const res = await authApi.getUserDetail(currentUsername);
+        const res = await userApi.getUserDetail(currentUsername);
         const userData = res.user || res; 
 
         if (userData) {
@@ -124,7 +122,7 @@ export function UpdateProfileModal({
         secondaryEmail: formData.secondaryEmail,
       };
 
-      await authApi.updateUser(formData.username, payload);
+      await userApi.updateUser(formData.username, payload);
 
       toast.success("Profile updated successfully!");
       

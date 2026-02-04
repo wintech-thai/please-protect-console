@@ -10,12 +10,12 @@ import {
   Loader2,
   Check,
   Copy,
-  UserPlus
+  Key
 } from "lucide-react";
 
-import { userApi } from "@/modules/auth/api/user.api";
 import { roleApi } from "@/modules/auth/api/role.api";
-import { InviteUserPayload } from "@/modules/auth/api/types";
+import { apiKeyApi } from "@/modules/auth/api/api-key.api";
+import { CreateApiKeyPayload } from "@/modules/auth/api/types";
 
 interface RoleItem {
   id: string;
@@ -23,25 +23,19 @@ interface RoleItem {
   desc?: string; 
 }
 
-export default function CreateUserPage() {
+export default function CreateApiKeyPage() {
   const router = useRouter();
   
-  // --- Form State ---
   const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    tags: [] as string[],
+    keyName: "",
+    description: "",
     customRole: "",
   });
 
-  const [tagInput, setTagInput] = useState("");
-  
-  // --- Roles State ---
   const [customRolesList, setCustomRolesList] = useState<RoleItem[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // --- Transfer List State ---
   const [leftRoles, setLeftRoles] = useState<RoleItem[]>([]);
   const [rightRoles, setRightRoles] = useState<RoleItem[]>([]);
   const [checkedLeft, setCheckedLeft] = useState<string[]>([]);
@@ -50,17 +44,14 @@ export default function CreateUserPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showExitDialog, setShowExitDialog] = useState(false);
 
-  // --- Invite Modal State ---
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteLink, setInviteLink] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdToken, setCreatedToken] = useState("");
   const [isCopied, setIsCopied] = useState(false);
 
-  // Fetch Data
   useEffect(() => {
     const initData = async () => {
       try {
         setIsLoadingData(true);
-        
         const [rolesRes, customRolesRes] = await Promise.all([
           roleApi.getRoles(),
           roleApi.getCustomRoles()
@@ -93,21 +84,6 @@ export default function CreateUserPage() {
     initData();
   }, []);
 
-  // --- Handlers ---
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && tagInput.trim()) {
-      e.preventDefault();
-      if (!formData.tags.includes(tagInput.trim())) {
-        setFormData(prev => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }));
-      }
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tagToRemove) }));
-  };
-
   const handleCheck = (id: string, side: "left" | "right") => {
     if (side === "left") {
       setCheckedLeft(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -132,12 +108,10 @@ export default function CreateUserPage() {
 
   const handleCancel = () => {
     const isDirty = 
-        formData.username.trim() !== "" || 
-        formData.email.trim() !== "" || 
-        formData.tags.length > 0 || 
+        formData.keyName.trim() !== "" || 
+        formData.description.trim() !== "" || 
         formData.customRole !== "" || 
-        rightRoles.length > 0 || 
-        tagInput.trim() !== "";
+        rightRoles.length > 0;
 
     if (isDirty) {
         setShowExitDialog(true);
@@ -147,52 +121,51 @@ export default function CreateUserPage() {
   };
 
   const handleSubmit = async () => {
-    let finalTags = [...formData.tags];
-    const pendingTag = tagInput.trim();
-    if (pendingTag && !finalTags.includes(pendingTag)) {
-        finalTags.push(pendingTag);
-    }
-
     const newErrors: { [key: string]: string } = {};
-    if (!formData.username) newErrors.username = "Username is required";
-    if (!formData.email) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Invalid email format";
-    if (finalTags.length === 0) newErrors.tags = "At least one tag is required";
+    if (!formData.keyName) newErrors.keyName = "Key Name is required";
+    if (!formData.description) newErrors.description = "Key description is required";
     
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
       try {
         setIsSubmitting(true);
-        const payload: InviteUserPayload = {
-          userName: formData.username,
-          tmpUserEmail: formData.email,
-          tags: finalTags.join(','), 
+        const payload: CreateApiKeyPayload = {
+          keyName: formData.keyName,
+          description: formData.description,
           customRoleId: formData.customRole,
           roles: rightRoles.map(r => r.id),
         };
 
-        const response = await userApi.inviteUser(payload);
-        const link = response?.registrationUrl || "Link not found"; 
-        setInviteLink(link);
-        setShowInviteModal(true);
+        const response = await apiKeyApi.createApiKey(payload);
+        const responseData = response as any;
+        const token = responseData?.apiKey?.apiKey || responseData?.apiKey; 
+        
+        if (token && typeof token === 'string') {
+             setCreatedToken(token);
+        } else {
+             console.warn("Could not find string token", responseData);
+             setCreatedToken("Error: Token format mismatch");
+        }
+
+        setShowSuccessModal(true);
 
       } catch (error: any) {
-        console.error("Failed to invite user:", error);
+        console.error("Failed to create API Key:", error);
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(inviteLink);
+  const handleCopyToken = () => {
+    navigator.clipboard.writeText(createdToken);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleFinish = () => {
-    setShowInviteModal(false);
+    setShowSuccessModal(false);
     router.back();
   };
 
@@ -217,67 +190,48 @@ export default function CreateUserPage() {
                 <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Create User</h1>
-                <p className="text-slate-400 text-sm mt-0.5">Add a new user to the organization</p>
+                <h1 className="text-2xl font-bold text-white tracking-tight">Create API Key</h1>
+                <p className="text-slate-400 text-sm mt-0.5">Generate a new API access key</p>
             </div>
         </div>
       </div>
 
-      {/* Main Content - Full Width & Clean Layout */}
       <div className="flex-1 overflow-y-auto pb-8 no-scrollbar">
         <div className="px-4 md:px-8 space-y-6"> 
             
-            {/* 1. User Information Section */}
+            {/* Key Information Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
-                    User Information
+                    Key Information
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Username <span className="text-red-400">*</span></label>
+                        <label className="text-sm font-medium text-slate-300">Key Name <span className="text-red-400">*</span></label>
                         <input 
                             type="text" 
-                            placeholder="e.g. johndoe"
-                            value={formData.username}
-                            onChange={e => setFormData({...formData, username: e.target.value})}
-                            className={`w-full bg-slate-950 border ${errors.username ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
+                            placeholder="e.g. Production Service Key"
+                            value={formData.keyName}
+                            onChange={e => setFormData({...formData, keyName: e.target.value})}
+                            className={`w-full bg-slate-950 border ${errors.keyName ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
                         />
-                        {errors.username && <p className="text-red-400 text-xs">{errors.username}</p>}
+                        {errors.keyName && <p className="text-red-400 text-xs">{errors.keyName}</p>}
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Email <span className="text-red-400">*</span></label>
+                        <label className="text-sm font-medium text-slate-300">Description <span className="text-red-400">*</span></label>
                         <input 
                             type="text" 
-                            placeholder="name@example.com"
-                            value={formData.email}
-                            onChange={e => setFormData({...formData, email: e.target.value})}
-                            className={`w-full bg-slate-950 border ${errors.email ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
+                            placeholder="Key description"
+                            value={formData.description}
+                            onChange={e => setFormData({...formData, description: e.target.value})}
+                            className={`w-full bg-slate-950 border ${errors.description ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
                         />
-                         {errors.email && <p className="text-red-400 text-xs">{errors.email}</p>}
+                        {errors.description && <p className="text-red-400 text-xs">{errors.description}</p>}
                     </div>
-                </div>
-                
-                <div className="space-y-2 mt-6">
-                    <label className="text-sm font-medium text-slate-300">Tags <span className="text-red-400">*</span></label>
-                    <div className={`w-full bg-slate-950 border ${errors.tags ? 'border-red-500/50' : 'border-slate-700 focus-within:border-blue-500'} rounded-lg px-3 py-2 min-h-[46px] flex flex-wrap gap-2 items-center transition-all`}>
-                        {formData.tags.map(tag => (
-                            <span key={tag} className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-in fade-in zoom-in duration-200">
-                                {tag}
-                                <button onClick={() => removeTag(tag)} className="hover:text-white hover:bg-blue-500/20 rounded-full p-0.5 transition-colors"><X className="w-3 h-3" /></button>
-                            </span>
-                        ))}
-                        <input 
-                            type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
-                            placeholder={formData.tags.length === 0 ? "Type and press Enter to add tags..." : ""}
-                            className="bg-transparent outline-none text-slate-200 flex-1 min-w-[150px] text-sm placeholder:text-slate-600 h-full py-1"
-                        />
-                    </div>
-                    {errors.tags && <p className="text-red-400 text-xs">{errors.tags}</p>}
                 </div>
             </div>
 
-            {/* 2. Roles & Permissions Section */}
+            {/* 2. Custom Role Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
@@ -309,7 +263,6 @@ export default function CreateUserPage() {
                 <div>
                     <h3 className="text-sm font-medium text-slate-300 mb-3">System Roles</h3>
                     <div className="flex flex-col md:flex-row gap-4 items-center">
-                        {/* Available Roles (Left) - Use no-scrollbar */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
                                 <span>Available Roles</span>
@@ -348,7 +301,6 @@ export default function CreateUserPage() {
                              </button>
                         </div>
 
-                        {/* Selected Roles (Right) - Use no-scrollbar */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
                                 <span>Selected Roles</span>
@@ -394,22 +346,26 @@ export default function CreateUserPage() {
             </button>
       </div>
 
-      {/* Invitation Success Modal */}
-      {showInviteModal && (
+      {/* Success Modal */}
+      {showSuccessModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-100 animate-in zoom-in-95 duration-300 relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-2xl"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400 rounded-t-2xl"></div>
                 <div className="flex flex-col items-center text-center">
-                    <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mb-4 border border-green-500/20"><UserPlus className="w-7 h-7 text-green-400" /></div>
-                    <h3 className="text-xl font-bold text-white mb-1">User Invited Successfully</h3>
-                    <p className="text-sm text-slate-400 mb-6">An invitation link has been generated. Please copy and share it with the user.</p>
-                    <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex items-center gap-2 mb-6">
-                        <div className="flex-1 bg-transparent px-3 text-sm text-slate-300 truncate font-mono select-all">{inviteLink}</div>
-                        <button onClick={handleCopyLink} className={`p-2 rounded-md transition-all duration-200 ${isCopied ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}>
-                            {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        </button>
+                    <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mb-4 border border-green-500/20"><Key className="w-7 h-7 text-green-400" /></div>
+                    <h3 className="text-xl font-bold text-white mb-1">API Key Created Successfully</h3>
+                    <p className="text-sm text-slate-400 mb-6">
+                        This token will only be shown once. Please copy it now and store it securely.
+                    </p>
+                    <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 flex flex-col gap-2 mb-6">
+                        <div className="flex items-center gap-2">
+                            <code className="flex-1 bg-transparent px-2 text-sm text-yellow-400 font-mono break-all text-left">{createdToken}</code>
+                            <button onClick={handleCopyToken} className={`p-2 rounded-md transition-all duration-200 flex-none ${isCopied ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}>
+                                {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                        </div>
                     </div>
-                    <button onClick={handleFinish} className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/20 transition-all">Done & Return to Users</button>
+                    <button onClick={handleFinish} className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/20 transition-all">Done & Return</button>
                 </div>
             </div>
         </div>

@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   Globe,
   Check,
-  User,      
+  User,       
   Lock,
   Users,
   Key,
@@ -28,11 +28,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext"; 
-import { authApi } from "@/modules/auth/api/auth.api";
+import { authApi } from "@/modules/auth/api/auth.api"; 
 import { toast } from "sonner";
-import { UpdateProfileModal } from "@/components/modals/update-profile-modal";
+import { UpdateProfileModal } from "@/components/modals/update-profile-modal"; 
 import { ChangePasswordModal } from "@/components/modals/change-password-modal";
-
 interface NavItem {
   label: string;
   href: string;
@@ -430,7 +429,6 @@ export function Navbar() {
         )}
       </nav>
 
-      {/* ✅ เรียกใช้ Modal ทั้งคู่ตรงนี้ */}
       <ChangePasswordModal 
         isOpen={showPasswordModal} 
         onClose={() => setShowPasswordModal(false)} 

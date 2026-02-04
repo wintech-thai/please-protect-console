@@ -19,7 +19,10 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"; 
 import { useLanguage } from "@/context/LanguageContext"; 
-import { authApi } from "@/modules/auth/api/auth.api";
+
+import { userApi } from "@/modules/auth/api/user.api";
+import { roleApi } from "@/modules/auth/api/role.api";
+
 import { toast } from "sonner"; 
 
 interface UserData {
@@ -102,7 +105,8 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchMasterRoles = async () => {
       try {
-        const rolesData = await authApi.getRoles();
+        // Change: ใช้ roleApi
+        const rolesData = await roleApi.getRoles();
         const map: Record<string, string> = {};
         const rolesArray = Array.isArray(rolesData) ? rolesData : (rolesData?.data || []);
         rolesArray.forEach((r: any) => {
@@ -122,8 +126,8 @@ export default function UsersPage() {
       setIsLoading(true);
       const offset = (page - 1) * itemsPerPage;
       const [usersData, countData] = await Promise.all([
-        authApi.getUsers({ offset, limit: itemsPerPage, fullTextSearch: activeSearch }), 
-        authApi.getUserCount({ fullTextSearch: activeSearch })                          
+        userApi.getUsers({ offset, limit: itemsPerPage, fullTextSearch: activeSearch }), 
+        userApi.getUserCount({ fullTextSearch: activeSearch })                          
       ]);
       if (Array.isArray(usersData)) setUsers(usersData);
       else if (usersData?.data) setUsers(usersData.data);
@@ -150,7 +154,7 @@ export default function UsersPage() {
     if (selectedIds.length === 0) return;
     try {
       setIsProcessing(true);
-      await Promise.all(selectedIds.map(id => authApi.deleteUser(id)));
+      await Promise.all(selectedIds.map(id => userApi.deleteUser(id)));
       toast.success(`Deleted ${selectedIds.length} user(s) successfully`);
       setSelectedIds([]);
       setShowDeleteConfirm(false);
@@ -168,9 +172,9 @@ export default function UsersPage() {
       setIsProcessing(true);
       const isCurrentlyDisabled = targetUser.userStatus === "Disabled";
       if (isCurrentlyDisabled) {
-        await authApi.enableUser(targetUser.orgUserId);
+        await userApi.enableUser(targetUser.orgUserId);
       } else {
-        await authApi.disableUser(targetUser.orgUserId);
+        await userApi.disableUser(targetUser.orgUserId);
       }
       toast.success("Updated status successfully");
       setShowStatusConfirm(false);
@@ -264,7 +268,7 @@ export default function UsersPage() {
 
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <div className="flex-1 bg-slate-900 border border-slate-800 rounded-t-xl shadow-2xl overflow-hidden flex flex-col">
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto no-scrollbar">
                 <table className="w-full text-left border-collapse min-w-[1000px]">
                     <thead className="bg-slate-950 sticky top-0 z-10 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                         <tr>
@@ -340,7 +344,7 @@ export default function UsersPage() {
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                     <span>{t.rowsPerPage}</span>
                     <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setPage(1); }} className="bg-transparent border-none text-slate-200 focus:ring-0 cursor-pointer font-medium">
-                        <option value={10} className="bg-slate-900">10</option>
+                        <option value={25} className="bg-slate-900">25</option>
                         <option value={50} className="bg-slate-900">50</option>
                         <option value={100} className="bg-slate-900">100</option>
                         <option value={200} className="bg-slate-900">200</option>

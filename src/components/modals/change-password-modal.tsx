@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
-import { authApi } from "@/modules/auth/api/auth.api";
+// แก้ไข Import: เปลี่ยนจาก authApi เป็น userApi
+import { userApi } from "@/modules/auth/api/user.api";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -93,7 +94,8 @@ export function ChangePasswordModal({
         throw new Error("Username not found");
       }
 
-      await authApi.updatePassword({
+      // Change: ใช้ userApi.updatePassword
+      await userApi.updatePassword({
         userName: username,
         currentPassword: currentPassword,
         newPassword: newPassword
@@ -112,7 +114,7 @@ export function ChangePasswordModal({
       } else {
         errorMsg = language === "EN" ? "Failed to change password" : "เปลี่ยนรหัสผ่านไม่สำเร็จ";
       }
-                       
+                        
       toast.error(errorMsg);
     } finally {
       setIsLoading(false);
