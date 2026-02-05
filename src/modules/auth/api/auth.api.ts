@@ -29,7 +29,7 @@ export const authApi = {
   },
 
   getProfile: async () => {
-    const response = await client.get("/auth/me");
+    const response = await client.get("/auth/me"); 
     return response.data;
   },
 };

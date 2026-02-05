@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import Link from "next/link"; // Import Link
+import { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
 import { 
   Search, 
   ChevronDown, 
@@ -73,12 +74,17 @@ export default function ApiKeysPage() {
   const { language } = useLanguage();
   const t = translations[language as keyof typeof translations] || translations.EN;
 
+  const router = useRouter();
+  const pathname = usePathname(); 
+  const searchParams = useSearchParams();
+  const highlightIdParam = searchParams.get("highlight");
+
   const [apiKeys, setApiKeys] = useState<ApiKeyData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(highlightIdParam);
 
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); 
 
@@ -92,6 +98,26 @@ export default function ApiKeysPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); 
   const [targetKey, setTargetKey] = useState<ApiKeyData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+
+  useEffect(() => {
+    if (highlightIdParam) {
+      setSelectedRowId(highlightIdParam);
+      
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("highlight");
+      
+      const newQuery = params.toString();
+      const newPath = newQuery ? `${pathname}?${newQuery}` : pathname;
+      
+      window.history.replaceState(null, '', newPath);
+    }
+  }, [highlightIdParam, pathname, searchParams]);
+
+  const handleRowClick = (id: string) => {
+    setSelectedRowId(id);
+  };
 
   useEffect(() => {
     const fetchMasterRoles = async () => {
@@ -131,12 +157,9 @@ export default function ApiKeysPage() {
       }
 
       const mappedKeys: ApiKeyData[] = loadedKeys.map((k: any) => {
-        
         let rolesArray: string[] = [];
         if (k.rolesList && typeof k.rolesList === 'string') {
-            rolesArray = k.rolesList.split(',')
-                .map((r: string) => r.trim())
-                .filter((r: string) => r !== "");
+            rolesArray = k.rolesList.split(',').map((r: string) => r.trim()).filter((r: string) => r !== "");
         } else if (Array.isArray(k.roles) && k.roles.length > 0) {
             rolesArray = k.roles;
         }
@@ -164,6 +187,17 @@ export default function ApiKeysPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!isLoading && selectedRowId && rowRefs.current[selectedRowId]) {
+      setTimeout(() => {
+        rowRefs.current[selectedRowId]?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center" 
+        });
+      }, 100);
+    }
+  }, [isLoading, selectedRowId, apiKeys]);
 
   const handleSearchTrigger = () => {
     setPage(1);
@@ -282,7 +316,10 @@ export default function ApiKeysPage() {
             </div>
 
             <div className="flex gap-2 w-full lg:w-auto justify-end">
-                <Link href="/admin/api-keys/create" className="flex-1 lg:flex-none">
+                <Link 
+                  href={selectedRowId ? `/admin/api-keys/create?prevHighlight=${selectedRowId}` : "/admin/api-keys/create"} 
+                  className="flex-1 lg:flex-none"
+                >
                     <button className="w-full justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg uppercase transition-all">{t.buttons.add}</button>
                 </Link>
                 <button 
@@ -317,69 +354,74 @@ export default function ApiKeysPage() {
                         ) : apiKeys.length === 0 ? (
                             <tr><td colSpan={7} className="p-20 text-center text-slate-500">{t.noData}</td></tr>
                         ) : (
-                            apiKeys.map((key, idx) => (
-                                <tr 
-                                    key={key.id || idx} 
-                                    onClick={() => setSelectedRowId(key.id)}
-                                    className={`transition-colors group text-sm cursor-pointer
-                                      ${selectedRowId === key.id 
-                                        ? "bg-blue-900/20" 
-                                        : "hover:bg-slate-800/40"
-                                      }
-                                    `}
-                                >
-                                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                                      <input type="checkbox" checked={selectedIds.includes(key.id)} onChange={() => handleSelectOne(key.id)} />
-                                    </td>
-                                    
-                                    <td className="p-4 font-medium">
-                                      <Link 
-                                        href={`/admin/api-keys/${key.id}/update`} 
-                                        className="text-blue-400 hover:text-blue-300 hover:underline"
-                                        onClick={(e) => e.stopPropagation()} 
-                                      >
-                                        {key.keyName}
-                                      </Link>
-                                    </td>
+                            apiKeys.map((key, idx) => {
+                                const isHighlighted = selectedRowId === key.id;
 
-                                    <td className="p-4 text-slate-300 max-w-[200px] truncate">{key.description}</td>
-                                    <td className="p-4 text-slate-400">{key.customRoleName || "-"}</td>
-                                    <td className="p-4">
-                                        {renderRoles(key.roles)}
-                                    </td>
-                                    <td className="p-4 font-medium">
-                                        <span className={(key.status === 'Inactive' || key.status === 'Disabled' || !key.status) ? 'text-slate-500' : 'text-green-400'}>
-                                            {key.status || "Inactive"}
-                                        </span>
-                                    </td>
-                                    
-                                    <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                        <DropdownMenu modal={false}>
-                                          <DropdownMenuTrigger asChild>
-                                            <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
-                                              <MoreHorizontal className="w-4 h-4" />
-                                            </button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                                            <DropdownMenuItem 
-                                              disabled={key.status === "Inactive" || key.status === "Disabled" || !key.status}
-                                              onClick={() => handleActionClick(key)}
-                                              className={`cursor-pointer focus:bg-slate-800 focus:text-red-400 ${(key.status === "Inactive" || key.status === "Disabled" || !key.status) ? "opacity-30" : "text-red-400"}`}
-                                            >
-                                              Disable Key
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem 
-                                              disabled={!(key.status === "Inactive" || key.status === "Disabled" || !key.status)}
-                                              onClick={() => handleActionClick(key)}
-                                              className={`cursor-pointer focus:bg-slate-800 focus:text-green-400 ${!(key.status === "Inactive" || key.status === "Disabled" || !key.status) ? "opacity-30" : "text-green-400"}`}
-                                            >
-                                              Enable Key
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </td>
-                                </tr>
-                            ))
+                                return (
+                                    <tr 
+                                        key={key.id || idx} 
+                                        ref={(el) => { if (el) rowRefs.current[key.id] = el; }}
+                                        onClick={() => handleRowClick(key.id)}
+                                        className={`transition-all duration-300 group text-sm cursor-pointer border-b border-slate-800/50
+                                          ${isHighlighted 
+                                            ? "bg-blue-500/10 border-l-4 border-l-blue-500 pl-[12px]" 
+                                            : "hover:bg-slate-800/40 border-l-4 border-l-transparent pl-[12px]"
+                                          }
+                                        `}
+                                    >
+                                        <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                                          <input type="checkbox" checked={selectedIds.includes(key.id)} onChange={() => handleSelectOne(key.id)} />
+                                        </td>
+                                        
+                                        <td className="p-4 font-medium">
+                                          <Link 
+                                            href={`/admin/api-keys/${key.id}/update`} 
+                                            className={`hover:underline ${isHighlighted ? 'text-blue-300' : 'text-blue-400 hover:text-blue-300'}`}
+                                            onClick={(e) => e.stopPropagation()} 
+                                          >
+                                            {key.keyName}
+                                          </Link>
+                                        </td>
+
+                                        <td className="p-4 text-slate-300 max-w-[200px] truncate">{key.description}</td>
+                                        <td className="p-4 text-slate-400">{key.customRoleName || "-"}</td>
+                                        <td className="p-4">
+                                            {renderRoles(key.roles)}
+                                        </td>
+                                        <td className="p-4 font-medium">
+                                            <span className={(key.status === 'Inactive' || key.status === 'Disabled' || !key.status) ? 'text-slate-500' : 'text-green-400'}>
+                                                {key.status || "Inactive"}
+                                            </span>
+                                        </td>
+                                        
+                                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenu modal={false}>
+                                              <DropdownMenuTrigger asChild>
+                                                <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
+                                                  <MoreHorizontal className="w-4 h-4" />
+                                                </button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
+                                                <DropdownMenuItem 
+                                                  disabled={key.status === "Inactive" || key.status === "Disabled" || !key.status}
+                                                  onClick={() => handleActionClick(key)}
+                                                  className={`cursor-pointer focus:bg-slate-800 focus:text-red-400 ${(key.status === "Inactive" || key.status === "Disabled" || !key.status) ? "opacity-30" : "text-red-400"}`}
+                                                >
+                                                  Disable Key
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem 
+                                                  disabled={!(key.status === "Inactive" || key.status === "Disabled" || !key.status)}
+                                                  onClick={() => handleActionClick(key)}
+                                                  className={`cursor-pointer focus:bg-slate-800 focus:text-green-400 ${!(key.status === "Inactive" || key.status === "Disabled" || !key.status) ? "opacity-30" : "text-green-400"}`}
+                                                >
+                                                  Enable Key
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>

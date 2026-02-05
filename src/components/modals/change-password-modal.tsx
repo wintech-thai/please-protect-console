@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
-// แก้ไข Import: เปลี่ยนจาก authApi เป็น userApi
 import { userApi } from "@/modules/auth/api/user.api";
 
 interface ChangePasswordModalProps {
@@ -94,7 +93,6 @@ export function ChangePasswordModal({
         throw new Error("Username not found");
       }
 
-      // Change: ใช้ userApi.updatePassword
       await userApi.updatePassword({
         userName: username,
         currentPassword: currentPassword,

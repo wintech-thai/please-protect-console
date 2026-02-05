@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation"; // ✅ เพิ่ม useSearchParams, usePathname
 import { 
   ChevronLeft, 
   X, 
@@ -12,6 +12,7 @@ import {
   Copy,
   Key
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { roleApi } from "@/modules/auth/api/role.api";
 import { apiKeyApi } from "@/modules/auth/api/api-key.api";
@@ -25,17 +26,26 @@ interface RoleItem {
 
 export default function CreateApiKeyPage() {
   const router = useRouter();
-  
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // ✅ 1. State สำหรับจดจำ ID ที่ต้องส่งคืน
+  const [returnToId, setReturnToId] = useState<string | null>(null);
+  const [createdKeyId, setCreatedKeyId] = useState<string | null>(null);
+
+  // --- Form State ---
   const [formData, setFormData] = useState({
     keyName: "",
     description: "",
     customRole: "",
   });
 
+  // --- Roles State ---
   const [customRolesList, setCustomRolesList] = useState<RoleItem[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // --- Transfer List State ---
   const [leftRoles, setLeftRoles] = useState<RoleItem[]>([]);
   const [rightRoles, setRightRoles] = useState<RoleItem[]>([]);
   const [checkedLeft, setCheckedLeft] = useState<string[]>([]);
@@ -44,10 +54,36 @@ export default function CreateApiKeyPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showExitDialog, setShowExitDialog] = useState(false);
 
+  // --- Success Modal State ---
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdToken, setCreatedToken] = useState("");
   const [isCopied, setIsCopied] = useState(false);
 
+  // ✅ 2. Catch & Clean URL Param ทันทีที่โหลด
+  useEffect(() => {
+    const prevHighlight = searchParams.get("prevHighlight");
+    if (prevHighlight) {
+        setReturnToId(prevHighlight); // จำ ID เดิมไว้ใน Memory
+
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("prevHighlight");
+        const newPath = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+        
+        // ล้าง URL ให้สะอาดทันที
+        window.history.replaceState(null, '', newPath);
+    }
+  }, [searchParams, pathname]);
+
+  // ✅ 3. ฟังก์ชันย้อนกลับแบบฉลาด
+  const goBack = () => {
+    if (returnToId) {
+        router.push(`/admin/api-keys?highlight=${returnToId}`);
+    } else {
+        router.push("/admin/api-keys");
+    }
+  };
+
+  // Fetch Data
   useEffect(() => {
     const initData = async () => {
       try {
@@ -66,8 +102,8 @@ export default function CreateApiKeyPage() {
 
         const customRolesData = Array.isArray(customRolesRes) ? customRolesRes : (customRolesRes?.data || []);
         const mappedCustomRoles = customRolesData.map((r: any) => ({
-          id: r.customRoleId || r.id,
-          name: r.customRoleName || r.name,
+          id: r.customRoleId || r.roleId || r.id,
+          name: r.customRoleName || r.roleName || r.name,
           desc: r.customRoleDesc || r.roleDescription || "-"
         }));
 
@@ -76,6 +112,7 @@ export default function CreateApiKeyPage() {
 
       } catch (error) {
         console.error("Failed to fetch roles:", error);
+        toast.error("Failed to load roles configuration");
       } finally {
         setIsLoadingData(false);
       }
@@ -83,6 +120,8 @@ export default function CreateApiKeyPage() {
 
     initData();
   }, []);
+
+  // --- Handlers ---
 
   const handleCheck = (id: string, side: "left" | "right") => {
     if (side === "left") {
@@ -116,7 +155,7 @@ export default function CreateApiKeyPage() {
     if (isDirty) {
         setShowExitDialog(true);
     } else {
-        router.back();
+        goBack(); // ✅ ใช้ goBack
     }
   };
 
@@ -133,25 +172,31 @@ export default function CreateApiKeyPage() {
         const payload: CreateApiKeyPayload = {
           keyName: formData.keyName,
           description: formData.description,
-          customRoleId: formData.customRole,
+          customRoleId: formData.customRole, 
           roles: rightRoles.map(r => r.id),
         };
 
         const response = await apiKeyApi.createApiKey(payload);
         const responseData = response as any;
-        const token = responseData?.apiKey?.apiKey || responseData?.apiKey; 
+        
+        // ✅ เก็บ ID เพื่อส่งกลับไป highlight
+        const newId = responseData?.apiKey?.keyId || responseData?.apiKey?.id || responseData?.keyId;
+        setCreatedKeyId(newId);
+
+        // Logic ดึง Token มาแสดงใน Modal
+        const token = responseData?.apiKey?.apiKey || responseData?.apiKey || responseData?.key; 
         
         if (token && typeof token === 'string') {
              setCreatedToken(token);
+             toast.success("API Key created successfully");
+             setShowSuccessModal(true);
         } else {
-             console.warn("Could not find string token", responseData);
-             setCreatedToken("Error: Token format mismatch");
+             toast.error("API Key created but failed to retrieve the token string.");
         }
-
-        setShowSuccessModal(true);
 
       } catch (error: any) {
         console.error("Failed to create API Key:", error);
+        toast.error(error?.message || "Failed to create API Key");
       } finally {
         setIsSubmitting(false);
       }
@@ -161,12 +206,18 @@ export default function CreateApiKeyPage() {
   const handleCopyToken = () => {
     navigator.clipboard.writeText(createdToken);
     setIsCopied(true);
+    toast.success("Copied to clipboard");
     setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleFinish = () => {
     setShowSuccessModal(false);
-    router.back();
+    // ✅ ถ้ามี ID ใหม่ ให้ส่งกลับไป highlight ตัวใหม่ ถ้าไม่มีส่งไป highlight ตัวเดิม
+    if (createdKeyId) {
+        router.push(`/admin/api-keys?highlight=${createdKeyId}`);
+    } else {
+        goBack();
+    }
   };
 
   if (isLoadingData) {
@@ -231,7 +282,7 @@ export default function CreateApiKeyPage() {
                 </div>
             </div>
 
-            {/* 2. Custom Role Section */}
+            {/* Roles Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
@@ -249,7 +300,7 @@ export default function CreateApiKeyPage() {
                             <option value="">Select a custom role...</option>
                             {customRolesList.map(role => (
                                 <option key={role.id} value={role.id}>
-                                    {role.name} {role.desc && role.desc !== '-' ? `(${role.desc})` : ''}
+                                    {role.name}
                                 </option>
                             ))}
                         </select>
@@ -259,7 +310,6 @@ export default function CreateApiKeyPage() {
                     </div>
                 </div>
 
-                {/* System Roles Transfer List */}
                 <div>
                     <h3 className="text-sm font-medium text-slate-300 mb-3">System Roles</h3>
                     <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -291,7 +341,6 @@ export default function CreateApiKeyPage() {
                             </div>
                         </div>
 
-                        {/* Middle Buttons */}
                         <div className="flex flex-row md:flex-col gap-3">
                              <button onClick={moveRight} disabled={checkedLeft.length === 0} className="p-2.5 bg-slate-800 hover:bg-blue-600 disabled:opacity-30 disabled:hover:bg-slate-800 rounded-full border border-slate-700 text-slate-300 hover:text-white transition-all shadow-lg">
                                  <ChevronRight className="w-5 h-5" />
@@ -338,7 +387,6 @@ export default function CreateApiKeyPage() {
         </div>
       </div>
 
-      {/* Footer Buttons */}
       <div className="flex-none p-4 md:px-8 border-t border-slate-800 bg-slate-950 flex justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
             <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">Cancel</button>
             <button onClick={handleSubmit} disabled={isSubmitting} className="px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all font-medium text-sm flex items-center gap-2">
@@ -371,7 +419,7 @@ export default function CreateApiKeyPage() {
         </div>
       )}
 
-      {/* Exit Modal & CSS */}
+      {/* Exit Modal */}
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
@@ -379,7 +427,8 @@ export default function CreateApiKeyPage() {
                 <p className="text-sm text-slate-400 mb-6">You have unsaved changes. Are you sure you want to leave?</p>
                 <div className="flex justify-end gap-3">
                     <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => router.back()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
+                    {/* ✅ แก้ปุ่ม OK ให้เรียกใช้ goBack */}
+                    <button onClick={() => goBack()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
                 </div>
             </div>
         </div>

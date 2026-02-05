@@ -32,6 +32,7 @@ import { authApi } from "@/modules/auth/api/auth.api";
 import { toast } from "sonner";
 import { UpdateProfileModal } from "@/components/modals/update-profile-modal"; 
 import { ChangePasswordModal } from "@/components/modals/change-password-modal";
+
 interface NavItem {
   label: string;
   href: string;
@@ -110,7 +111,6 @@ export function Navbar() {
         label: "Administrator", 
         href: "/admin/users", 
         children: [
-
           { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
           { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
           { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
@@ -133,8 +133,8 @@ export function Navbar() {
         label: "ผู้ดูแลระบบ", 
         href: "/admin/users", 
         children: [
-          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
           { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
+          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
           { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
           { label: text.adminAudit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
         ]

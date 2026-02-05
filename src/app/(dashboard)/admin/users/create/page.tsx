@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { 
   ChevronLeft, 
   X, 
@@ -12,6 +12,7 @@ import {
   Copy,
   UserPlus
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { userApi } from "@/modules/auth/api/user.api";
 import { roleApi } from "@/modules/auth/api/role.api";
@@ -25,7 +26,11 @@ interface RoleItem {
 
 export default function CreateUserPage() {
   const router = useRouter();
+  const pathname = usePathname(); 
+  const searchParams = useSearchParams();
   
+  const [returnToId, setReturnToId] = useState<string | null>(null);
+
   // --- Form State ---
   const [formData, setFormData] = useState({
     username: "",
@@ -54,6 +59,31 @@ export default function CreateUserPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [isCopied, setIsCopied] = useState(false);
+  
+  const [createdUserId, setCreatedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const prevHighlight = searchParams.get("prevHighlight");
+    if (prevHighlight) {
+        setReturnToId(prevHighlight);
+
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("prevHighlight");
+        
+        const newQuery = params.toString();
+        const newPath = newQuery ? `${pathname}?${newQuery}` : pathname;
+        
+        window.history.replaceState(null, '', newPath);
+    }
+  }, [searchParams, pathname]);
+
+  const goBack = () => {
+    if (returnToId) {
+        router.push(`/admin/users?highlight=${returnToId}`);
+    } else {
+        router.back();
+    }
+  };
 
   // Fetch Data
   useEffect(() => {
@@ -75,8 +105,8 @@ export default function CreateUserPage() {
 
         const customRolesData = Array.isArray(customRolesRes) ? customRolesRes : (customRolesRes?.data || []);
         const mappedCustomRoles = customRolesData.map((r: any) => ({
-          id: r.customRoleId || r.id,
-          name: r.customRoleName || r.name,
+          id: r.customRoleId || r.roleId || r.id, 
+          name: r.customRoleName || r.roleName || r.name,
           desc: r.customRoleDesc || r.roleDescription || "-"
         }));
 
@@ -85,6 +115,7 @@ export default function CreateUserPage() {
 
       } catch (error) {
         console.error("Failed to fetch roles:", error);
+        toast.error("Failed to load roles configuration");
       } finally {
         setIsLoadingData(false);
       }
@@ -142,7 +173,7 @@ export default function CreateUserPage() {
     if (isDirty) {
         setShowExitDialog(true);
     } else {
-        router.back();
+        goBack(); 
     }
   };
 
@@ -168,17 +199,24 @@ export default function CreateUserPage() {
           userName: formData.username,
           tmpUserEmail: formData.email,
           tags: finalTags.join(','), 
-          customRoleId: formData.customRole,
+          customRoleId: formData.customRole, 
           roles: rightRoles.map(r => r.id),
         };
 
         const response = await userApi.inviteUser(payload);
+        
+        const newId = (response as any)?.orgUserId || (response as any)?.id || null;
+        setCreatedUserId(newId);
+
         const link = response?.registrationUrl || "Link not found"; 
         setInviteLink(link);
+        
+        toast.success("User invited successfully");
         setShowInviteModal(true);
 
       } catch (error: any) {
         console.error("Failed to invite user:", error);
+        toast.error(error?.message || "Failed to invite user");
       } finally {
         setIsSubmitting(false);
       }
@@ -188,12 +226,18 @@ export default function CreateUserPage() {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteLink);
     setIsCopied(true);
+    toast.success("Link copied to clipboard");
     setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleFinish = () => {
     setShowInviteModal(false);
-    router.back();
+    
+    if (createdUserId) {
+        router.push(`/admin/users?highlight=${createdUserId}`);
+    } else {
+        goBack();
+    }
   };
 
   if (isLoadingData) {
@@ -223,7 +267,7 @@ export default function CreateUserPage() {
         </div>
       </div>
 
-      {/* Main Content - Full Width & Clean Layout */}
+      {/* Main Content */}
       <div className="flex-1 overflow-y-auto pb-8 no-scrollbar">
         <div className="px-4 md:px-8 space-y-6"> 
             
@@ -295,7 +339,7 @@ export default function CreateUserPage() {
                             <option value="">Select a custom role...</option>
                             {customRolesList.map(role => (
                                 <option key={role.id} value={role.id}>
-                                    {role.name} {role.desc && role.desc !== '-' ? `(${role.desc})` : ''}
+                                    {role.name}
                                 </option>
                             ))}
                         </select>
@@ -309,7 +353,7 @@ export default function CreateUserPage() {
                 <div>
                     <h3 className="text-sm font-medium text-slate-300 mb-3">System Roles</h3>
                     <div className="flex flex-col md:flex-row gap-4 items-center">
-                        {/* Available Roles (Left) - Use no-scrollbar */}
+                        {/* Available Roles (Left) */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
                                 <span>Available Roles</span>
@@ -348,7 +392,7 @@ export default function CreateUserPage() {
                              </button>
                         </div>
 
-                        {/* Selected Roles (Right) - Use no-scrollbar */}
+                        {/* Selected Roles (Right) */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
                                 <span>Selected Roles</span>
@@ -423,7 +467,7 @@ export default function CreateUserPage() {
                 <p className="text-sm text-slate-400 mb-6">You have unsaved changes. Are you sure you want to leave?</p>
                 <div className="flex justify-end gap-3">
                     <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => router.back()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
+                    <button onClick={() => goBack()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
                 </div>
             </div>
         </div>

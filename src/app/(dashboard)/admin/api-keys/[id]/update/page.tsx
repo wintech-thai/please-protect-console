@@ -41,12 +41,6 @@ interface ApiKeyBody {
   [key: string]: any; 
 }
 
-interface GetApiKeyResponse {
-  status: string;
-  description: string;
-  apiKey: ApiKeyBody;
-}
-
 export default function UpdateApiKeyPage() {
   const router = useRouter();
   const params = useParams();
@@ -101,15 +95,14 @@ export default function UpdateApiKeyPage() {
         // 1.2 Process Custom Roles
         const customRolesData = Array.isArray(customRolesRes) ? customRolesRes : (customRolesRes?.data || []);
         const mappedCustomRoles = customRolesData.map((r: any) => ({
-          id: r.customRoleId || r.id,
-          name: r.customRoleName || r.name,
+          id: r.customRoleId || r.roleId || r.id,
+          name: r.customRoleName || r.roleName || r.name,
           desc: r.customRoleDesc || r.roleDescription || "-"
         }));
         setCustomRolesList(mappedCustomRoles);
 
         // 1.3 Process API Key Data
         let keyData = keyRes as any;
-        
         if (keyData.apiKey) keyData = keyData.apiKey;
         else if (keyData.orgApiKey) keyData = keyData.orgApiKey;
         
@@ -130,7 +123,12 @@ export default function UpdateApiKeyPage() {
             customRole: keyData.customRoleId || ""
         });
 
-        const currentRoleIds = keyData.roles || [];
+        // 1.4 Map Existing Roles
+        let currentRoleIds: string[] = [];
+        if (Array.isArray(keyData.roles)) {
+            currentRoleIds = keyData.roles.map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)));
+        }
+
         const selectedRoles = allSystemRoles.filter(r => currentRoleIds.includes(r.id));
         const availableRoles = allSystemRoles.filter(r => !currentRoleIds.includes(r.id));
 
@@ -148,23 +146,27 @@ export default function UpdateApiKeyPage() {
     initData();
   }, [keyId]);
 
-  // --- Check Dirty State ---
+  // --- Helper: Check Dirty State ---
   const checkIsDirty = () => {
     if (!originalKey) return false;
 
     if (formData.description !== (originalKey.keyDescription || "")) return true;
-    
-    const originalCustomRole = originalKey.customRoleId || "";
-    if (formData.customRole !== originalCustomRole) return true;
+    if (formData.customRole !== (originalKey.customRoleId || "")) return true;
 
-    const originalRoleIds = (originalKey.roles || []).slice().sort().join(',');
-    const currentRoleIds = rightRoles.map(r => r.id).slice().sort().join(',');
-    if (originalRoleIds !== currentRoleIds) return true;
+    let originalRoleIdsStr = "";
+    if (Array.isArray(originalKey.roles)) {
+        originalRoleIdsStr = originalKey.roles
+            .map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)))
+            .sort()
+            .join(',');
+    }
+    const currentRoleIdsStr = rightRoles.map(r => r.id).slice().sort().join(',');
+    if (originalRoleIdsStr !== currentRoleIdsStr) return true;
 
     return false;
   };
 
-  // --- Handlers (Transfer List) ---
+  // --- Handlers ---
   const handleCheck = (id: string, side: "left" | "right") => {
     if (side === "left") {
       setCheckedLeft(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -191,40 +193,36 @@ export default function UpdateApiKeyPage() {
      if (checkIsDirty()) {
         setShowExitDialog(true);
      } else {
-        router.back();
+        router.push(`/admin/api-keys?highlight=${keyId}`);
      }
   };
 
   const handleSubmit = async () => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.description.trim()) newErrors.description = "Description is required";
-    
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) return;
 
     if (!checkIsDirty()) {
-        router.back();
+        router.push(`/admin/api-keys?highlight=${keyId}`);
         return; 
     }
 
     if (originalKey) {
       try {
         setIsSubmitting(true);
-        
         const payload: ApiKeyBody = {
             ...originalKey,
-            keyName: formData.keyName, 
             keyDescription: formData.description,
             customRoleId: formData.customRole || null,
             roles: rightRoles.map(r => r.id)
         };
 
         await apiKeyApi.updateApiKeyById(keyId, payload);
-        
         toast.success("API Key updated successfully");
-        router.back();
-
+        
+        router.push(`/admin/api-keys?highlight=${keyId}`);
       } catch (error: any) {
         console.error("Failed to update API key:", error);
         toast.error("Failed to update API key");
@@ -277,9 +275,9 @@ export default function UpdateApiKeyPage() {
                     API Key Information
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Key Name - READ ONLY */}
+                    {/* Key Name - Read Only & cursor-default */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                        <label className="text-sm font-medium text-slate-400">
                             Key Name <span className="text-red-400">*</span>
                         </label>
                         <input 
@@ -290,9 +288,9 @@ export default function UpdateApiKeyPage() {
                         />
                     </div>
 
-                    {/* Description - EDITABLE */}
+                    {/* Description - Editable */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <label className="text-sm font-medium text-slate-300">
                             Key Description <span className="text-red-400">*</span>
                         </label>
                         <input 
@@ -326,7 +324,7 @@ export default function UpdateApiKeyPage() {
                             <option value="">Select custom role...</option>
                             {customRolesList.map(role => (
                                 <option key={role.id} value={role.id}>
-                                    {role.name} {role.desc && role.desc !== '-' ? `(${role.desc})` : ''}
+                                    {role.name}
                                 </option>
                             ))}
                         </select>
@@ -431,7 +429,7 @@ export default function UpdateApiKeyPage() {
             </button>
       </div>
 
-      {/* Exit Modal & CSS */}
+      {/* Exit Modal */}
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
@@ -439,7 +437,7 @@ export default function UpdateApiKeyPage() {
                 <p className="text-sm text-slate-400 mb-6">You have unsaved changes. Are you sure you want to leave?</p>
                 <div className="flex justify-end gap-3">
                     <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => router.back()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
+                    <button onClick={() => router.push(`/admin/api-keys?highlight=${keyId}`)} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
                 </div>
             </div>
         </div>

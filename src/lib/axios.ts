@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ""; 
+const API_URL = "/api/proxy";
 
 export const client = axios.create({
   baseURL: API_URL,
@@ -9,7 +9,6 @@ export const client = axios.create({
   },
 });
 
-// --- Queue Logic ---
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -28,7 +27,6 @@ const processQueue = (error: any, token: string | null = null) => {
 };
 
 // --- Helpers ---
-
 const encodeBase64 = (str: string): string => {
   try {
     if (typeof window !== "undefined" && window.btoa) {
@@ -36,29 +34,25 @@ const encodeBase64 = (str: string): string => {
     } 
     return Buffer.from(str).toString("base64");
   } catch (e) {
-    console.error("Base64 encode failed", e);
     return str; 
   }
 };
 
 const setAuthCookies = (accessToken: string, refreshToken?: string) => {
     if (typeof document === "undefined") return;
-    document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=Lax`; // 1 วัน
+    document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=Lax`; 
     if (refreshToken) {
-        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=Lax`; // 7 วัน
+        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=Lax`; 
     }
 };
 
 const clearAuthData = () => {
     if (typeof window === "undefined") return;
-    
-    // Clear LocalStorage
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("username");
     localStorage.removeItem("orgId");
     
-    // Clear Cookies
     document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
     document.cookie = "refreshToken=; path=/; max-age=0; SameSite=Lax";
     document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
@@ -89,15 +83,13 @@ client.interceptors.response.use(
     const status = error.response?.status;
 
     const isTokenExpired =
-      status === 401 ||
+      status === 401 || 
       (typeof errorData === "string" && (errorData.includes("IDX10223") || errorData.includes("expired"))) ||
       (errorData?.raw && typeof errorData.raw === "string" && (errorData.raw.includes("IDX10223") || errorData.raw.includes("expired")));
 
     if (!isTokenExpired || !originalRequest || originalRequest._retry) {
         return Promise.reject(error);
     }
-
-    // --- กรณีต้อง Refresh Token ---
 
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
@@ -125,14 +117,18 @@ client.interceptors.response.use(
 
       const res = await axios.post(`/api/proxy/api/Auth/org/temp/action/Refresh`, {
         refreshToken,
+      }, {
+        headers: { "Content-Type": "application/json" }
       });
 
-      const { access_token, refresh_token } = res.data.token || res.data;
+      const tokenData = res.data.token || res.data;
+      const { access_token, refresh_token } = tokenData;
 
       if (!access_token) {
           throw new Error("Refresh failed: No access token received");
       }
 
+      // Update Tokens
       localStorage.setItem("accessToken", access_token);
       if (refresh_token) {
           localStorage.setItem("refreshToken", refresh_token);
@@ -141,6 +137,7 @@ client.interceptors.response.use(
 
       processQueue(null, access_token);
 
+      // Retry Request เดิม
       const newEncodedToken = encodeBase64(access_token);
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${newEncodedToken}`;
@@ -150,9 +147,11 @@ client.interceptors.response.use(
 
     } catch (refreshError) {
       processQueue(refreshError, null);
-      clearAuthData(); // ล้างข้อมูล
+      clearAuthData();
       
-      window.location.href = "/login";
+      if (typeof window !== "undefined") {
+         window.location.href = "/login";
+      }
       
       return Promise.reject(refreshError);
     } finally {

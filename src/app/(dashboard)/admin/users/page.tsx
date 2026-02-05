@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { 
   Search, 
   ChevronDown, 
@@ -84,13 +85,19 @@ const translations = {
 export default function UsersPage() {
   const { language } = useLanguage();
   const t = translations[language as keyof typeof translations] || translations.EN;
+  
+  const router = useRouter();
+  const pathname = usePathname(); 
+  const searchParams = useSearchParams();
+  const highlightIdParam = searchParams.get("highlight");
 
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  // State สำหรับ Highlight
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(highlightIdParam);
 
   const [roleMap, setRoleMap] = useState<Record<string, string>>({});
 
@@ -104,6 +111,24 @@ export default function UsersPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); 
   const [targetUser, setTargetUser] = useState<UserData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+
+  // Flash URL Logic
+  useEffect(() => {
+    if (highlightIdParam) {
+      setSelectedRowId(highlightIdParam);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("highlight");
+      const newQuery = params.toString();
+      const newPath = newQuery ? `${pathname}?${newQuery}` : pathname;
+      window.history.replaceState(null, '', newPath);
+    }
+  }, [highlightIdParam, pathname, searchParams]);
+
+  const handleRowClick = (id: string) => {
+    setSelectedRowId(id);
+  };
 
   useEffect(() => {
     const fetchMasterRoles = async () => {
@@ -146,6 +171,18 @@ export default function UsersPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto Scroll
+  useEffect(() => {
+    if (!isLoading && selectedRowId && rowRefs.current[selectedRowId]) {
+      setTimeout(() => {
+        rowRefs.current[selectedRowId]?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center" 
+        });
+      }, 100);
+    }
+  }, [isLoading, selectedRowId, users]);
 
   const handleSearchTrigger = () => {
     setPage(1);
@@ -254,7 +291,10 @@ export default function UsersPage() {
             </div>
 
             <div className="flex gap-2 w-full lg:w-auto justify-end">
-                <Link href="/admin/users/create" className="flex-1 lg:flex-none">
+                <Link 
+                    href={selectedRowId ? `/admin/users/create?prevHighlight=${selectedRowId}` : "/admin/users/create"} 
+                    className="flex-1 lg:flex-none"
+                >
                     <button className="w-full justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg uppercase transition-all">{t.buttons.add}</button>
                 </Link>
                 <button 
@@ -291,74 +331,79 @@ export default function UsersPage() {
                         ) : users.length === 0 ? (
                             <tr><td colSpan={9} className="p-20 text-center text-slate-500">{t.noData}</td></tr>
                         ) : (
-                            users.map((user, idx) => (
-                                <tr 
-                                    key={user.orgUserId || idx} 
-                                    onClick={() => setSelectedRowId(user.orgUserId)}
-                                    className={`transition-colors group text-sm cursor-pointer
-                                      ${selectedRowId === user.orgUserId 
-                                        ? "bg-blue-900/20" 
-                                        : "hover:bg-slate-800/40"
-                                      }
-                                    `}
-                                >
-                                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                                      <input type="checkbox" checked={selectedIds.includes(user.orgUserId)} onChange={() => handleSelectOne(user.orgUserId)} />
-                                    </td>
-                                    
-                                    <td className="p-4 font-medium">
-                                      <Link 
-                                        href={`/admin/users/${user.orgUserId}/update`} 
-                                        className="text-blue-400 hover:text-blue-300 hover:underline"
-                                        onClick={(e) => e.stopPropagation()} 
-                                      >
-                                        {user.userName}
-                                      </Link>
-                                    </td>
+                            users.map((user, idx) => {
+                                const isSelected = selectedRowId === user.orgUserId;
 
-                                    <td className="p-4 text-slate-300">{user.userEmail || user.tmpUserEmail || "-"}</td>
-                                    <td className="p-4">
-                                        <div className="flex flex-wrap gap-1">
-                                            {parseTags(user.tags).map((tag, i) => (
-                                                <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">{tag}</span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-slate-400">{user.customRoleName || "-"}</td>
-                                    <td className="p-4">
-                                        <span className="bg-blue-600 px-2 py-1 rounded-md text-[10px] font-semibold text-white">{formatRoleDisplay(user.rolesList)}</span>
-                                    </td>
-                                    <td className="p-4 text-center">{user.isOrgInitialUser === "YES" ? <Check className="w-4 h-4 text-green-500 mx-auto" /> : <X className="w-4 h-4 text-red-500 mx-auto" />}</td>
-                                    <td className="p-4 font-medium">
-                                        <span className={user.userStatus === 'Disabled' ? 'text-slate-500' : 'text-green-400'}>{user.userStatus}</span>
-                                    </td>
-                                    <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                        <DropdownMenu modal={false}>
-                                          <DropdownMenuTrigger asChild>
-                                            <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
-                                              <MoreHorizontal className="w-4 h-4" />
-                                            </button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                                            <DropdownMenuItem 
-                                              disabled={user.userStatus === "Disabled"}
-                                              onClick={() => handleActionClick(user)}
-                                              className={`cursor-pointer focus:bg-slate-800 focus:text-red-400 ${user.userStatus === "Disabled" ? "opacity-30" : "text-red-400"}`}
-                                            >
-                                              Disable User
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem 
-                                              disabled={user.userStatus !== "Disabled"}
-                                              onClick={() => handleActionClick(user)}
-                                              className={`cursor-pointer focus:bg-slate-800 focus:text-green-400 ${user.userStatus !== "Disabled" ? "opacity-30" : "text-green-400"}`}
-                                            >
-                                              Enable User
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </td>
-                                </tr>
-                            ))
+                                return (
+                                    <tr 
+                                        key={user.orgUserId || idx} 
+                                        ref={(el) => { if (el) rowRefs.current[user.orgUserId] = el; }}
+                                        onClick={() => handleRowClick(user.orgUserId)}
+                                        className={`transition-all duration-300 group text-sm cursor-pointer border-b border-slate-800/50
+                                          ${isSelected 
+                                            ? "bg-blue-500/10 border-l-4 border-l-blue-500 pl-[12px]" 
+                                            : "hover:bg-slate-800/40 border-l-4 border-l-transparent pl-[12px]"
+                                          }
+                                        `}
+                                    >
+                                        <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                                          <input type="checkbox" checked={selectedIds.includes(user.orgUserId)} onChange={() => handleSelectOne(user.orgUserId)} />
+                                        </td>
+                                        
+                                        <td className="p-4 font-medium">
+                                          <Link 
+                                            href={`/admin/users/${user.orgUserId}/update`} 
+                                            className={`hover:underline ${isSelected ? 'text-blue-300' : 'text-blue-400 hover:text-blue-300'}`}
+                                            onClick={(e) => e.stopPropagation()} 
+                                          >
+                                            {user.userName}
+                                          </Link>
+                                        </td>
+
+                                        <td className="p-4 text-slate-300">{user.userEmail || user.tmpUserEmail || "-"}</td>
+                                        <td className="p-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {parseTags(user.tags).map((tag, i) => (
+                                                    <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">{tag}</span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-slate-400">{user.customRoleName || "-"}</td>
+                                        <td className="p-4">
+                                            <span className="bg-blue-600 px-2 py-1 rounded-md text-[10px] font-semibold text-white">{formatRoleDisplay(user.rolesList)}</span>
+                                        </td>
+                                        <td className="p-4 text-center">{user.isOrgInitialUser === "YES" ? <Check className="w-4 h-4 text-green-500 mx-auto" /> : <X className="w-4 h-4 text-red-500 mx-auto" />}</td>
+                                        <td className="p-4 font-medium">
+                                            <span className={user.userStatus === 'Disabled' ? 'text-slate-500' : 'text-green-400'}>{user.userStatus}</span>
+                                        </td>
+                                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenu modal={false}>
+                                              <DropdownMenuTrigger asChild>
+                                                <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
+                                                  <MoreHorizontal className="w-4 h-4" />
+                                                </button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
+                                                <DropdownMenuItem 
+                                                  disabled={user.userStatus === "Disabled"}
+                                                  onClick={() => handleActionClick(user)}
+                                                  className={`cursor-pointer focus:bg-slate-800 focus:text-red-400 ${user.userStatus === "Disabled" ? "opacity-30" : "text-red-400"}`}
+                                                >
+                                                  Disable User
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem 
+                                                  disabled={user.userStatus !== "Disabled"}
+                                                  onClick={() => handleActionClick(user)}
+                                                  className={`cursor-pointer focus:bg-slate-800 focus:text-green-400 ${user.userStatus !== "Disabled" ? "opacity-30" : "text-green-400"}`}
+                                                >
+                                                  Enable User
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>

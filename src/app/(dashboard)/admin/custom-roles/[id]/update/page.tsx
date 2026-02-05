@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
+import { useRouter, useParams, useSearchParams, usePathname } from "next/navigation";
 import { 
   ChevronLeft, 
   X, 
@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 import { roleApi } from "@/modules/auth/api/role.api";
 
-// --- Interfaces for UI Structure ---
+// --- Interfaces ---
 interface PermissionItem {
   code: string;
   label: string;
@@ -25,41 +25,47 @@ interface PermissionNode {
   items: PermissionItem[];
 }
 
-interface ApiPermissionItem {
-  controllerName: string;
-  apiName: string;
-  isAllowed: boolean;
+interface RoleDetail {
+  roleId: string;
+  roleName: string;
+  roleDescription: string;
+  description?: string; 
+  tags: string | string[]; 
+  permissions: {
+      controllerName: string;
+      apiPermissions: {
+          apiName: string;
+          isAllowed: boolean;
+      }[];
+  }[];
 }
 
-interface ApiControllerGroup {
-  controllerName: string;
-  apiPermissions: ApiPermissionItem[];
-}
-
-export default function CreateCustomRolePage() {
+export default function UpdateCustomRolePage() {
   const router = useRouter();
+  const params = useParams();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const roleId = params?.id as string;
 
-  const [returnToId, setReturnToId] = useState<string | null>(null);
+  const [returnToId, setReturnToId] = useState<string | null>(roleId);
 
   // --- States ---
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Master Data
+  // Master Data & Form Data
   const [permissionList, setPermissionList] = useState<PermissionNode[]>([]);
-
-  // Form Data
   const [formData, setFormData] = useState({
     roleName: "",
     description: "",
     tags: [] as string[],
   });
   
+  const [originalRole, setOriginalRole] = useState<RoleDetail | null>(null);
+  const [originalPermissions, setOriginalPermissions] = useState<string[]>([]); 
+
   const [tagInput, setTagInput] = useState("");
-  
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]); 
   const [permissionSearch, setPermissionSearch] = useState("");
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -68,57 +74,99 @@ export default function CreateCustomRolePage() {
   useEffect(() => {
     const prevHighlight = searchParams.get("prevHighlight");
     if (prevHighlight) {
-        setReturnToId(prevHighlight); 
-
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete("prevHighlight");
-        const newPath = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+        setReturnToId(prevHighlight);
+        
+        const currentParams = new URLSearchParams(searchParams.toString());
+        currentParams.delete("prevHighlight");
+        const newPath = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
         
         window.history.replaceState(null, '', newPath);
     }
   }, [searchParams, pathname]);
 
-  const goBack = (targetId?: string) => {
-    const id = targetId || returnToId;
-    if (id) {
-        router.push(`/admin/custom-roles?highlight=${id}`);
+  const goBack = () => {
+    const idToHighlight = roleId || returnToId;
+    if (idToHighlight) {
+        router.push(`/admin/custom-roles?highlight=${idToHighlight}`);
     } else {
         router.push("/admin/custom-roles");
     }
   };
 
-  // --- Fetch & Map Master Data ---
+  // --- 4. Fetch Data ---
   useEffect(() => {
-    const fetchPermissions = async () => {
+    const initData = async () => {
+      if (!roleId) return;
+
       try {
         setIsLoading(true);
-        const res = await roleApi.getInitialUserRolePermissions();
-        
-        if (res && Array.isArray(res.permissions)) {
-            const rawPermissions: ApiControllerGroup[] = res.permissions;
-            const mappedData: PermissionNode[] = rawPermissions.map(group => ({
+
+        const [masterRes, roleRes] = await Promise.all([
+           roleApi.getInitialUserRolePermissions(), 
+           roleApi.getCustomRoleById(roleId)        
+        ]);
+
+        // Process Master Permission List
+        if (masterRes && Array.isArray(masterRes.permissions)) {
+            const mappedMaster: PermissionNode[] = masterRes.permissions.map((group: any) => ({
                 category: group.controllerName, 
-                items: group.apiPermissions.map(perm => ({
+                items: group.apiPermissions.map((perm: any) => ({
                     code: perm.apiName, 
                     label: perm.apiName 
                 }))
             }));
-            setPermissionList(mappedData);
-        } else {
-            setPermissionList([]);
+            setPermissionList(mappedMaster);
         }
+
+        // Process Role Detail
+        const roleData = roleRes as any; 
+        const targetRole = roleData.customRole || roleData.role || roleData; 
+
+        if (targetRole) {
+            setOriginalRole(targetRole);
+
+            let tagsArray: string[] = [];
+            if (Array.isArray(targetRole.tags)) {
+                tagsArray = targetRole.tags;
+            } else if (typeof targetRole.tags === 'string') {
+                tagsArray = targetRole.tags.split(',').filter((t: string) => t.trim() !== '');
+            }
+
+            setFormData({
+                roleName: targetRole.roleName || "",
+                description: targetRole.roleDescription || targetRole.description || "",
+                tags: tagsArray
+            });
+
+            const activePerms: string[] = [];
+            if (Array.isArray(targetRole.permissions)) {
+                targetRole.permissions.forEach((group: any) => {
+                    if (Array.isArray(group.apiPermissions)) {
+                        group.apiPermissions.forEach((perm: any) => {
+                             if (perm.isAllowed) {
+                                 activePerms.push(perm.apiName);
+                             }
+                        });
+                    }
+                });
+            }
+            
+            setSelectedPermissions(activePerms);
+            setOriginalPermissions(activePerms); 
+        }
+
       } catch (error) {
-        console.error("Failed to load permissions:", error);
-        toast.error("Failed to load permission list");
+        console.error("Failed to load role data:", error);
+        toast.error("Failed to load role information");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPermissions();
-  }, []);
+    initData();
+  }, [roleId]);
 
-  // --- Filter Permissions ---
+  // Filter Permissions
   const filteredPermissions = useMemo(() => {
     if (!permissionSearch.trim()) return permissionList;
     const lowerSearch = permissionSearch.toLowerCase();
@@ -136,20 +184,30 @@ export default function CreateCustomRolePage() {
     }).filter(Boolean) as PermissionNode[];
   }, [permissionList, permissionSearch]);
 
-  // --- Check Dirty State ---
   const checkIsDirty = () => {
-    if (formData.roleName.trim() !== "") return true;
-    if (formData.description.trim() !== "") return true;
-    if (formData.tags.length > 0) return true;
-    if (tagInput.trim() !== "") return true; 
-    if (selectedPermissions.length > 0) return true;
+    if (!originalRole) return false;
+
+    if (formData.roleName !== originalRole.roleName) return true;
+    if (formData.description !== (originalRole.roleDescription || originalRole.description || "")) return true;
+    
+    const originalTagsStr = Array.isArray(originalRole.tags) 
+        ? originalRole.tags.slice().sort().join(',') 
+        : (originalRole.tags || "").split(',').filter((t:string)=>t).sort().join(',');
+    const currentTagsStr = formData.tags.slice().sort().join(',');
+    if (originalTagsStr !== currentTagsStr) return true;
+    if (tagInput.trim() !== "") return true;
+
+    const sortedOriginal = originalPermissions.slice().sort().join(',');
+    const sortedCurrent = selectedPermissions.slice().sort().join(',');
+    if (sortedOriginal !== sortedCurrent) return true;
+
     return false;
   };
 
   // --- Handlers ---
   const handleCancel = () => {
     if (checkIsDirty()) setShowExitDialog(true);
-    else goBack(); 
+    else goBack();
   };
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -198,6 +256,11 @@ export default function CreateCustomRolePage() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
+    if (!checkIsDirty()) {
+        goBack();
+        return;
+    }
+
     try {
       setIsSubmitting(true);
       
@@ -211,24 +274,23 @@ export default function CreateCustomRolePage() {
       }));
 
       const payload = {
-          roleName: formData.roleName,
+          roleId: roleId,
+          roleName: formData.roleName, 
           roleDescription: formData.description,
           roleDefinition: "", 
           tags: finalTags.join(','),
-          level: "1",
+          level: "1", 
           permissions: permissionsPayload
       };
 
-      const response = await roleApi.createCustomRole(payload);
-      const newId = (response as any)?.customRoleId || (response as any)?.id || (response as any)?.roleId;
+      await roleApi.updateCustomRoleById(roleId, payload); 
       
-      toast.success("Role created successfully");
-      goBack(newId); 
+      toast.success("Role updated successfully");
+      goBack();
 
     } catch (error: any) {
-      console.error("Create Role Error:", error.response?.data || error.message);
-      const serverMsg = error.response?.data?.description || "Failed to create role";
-      toast.error(serverMsg);
+      console.error("Update Role Error:", error);
+      toast.error(error?.message || "Failed to update role");
     } finally {
       setIsSubmitting(false);
     }
@@ -239,7 +301,7 @@ export default function CreateCustomRolePage() {
       <div className="flex h-full items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span>Loading permission structures...</span>
+          <span>Loading role details...</span>
         </div>
       </div>
     );
@@ -256,9 +318,12 @@ export default function CreateCustomRolePage() {
             </button>
             <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                    Create Role Permission
+                    Update Role Permission
+                    <span className="text-xs font-normal text-slate-500 px-2 py-0.5 rounded-full border border-slate-800 bg-slate-900 font-mono">
+                      {originalRole?.roleName}
+                    </span>
                 </h1>
-                <p className="text-slate-400 text-sm mt-0.5">Define a new custom role and permissions</p>
+                <p className="text-slate-400 text-sm mt-0.5">Modify custom role details and permissions</p>
             </div>
         </div>
       </div>
@@ -267,7 +332,6 @@ export default function CreateCustomRolePage() {
       <div className="flex-1 overflow-y-auto pb-8 no-scrollbar">
         <div className="px-4 md:px-8 space-y-6"> 
             
-            {/* 1. Role Information Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 border-b border-slate-800 pb-3">
                     Role Information
@@ -317,7 +381,6 @@ export default function CreateCustomRolePage() {
                 </div>
             </div>
 
-            {/* 2. Permissions Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 border-b border-slate-800 pb-3">
                     Permissions

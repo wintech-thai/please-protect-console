@@ -8,8 +8,7 @@ import {
   ChevronRight, 
   ChevronLeft as ChevronLeftIcon,
   Loader2,
-  Save,
-  Lock 
+  Save
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -83,6 +82,7 @@ export default function UpdateUserPage() {
           roleApi.getCustomRoles()
         ]);
 
+        // Map System Roles (Robust Mapping)
         const systemRolesData = Array.isArray(rolesRes) ? rolesRes : (rolesRes?.data || []);
         const allSystemRoles: RoleItem[] = systemRolesData.map((r: any) => ({
           id: r.roleId || r.id, 
@@ -90,10 +90,11 @@ export default function UpdateUserPage() {
           desc: r.roleDescription || r.roleDesc || "-" 
         }));
 
+        // Map Custom Roles (Robust Mapping)
         const customRolesData = Array.isArray(customRolesRes) ? customRolesRes : (customRolesRes?.data || []);
         const mappedCustomRoles = customRolesData.map((r: any) => ({
-          id: r.customRoleId || r.id,
-          name: r.customRoleName || r.name,
+          id: r.customRoleId || r.roleId || r.id,
+          name: r.customRoleName || r.roleName || r.name,
           desc: r.customRoleDesc || r.roleDescription || "-"
         }));
         setCustomRolesList(mappedCustomRoles);
@@ -115,7 +116,12 @@ export default function UpdateUserPage() {
             customRole: userData.customRoleId || ""
         });
 
-        const userRoleIds = userData.roles || [];
+        // Map User Roles
+        let userRoleIds: string[] = [];
+        if (Array.isArray(userData.roles)) {
+            userRoleIds = userData.roles.map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)));
+        }
+
         const selectedRoles = allSystemRoles.filter(r => userRoleIds.includes(r.id));
         const availableRoles = allSystemRoles.filter(r => !userRoleIds.includes(r.id));
 
@@ -143,15 +149,23 @@ export default function UpdateUserPage() {
         : "";
     const currentTags = formData.tags.slice().sort().join(',');
     if (originalTags !== currentTags) return true;
+    if (tagInput.trim() !== "") return true;
 
     // 2. Check Custom Role
     const originalCustomRole = originalUser.customRoleId || "";
     if (formData.customRole !== originalCustomRole) return true;
 
     // 3. Check System Roles
-    const originalRoleIds = (originalUser.roles || []).slice().sort().join(',');
+    let originalRoleIdsStr = "";
+    if (Array.isArray(originalUser.roles)) {
+        originalRoleIdsStr = originalUser.roles
+            .map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)))
+            .sort()
+            .join(',');
+    }
+    
     const currentRoleIds = rightRoles.map(r => r.id).slice().sort().join(',');
-    if (originalRoleIds !== currentRoleIds) return true;
+    if (originalRoleIdsStr !== currentRoleIds) return true;
 
     return false;
   };
@@ -197,55 +211,75 @@ export default function UpdateUserPage() {
      if (checkIsDirty()) {
         setShowExitDialog(true);
      } else {
-        router.back();
+        router.push(`/admin/users?highlight=${userId}`);
      }
   };
 
   const handleSubmit = async () => {
-    // 1. Validation
+    // 1. Prepare Tags (รวม Pending Tag)
     let finalTags = [...formData.tags];
     const pendingTag = tagInput.trim();
     if (pendingTag && !finalTags.includes(pendingTag)) {
         finalTags.push(pendingTag);
     }
 
+    // 2. Validation
     const newErrors: { [key: string]: string } = {};
     if (finalTags.length === 0) newErrors.tags = "At least one tag is required";
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) return;
 
-    // 2. Dirty Check
-    if (!checkIsDirty()) {
-        router.back();
-        return; 
-    }
-
-    // 3. Submit Data
     if (originalUser) {
-      try {
-        setIsSubmitting(true);
+        const originalTags = originalUser.tags 
+            ? originalUser.tags.split(',').filter(t => t.trim() !== "").sort().join(',') 
+            : "";
+        const finalTagsStr = finalTags.slice().sort().join(',');
         
-        const payload: UserApiBody = {
-            ...originalUser,
-            userName: formData.username, 
-            userEmail: formData.email,
-            tags: finalTags.join(','),
-            customRoleId: formData.customRole || null,
-            roles: rightRoles.map(r => r.id)
-        };
-
-        await userApi.updateUserById(userId, payload);
+        const originalCustomRole = originalUser.customRoleId || "";
         
-        toast.success("User updated successfully");
-        router.back();
+        let originalRoleIdsStr = "";
+        if (Array.isArray(originalUser.roles)) {
+            originalRoleIdsStr = originalUser.roles
+                .map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)))
+                .sort()
+                .join(',');
+        }
+        const currentRoleIdsStr = rightRoles.map(r => r.id).slice().sort().join(',');
 
-      } catch (error: any) {
-        console.error("Failed to update user:", error);
-        toast.error("Failed to update user");
-      } finally {
-        setIsSubmitting(false);
-      }
+        const isChanged = 
+            originalTags !== finalTagsStr ||
+            formData.customRole !== originalCustomRole ||
+            originalRoleIdsStr !== currentRoleIdsStr;
+
+        if (!isChanged) {
+            router.push(`/admin/users?highlight=${userId}`);
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            
+            const payload: UserApiBody = {
+                ...originalUser,
+                userName: formData.username || originalUser.userName, 
+                userEmail: formData.email || originalUser.userEmail,
+                tags: finalTags.join(','),
+                customRoleId: formData.customRole || null,
+                roles: rightRoles.map(r => r.id)
+            };
+
+            await userApi.updateUserById(userId, payload);
+            
+            toast.success("User updated successfully");
+            router.push(`/admin/users?highlight=${userId}`);
+
+        } catch (error: any) {
+            console.error("Failed to update user:", error);
+            toast.error("Failed to update user");
+        } finally {
+            setIsSubmitting(false);
+        }
     }
   };
 
@@ -292,7 +326,7 @@ export default function UpdateUserPage() {
                     User Information
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Username - Disabled */}
+                    {/* Username - Disabled, No Icon, Cursor Default */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-400">
                             Username <span className="text-red-400">*</span>
@@ -305,7 +339,7 @@ export default function UpdateUserPage() {
                         />
                     </div>
 
-                    {/* Email - Disabled */}
+                    {/* Email - Disabled, No Icon, Cursor Default */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-400">
                             Email <span className="text-red-400">*</span>
@@ -356,7 +390,7 @@ export default function UpdateUserPage() {
                             <option value="">Select a custom role...</option>
                             {customRolesList.map(role => (
                                 <option key={role.id} value={role.id}>
-                                    {role.name} {role.desc && role.desc !== '-' ? `(${role.desc})` : ''}
+                                    {role.name}
                                 </option>
                             ))}
                         </select>
@@ -459,7 +493,7 @@ export default function UpdateUserPage() {
             </button>
       </div>
 
-      {/* Exit Modal & CSS */}
+      {/* Exit Modal */}
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
@@ -467,7 +501,7 @@ export default function UpdateUserPage() {
                 <p className="text-sm text-slate-400 mb-6">You have unsaved changes. Are you sure you want to leave?</p>
                 <div className="flex justify-end gap-3">
                     <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => router.back()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
+                    <button onClick={() => router.push(`/admin/users?highlight=${userId}`)} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
                 </div>
             </div>
         </div>

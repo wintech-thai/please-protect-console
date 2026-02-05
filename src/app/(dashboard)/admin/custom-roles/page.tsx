@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
 import { 
   Search, 
   ChevronDown, 
@@ -70,13 +71,18 @@ export default function CustomRolesPage() {
   const { language } = useLanguage();
   const t = translations[language as keyof typeof translations] || translations.EN;
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const highlightIdParam = searchParams.get("highlight");
+
   // --- States ---
   const [roles, setRoles] = useState<CustomRoleData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(highlightIdParam);
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -85,6 +91,25 @@ export default function CustomRolesPage() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); 
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+
+  useEffect(() => {
+    if (highlightIdParam) {
+      setSelectedRowId(highlightIdParam);
+      
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("highlight");
+      const newQuery = params.toString();
+      const newPath = newQuery ? `${pathname}?${newQuery}` : pathname;
+      
+      window.history.replaceState(null, '', newPath);
+    }
+  }, [highlightIdParam, pathname, searchParams]);
+
+  const handleRowClick = (id: string) => {
+    setSelectedRowId(id);
+  };
 
   // --- Fetch Data ---
   const fetchData = useCallback(async () => {
@@ -102,9 +127,9 @@ export default function CustomRolesPage() {
       else if (rolesData?.data) loadedRoles = rolesData.data;
 
       const mappedRoles: CustomRoleData[] = loadedRoles.map((r: any) => ({
-        id: r.roleId || r.customRoleId || r.id,                 // Map roleId
-        roleName: r.roleName || r.customRoleName || r.name || "-", // Map roleName
-        description: r.roleDescription || r.customRoleDesc || r.description || "-", // Map roleDescription
+        id: r.roleId || r.customRoleId || r.id,
+        roleName: r.roleName || r.customRoleName || r.name || "-",
+        description: r.roleDescription || r.customRoleDesc || r.description || "-",
         tags: r.tags || ""
       }));
 
@@ -113,7 +138,7 @@ export default function CustomRolesPage() {
       let count = 0;
       if (typeof countData === 'number') count = countData;
       else if (countData?.count) count = countData.count;
-      else if (Array.isArray(countData)) count = countData.length; // Fallback
+      else if (Array.isArray(countData)) count = countData.length;
       
       setTotalCount(count);
 
@@ -130,6 +155,17 @@ export default function CustomRolesPage() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (!isLoading && selectedRowId && rowRefs.current[selectedRowId]) {
+      setTimeout(() => {
+        rowRefs.current[selectedRowId]?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center" 
+        });
+      }, 100);
+    }
+  }, [isLoading, selectedRowId, roles]);
+
   // --- Handlers ---
 
   const handleSearchTrigger = () => {
@@ -141,9 +177,7 @@ export default function CustomRolesPage() {
     if (selectedIds.length === 0) return;
     try {
       setIsProcessing(true);
-      
       await Promise.all(selectedIds.map(id => roleApi.deleteCustomRole(id)));
-      
       toast.success(`Deleted ${selectedIds.length} role(s) successfully`);
       setSelectedIds([]);
       setShowDeleteConfirm(false);
@@ -213,7 +247,10 @@ export default function CustomRolesPage() {
             </div>
 
             <div className="flex gap-2 w-full lg:w-auto justify-end">
-                <Link href="/admin/custom-roles/create" className="flex-1 lg:flex-none">
+                <Link 
+                  href={selectedRowId ? `/admin/custom-roles/create?prevHighlight=${selectedRowId}` : "/admin/custom-roles/create"} 
+                  className="flex-1 lg:flex-none"
+                >
                     <button className="w-full justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg uppercase transition-all">{t.buttons.add}</button>
                 </Link>
                 <button 
@@ -247,60 +284,65 @@ export default function CustomRolesPage() {
                         ) : roles.length === 0 ? (
                             <tr><td colSpan={5} className="p-20 text-center text-slate-500">{t.noData}</td></tr>
                         ) : (
-                            roles.map((role, idx) => (
-                                <tr 
-                                    key={role.id || idx} 
-                                    onClick={() => setSelectedRowId(role.id)}
-                                    className={`transition-colors group text-sm cursor-pointer
-                                      ${selectedRowId === role.id 
-                                        ? "bg-blue-900/20" 
-                                        : "hover:bg-slate-800/40"
-                                      }
-                                    `}
-                                >
-                                    <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                                      <input type="checkbox" checked={selectedIds.includes(role.id)} onChange={() => handleSelectOne(role.id)} />
-                                    </td>
-                                    
-                                    <td className="p-4 font-medium">
-                                      <Link 
-                                        href={`/admin/custom-roles/${role.id}/update`} 
-                                        className="text-blue-400 hover:text-blue-300 hover:underline"
-                                        onClick={(e) => e.stopPropagation()} 
-                                      >
-                                        {role.roleName}
-                                      </Link>
-                                    </td>
+                            roles.map((role, idx) => {
+                                const isHighlighted = selectedRowId === role.id;
 
-                                    <td className="p-4 text-slate-300 max-w-[300px] truncate">{role.description}</td>
-                                    
-                                    <td className="p-4">
-                                        <div className="flex flex-wrap gap-1">
-                                            {parseTags(role.tags).map((tag, i) => (
-                                                <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">{tag}</span>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    
-                                    <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                        <DropdownMenu modal={false}>
-                                          <DropdownMenuTrigger asChild>
-                                            <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
-                                              <MoreHorizontal className="w-4 h-4" />
-                                            </button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                                            <DropdownMenuItem 
-                                              onClick={() => { setSelectedIds([role.id]); setShowDeleteConfirm(true); }}
-                                              className="cursor-pointer focus:bg-slate-800 focus:text-red-400 text-red-400"
-                                            >
-                                              Delete Role
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </td>
-                                </tr>
-                            ))
+                                return (
+                                    <tr 
+                                        key={role.id || idx} 
+                                        ref={(el) => { if (el) rowRefs.current[role.id] = el; }}
+                                        onClick={() => handleRowClick(role.id)}
+                                        className={`transition-all duration-300 group text-sm cursor-pointer border-b border-slate-800/50
+                                          ${isHighlighted 
+                                            ? "bg-blue-500/10 border-l-4 border-l-blue-500 pl-[12px]" 
+                                            : "hover:bg-slate-800/40 border-l-4 border-l-transparent pl-[12px]"
+                                          }
+                                        `}
+                                    >
+                                        <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                                          <input type="checkbox" checked={selectedIds.includes(role.id)} onChange={() => handleSelectOne(role.id)} />
+                                        </td>
+                                        
+                                        <td className="p-4 font-medium">
+                                          <Link 
+                                            href={`/admin/custom-roles/${role.id}/update`} 
+                                            className={`hover:underline ${isHighlighted ? 'text-blue-300' : 'text-blue-400 hover:text-blue-300'}`}
+                                            onClick={(e) => e.stopPropagation()} 
+                                          >
+                                            {role.roleName}
+                                          </Link>
+                                        </td>
+
+                                        <td className="p-4 text-slate-300 max-w-[300px] truncate">{role.description}</td>
+                                        
+                                        <td className="p-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {parseTags(role.tags).map((tag, i) => (
+                                                    <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">{tag}</span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        
+                                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenu modal={false}>
+                                              <DropdownMenuTrigger asChild>
+                                                <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
+                                                  <MoreHorizontal className="w-4 h-4" />
+                                                </button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
+                                                <DropdownMenuItem 
+                                                  onClick={() => { setSelectedIds([role.id]); setShowDeleteConfirm(true); }}
+                                                  className="cursor-pointer focus:bg-slate-800 focus:text-red-400 text-red-400"
+                                                >
+                                                  Delete Role
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
@@ -331,7 +373,7 @@ export default function CustomRolesPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col items-center text-center">
                     <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
                         <Trash2 className="w-6 h-6 text-red-500" />
