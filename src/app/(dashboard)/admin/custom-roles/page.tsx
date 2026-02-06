@@ -10,19 +10,12 @@ import {
   ChevronRight, 
   Loader2,
   MoreHorizontal,
-  Trash2,
-  Shield 
+  Trash2
 } from "lucide-react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu"; 
 import { useLanguage } from "@/context/LanguageContext"; 
-
 import { roleApi } from "@/modules/auth/api/role.api"; 
 import { toast } from "sonner"; 
+import { translations } from "@/locales/dict";
 
 interface CustomRoleData {
   id: string; 
@@ -32,44 +25,9 @@ interface CustomRoleData {
   [key: string]: any;
 }
 
-const translations = {
-  EN: {
-    title: "Custom Roles",
-    subHeader: "Define and manage user roles and permissions",
-    searchPlaceholder: "Search roles...",
-    rowsPerPage: "Rows per page:",
-    of: "of",
-    loading: "Loading...",
-    noData: "No custom roles found",
-    buttons: { search: "Search", add: "ADD", delete: "DELETE" },
-    columns: {
-      roleName: "Role Name",
-      description: "Description",
-      tags: "Tags",
-      action: "Action"
-    }
-  },
-  TH: {
-    title: "บทบาทกำหนดเอง",
-    subHeader: "กำหนดและจัดการสิทธิ์การใช้งานของผู้ใช้",
-    searchPlaceholder: "ค้นหาบทบาท...",
-    rowsPerPage: "แถวต่อหน้า:",
-    of: "จาก",
-    loading: "กำลังโหลด...",
-    noData: "ไม่พบข้อมูลบทบาท",
-    buttons: { search: "ค้นหา", add: "เพิ่ม", delete: "ลบ" },
-    columns: {
-      roleName: "ชื่อบทบาท",
-      description: "คำอธิบาย",
-      tags: "แท็ก",
-      action: "จัดการ"
-    }
-  }
-};
-
 export default function CustomRolesPage() {
   const { language } = useLanguage();
-  const t = translations[language as keyof typeof translations] || translations.EN;
+  const t = translations.customRoles[language as keyof typeof translations.customRoles] || translations.customRoles.EN;
 
   const router = useRouter();
   const pathname = usePathname();
@@ -145,11 +103,11 @@ export default function CustomRolesPage() {
     } catch (error) {
       console.error("Failed to fetch roles:", error);
       setRoles([]);
-      toast.error("Failed to load roles");
+      toast.error(t.toast.loadError); 
     } finally {
       setIsLoading(false);
     }
-  }, [page, itemsPerPage, activeSearch]);
+  }, [page, itemsPerPage, activeSearch, t.toast.loadError]); 
 
   useEffect(() => {
     fetchData();
@@ -178,12 +136,13 @@ export default function CustomRolesPage() {
     try {
       setIsProcessing(true);
       await Promise.all(selectedIds.map(id => roleApi.deleteCustomRole(id)));
-      toast.success(`Deleted ${selectedIds.length} role(s) successfully`);
+      
+      toast.success(t.toast.deleteSuccess.replace("{count}", selectedIds.length.toString())); 
       setSelectedIds([]);
       setShowDeleteConfirm(false);
       fetchData(); 
     } catch (error) {
-      toast.error("Failed to delete roles");
+      toast.error(t.toast.deleteError); 
     } finally {
       setIsProcessing(false);
     }
@@ -222,9 +181,9 @@ export default function CustomRolesPage() {
             <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-2">
                 <div className="relative w-full sm:w-auto sm:min-w-[160px]">
                     <select className="w-full appearance-none bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg pl-3 pr-8 py-2.5 focus:outline-none focus:border-blue-500 transition-colors">
-                        <option>Full Text Search</option>
-                        <option>Role Name</option>
-                        <option>Tags</option>
+                        <option>{t.filters.all}</option>
+                        <option>{t.filters.name}</option>
+                        <option>{t.filters.tags}</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
                 </div>
@@ -324,21 +283,9 @@ export default function CustomRolesPage() {
                                         </td>
                                         
                                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenu modal={false}>
-                                              <DropdownMenuTrigger asChild>
-                                                <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
-                                                  <MoreHorizontal className="w-4 h-4" />
-                                                </button>
-                                              </DropdownMenuTrigger>
-                                              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                                                <DropdownMenuItem 
-                                                  onClick={() => { setSelectedIds([role.id]); setShowDeleteConfirm(true); }}
-                                                  className="cursor-pointer focus:bg-slate-800 focus:text-red-400 text-red-400"
-                                                >
-                                                  Delete Role
-                                                </DropdownMenuItem>
-                                              </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <button className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 );
@@ -378,18 +325,20 @@ export default function CustomRolesPage() {
                     <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/20">
                         <Trash2 className="w-6 h-6 text-red-500" />
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-2 uppercase">Delete Roles</h3>
+                    <h3 className="text-lg font-bold text-white mb-2 uppercase">{t.modal.title}</h3>
                     <p className="text-sm text-slate-400 mb-6">
-                        Are you sure you want to delete <span className="text-white font-semibold">{selectedIds.length}</span> selected role(s)? This action cannot be undone.
+                        {t.modal.message.replace("{count}", selectedIds.length.toString())}
                     </p>
                     <div className="flex justify-end gap-3 w-full">
-                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">Cancel</button>
+                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">
+                            {t.buttons.cancel}
+                        </button>
                         <button 
                             onClick={handleBulkDelete} 
                             disabled={isProcessing} 
                             className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2"
                         >
-                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} DELETE
+                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} {t.buttons.delete}
                         </button>
                     </div>
                 </div>

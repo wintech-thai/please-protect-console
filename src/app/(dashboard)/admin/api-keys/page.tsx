@@ -20,6 +20,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext"; 
 import { apiKeyApi } from "@/modules/auth/api/api-key.api";
 import { roleApi } from "@/modules/auth/api/role.api"; 
+import { translations } from "@/locales/dict"; 
 import { toast } from "sonner"; 
 
 interface ApiKeyData {
@@ -31,49 +32,9 @@ interface ApiKeyData {
   status: string;     
 }
 
-const translations = {
-  EN: {
-    title: "API Keys",
-    subHeader: "Manage API access keys and permissions",
-    searchPlaceholder: "Search API keys...",
-    rowsPerPage: "Rows per page:",
-    of: "of",
-    loading: "Loading...",
-    noData: "No API keys found",
-    buttons: { search: "Search", add: "ADD", delete: "DELETE" },
-    columns: {
-      keyName: "Key Name",
-      description: "Description",
-      customRole: "Custom Role",
-      roles: "Roles",
-      status: "Status",
-      action: "Action"
-    }
-  },
-  TH: {
-    title: "คีย์ API",
-    subHeader: "จัดการคีย์สำหรับการเข้าถึง API และสิทธิ์การใช้งาน",
-    searchPlaceholder: "ค้นหาคีย์ API...",
-    rowsPerPage: "แถวต่อหน้า:",
-    of: "จาก",
-    loading: "กำลังโหลด...",
-    noData: "ไม่พบข้อมูลคีย์ API",
-    buttons: { search: "ค้นหา", add: "เพิ่ม", delete: "ลบ" },
-    columns: {
-      keyName: "ชื่อคีย์",
-      description: "คำอธิบาย",
-      customRole: "บทบาทกำหนดเอง",
-      roles: "บทบาท",
-      status: "สถานะ",
-      action: "จัดการ"
-    }
-  }
-};
-
 export default function ApiKeysPage() {
   const { language } = useLanguage();
-  const t = translations[language as keyof typeof translations] || translations.EN;
-
+  const t = translations.apiKeys[language as keyof typeof translations.apiKeys] || translations.apiKeys.EN;
   const router = useRouter();
   const pathname = usePathname(); 
   const searchParams = useSearchParams();
@@ -85,7 +46,6 @@ export default function ApiKeysPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const [selectedRowId, setSelectedRowId] = useState<string | null>(highlightIdParam);
-
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); 
 
   const [page, setPage] = useState(1);
@@ -179,10 +139,11 @@ export default function ApiKeysPage() {
     } catch (error) {
       console.error("Failed to fetch API keys:", error);
       setApiKeys([]);
+      toast.error(t.toast.fetchError); 
     } finally {
       setIsLoading(false);
     }
-  }, [page, itemsPerPage, activeSearch]);
+  }, [page, itemsPerPage, activeSearch, t.toast.fetchError]);
 
   useEffect(() => {
     fetchData();
@@ -209,12 +170,12 @@ export default function ApiKeysPage() {
     try {
       setIsProcessing(true);
       await Promise.all(selectedIds.map(id => apiKeyApi.deleteApiKey(id)));
-      toast.success(`Deleted ${selectedIds.length} API key(s) successfully`);
+      toast.success(t.toast.deleteSuccess.replace("{count}", selectedIds.length.toString())); 
       setSelectedIds([]);
       setShowDeleteConfirm(false);
       fetchData(); 
     } catch (error) {
-      toast.error("Failed to delete API keys");
+      toast.error(t.toast.deleteError); 
     } finally {
       setIsProcessing(false);
     }
@@ -233,12 +194,12 @@ export default function ApiKeysPage() {
         await apiKeyApi.disableApiKey(targetKey.id);
       }
       
-      toast.success("Updated status successfully");
+      toast.success(t.toast.statusSuccess); 
       setShowStatusConfirm(false);
       fetchData();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update status");
+      toast.error(t.toast.statusError); 
     } finally {
       setIsProcessing(false);
       setTargetKey(null);
@@ -291,9 +252,9 @@ export default function ApiKeysPage() {
             <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-2">
                 <div className="relative w-full sm:w-auto sm:min-w-[160px]">
                     <select className="w-full appearance-none bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg pl-3 pr-8 py-2.5 focus:outline-none focus:border-blue-500 transition-colors">
-                        <option>Full Text Search</option>
-                        <option>Key Name</option>
-                        <option>Description</option>
+                        <option>{t.filters.all}</option>
+                        <option>{t.filters.name}</option>
+                        <option>{t.filters.desc}</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
                 </div>
@@ -407,14 +368,14 @@ export default function ApiKeysPage() {
                                                   onClick={() => handleActionClick(key)}
                                                   className={`cursor-pointer focus:bg-slate-800 focus:text-red-400 ${(key.status === "Inactive" || key.status === "Disabled" || !key.status) ? "opacity-30" : "text-red-400"}`}
                                                 >
-                                                  Disable Key
+                                                  {t.buttons.disable}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem 
                                                   disabled={!(key.status === "Inactive" || key.status === "Disabled" || !key.status)}
                                                   onClick={() => handleActionClick(key)}
                                                   className={`cursor-pointer focus:bg-slate-800 focus:text-green-400 ${!(key.status === "Inactive" || key.status === "Disabled" || !key.status) ? "opacity-30" : "text-green-400"}`}
                                                 >
-                                                  Enable Key
+                                                  {t.buttons.enable}
                                                 </DropdownMenuItem>
                                               </DropdownMenuContent>
                                             </DropdownMenu>
@@ -452,19 +413,19 @@ export default function ApiKeysPage() {
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col items-center text-center">
                     <h3 className="text-lg font-bold text-white mb-2">
-                        {(targetKey?.status === "Inactive" || targetKey?.status === "Disabled" || !targetKey?.status) ? "Enable Key" : "Disable Key"}
+                        {(targetKey?.status === "Inactive" || targetKey?.status === "Disabled" || !targetKey?.status) ? t.modal.enableTitle : t.modal.disableTitle}
                     </h3>
                     <p className="text-sm text-slate-400 mb-6">
-                        Are you sure you want to {(targetKey?.status === "Inactive" || targetKey?.status === "Disabled" || !targetKey?.status) ? "enable" : "disable"} this API key?
+                        {t.modal.statusMessage.replace("{action}", (targetKey?.status === "Inactive" || targetKey?.status === "Disabled" || !targetKey?.status) ? t.buttons.enable : t.buttons.disable)}
                     </p>
                     <div className="flex justify-end gap-3 w-full">
-                        <button onClick={() => { setShowStatusConfirm(false); setTargetKey(null); }} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">Cancel</button>
+                        <button onClick={() => { setShowStatusConfirm(false); setTargetKey(null); }} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">{t.buttons.cancel}</button>
                         <button 
                             onClick={handleToggleStatus} 
                             disabled={isProcessing} 
                             className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 ${(targetKey?.status === "Inactive" || targetKey?.status === "Disabled" || !targetKey?.status) ? "bg-green-600 hover:bg-green-500" : "bg-red-600 hover:bg-red-500"}`}
                         >
-                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} OK
+                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} {t.buttons.ok}
                         </button>
                     </div>
                 </div>
@@ -476,18 +437,18 @@ export default function ApiKeysPage() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col items-center text-center">
-                    <h3 className="text-lg font-bold text-white mb-2 uppercase">Delete API Keys</h3>
+                    <h3 className="text-lg font-bold text-white mb-2 uppercase">{t.modal.deleteTitle}</h3>
                     <p className="text-sm text-slate-400 mb-6">
-                        Are you sure you want to delete <span className="text-white font-semibold">{selectedIds.length}</span> selected key(s)? This action cannot be undone.
+                        {t.modal.deleteMessage.replace("{count}", selectedIds.length.toString())}
                     </p>
                     <div className="flex justify-end gap-3 w-full">
-                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">Cancel</button>
+                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">{t.buttons.cancel}</button>
                         <button 
                             onClick={handleBulkDelete} 
                             disabled={isProcessing} 
                             className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2"
                         >
-                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} DELETE
+                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} {t.buttons.delete}
                         </button>
                     </div>
                 </div>

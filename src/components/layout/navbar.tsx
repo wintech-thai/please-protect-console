@@ -19,7 +19,7 @@ import {
   FileText,
   ShieldAlert
 } from "lucide-react";
-import { useState } from "react"; 
+import { useState, useMemo } from "react"; 
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -32,6 +32,7 @@ import { authApi } from "@/modules/auth/api/auth.api";
 import { toast } from "sonner";
 import { UpdateProfileModal } from "@/components/modals/update-profile-modal"; 
 import { ChangePasswordModal } from "@/components/modals/change-password-modal";
+import { translations } from "@/locales/dict"; 
 
 interface NavItem {
   label: string;
@@ -48,7 +49,9 @@ export function Navbar() {
   
   const [userAvatar, setUserAvatar] = useState<string | null>(null); 
 
+  
   const { language, setLanguage } = useLanguage(); 
+  const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
 
   const handleLogout = async () => {
     try {
@@ -66,83 +69,34 @@ export function Navbar() {
       document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
       document.cookie = "orgId=; path=/; max-age=0; SameSite=Lax";
 
-      toast.success(language === "EN" ? "Logged out successfully" : "ออกจากระบบเรียบร้อยแล้ว");
+      toast.success(t.logoutSuccess); 
       setIsMobileMenuOpen(false);
       router.push("/login");
     }
   };
 
-  const translations = {
-    EN: {
-      profile: "Profile",
-      changePassword: "Change Password",
-      logout: "Logout",
-      adminUsers: "Users",
-      adminRoles: "Custom Roles",
-      adminApi: "API Keys",
-      adminAudit: "Audit Log"
+  const navItems: NavItem[] = useMemo(() => [
+    { label: t.overview, href: "/overview" },
+    { 
+      label: t.events, 
+      href: "/events/layer7",
+      children: [
+        { label: t.layer7, href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
+        { label: t.layer3, href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
+        { label: t.alerts, href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
+      ]
     },
-    TH: {
-      profile: "ข้อมูลส่วนตัว",
-      changePassword: "เปลี่ยนรหัสผ่าน",
-      logout: "ออกจากระบบ",
-      adminUsers: "ผู้ใช้งาน",
-      adminRoles: "สิทธิ์การใช้งาน",
-      adminApi: "คีย์ API",
-      adminAudit: "บันทึกการใช้งาน"
-    }
-  };
-
-  const text = language === "EN" ? translations.EN : translations.TH;
-
-  const menuItems = {
-    EN: [
-      { label: "Overview", href: "/overview" },
-      { 
-        label: "Events", 
-        href: "/events/layer7",
-        children: [
-          { label: "Layer7 Events", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-          { label: "Layer3 Events", href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
-          { label: "Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
-        ]
-      },
-      { 
-        label: "Administrator", 
-        href: "/admin/users", 
-        children: [
-          { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
-          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
-          { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
-          { label: text.adminAudit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
-        ]
-      },
-    ],
-    TH: [
-      { label: "ภาพรวมระบบ", href: "/overview" },
-      { 
-        label: "เหตุการณ์", 
-        href: "/events/layer7",
-        children: [
-          { label: "เหตุการณ์ Layer 7", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-          { label: "เหตุการณ์ Layer 3", href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
-          { label: "การแจ้งเตือน", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
-        ]
-      },
-      { 
-        label: "ผู้ดูแลระบบ", 
-        href: "/admin/users", 
-        children: [
-          { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
-          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
-          { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
-          { label: text.adminAudit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
-        ]
-      },
-    ]
-  };
-
-  const NAV_ITEMS: NavItem[] = language === "EN" ? menuItems.EN : menuItems.TH;
+    { 
+      label: t.administrator, 
+      href: "/admin/users", 
+      children: [
+        { label: t.roles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
+        { label: t.users, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
+        { label: t.apiKeys, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
+        { label: t.audit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
+      ]
+    },
+  ], [t]); 
 
   const isActive = (path: string) => {
     if (path === "/overview") return pathname === path;
@@ -175,14 +129,14 @@ export function Navbar() {
               />
             </div>
             
-            <span className="text-2xl font-bold tracking-tight text-white">
+            <span className="text-2xl font-bold tracking-tight text-white hidden sm:block">
               RTARF <span className="text-cyan-400">SENSOR</span>
             </span>
           </div>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               if (item.children) {
                 return (
                   <DropdownMenu key={item.href} modal={false}>
@@ -307,7 +261,7 @@ export function Navbar() {
                     className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-md cursor-pointer outline-none text-slate-300 hover:bg-blue-900/30 hover:text-cyan-400 transition-colors"
                   >
                       <User className="w-4 h-4" />
-                      <span>{text.profile}</span>
+                      <span>{t.profile}</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem 
@@ -318,7 +272,7 @@ export function Navbar() {
                     className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-md cursor-pointer outline-none text-slate-300 hover:bg-blue-900/30 hover:text-cyan-400 transition-colors"
                   >
                       <Lock className="w-4 h-4" />
-                      <span>{text.changePassword}</span>
+                      <span>{t.changePassword}</span>
                   </DropdownMenuItem>
 
                   {/* Logout */}
@@ -330,7 +284,7 @@ export function Navbar() {
                     className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-md cursor-pointer outline-none text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors border-t border-blue-900/30 mt-1"
                   >
                       <LogOut className="w-4 h-4" />
-                      <span>{text.logout}</span>
+                      <span>{t.logout}</span>
                   </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -347,7 +301,7 @@ export function Navbar() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 w-full bg-[#0B1120] border-b border-blue-900/30 shadow-lg max-h-[80vh] overflow-y-auto z-40 animate-in slide-in-from-top-2 text-blue-100">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <div key={item.label}>
                 <Link
                   href={item.href}
@@ -382,7 +336,7 @@ export function Navbar() {
                 }}
                 className="flex w-full items-center gap-3 px-4 py-4 text-base text-slate-400 hover:text-cyan-400 hover:bg-blue-900/10 outline-none"
               >
-                  <User className="w-5 h-5" /> {text.profile}
+                  <User className="w-5 h-5" /> {t.profile}
               </button>
               <button 
                 onClick={() => {
@@ -391,19 +345,19 @@ export function Navbar() {
                 }}
                 className="flex w-full items-center gap-3 px-4 py-4 text-base text-slate-400 hover:text-cyan-400 hover:bg-blue-900/10 outline-none"
               >
-                  <Lock className="w-5 h-5" /> {text.changePassword}
+                  <Lock className="w-5 h-5" /> {t.changePassword}
               </button>
 
               <button 
                 onClick={handleLogout}
                 className="flex w-full items-center gap-3 px-4 py-4 text-base text-red-400 hover:text-red-300 hover:bg-red-900/10 outline-none"
               >
-                  <LogOut className="w-5 h-5" /> {text.logout}
+                  <LogOut className="w-5 h-5" /> {t.logout}
               </button>
             </div>
 
             <div className="p-4 bg-[#020617]/50">
-              <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Language</p>
+              <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">{t.language}</p>
               <div className="grid grid-cols-2 gap-2">
                   <button 
                     onClick={() => setLanguage("EN")}

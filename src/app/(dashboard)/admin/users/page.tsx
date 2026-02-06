@@ -20,10 +20,9 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"; 
 import { useLanguage } from "@/context/LanguageContext"; 
-
+import { translations } from "@/locales/dict"; 
 import { userApi } from "@/modules/auth/api/user.api";
 import { roleApi } from "@/modules/auth/api/role.api";
-
 import { toast } from "sonner"; 
 
 interface UserData {
@@ -39,52 +38,10 @@ interface UserData {
   customRoleName?: string | null;
 }
 
-const translations = {
-  EN: {
-    title: "Users",
-    subHeader: "Manage system access and roles",
-    searchPlaceholder: "Search users...",
-    rowsPerPage: "Rows per page:",
-    of: "of",
-    loading: "Loading...",
-    noData: "No users found",
-    buttons: { search: "Search", add: "ADD", delete: "DELETE" },
-    columns: {
-      username: "Username",
-      email: "Email",
-      tags: "Tags",
-      customRole: "Custom Role",
-      role: "Role",
-      initialUser: "Initial User",
-      status: "Status",
-      action: "Action"
-    }
-  },
-  TH: {
-    title: "ผู้ใช้งาน",
-    subHeader: "จัดการสิทธิ์การเข้าถึงและบทบาทผู้ใช้",
-    searchPlaceholder: "ค้นหาผู้ใช้งาน...",
-    rowsPerPage: "แถวต่อหน้า:",
-    of: "จาก",
-    loading: "กำลังโหลด...",
-    noData: "ไม่พบข้อมูลผู้ใช้งาน",
-    buttons: { search: "ค้นหา", add: "เพิ่ม", delete: "ลบ" },
-    columns: {
-      username: "ชื่อผู้ใช้",
-      email: "อีเมล",
-      tags: "แท็ก",
-      customRole: "บทบาทกำหนดเอง",
-      role: "บทบาท",
-      initialUser: "ผู้ใช้ตั้งต้น",
-      status: "สถานะ",
-      action: "จัดการ"
-    }
-  }
-};
-
 export default function UsersPage() {
   const { language } = useLanguage();
-  const t = translations[language as keyof typeof translations] || translations.EN;
+  
+  const t = translations.users[language as keyof typeof translations.users] || translations.users.EN;
   
   const router = useRouter();
   const pathname = usePathname(); 
@@ -96,9 +53,7 @@ export default function UsersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  // State สำหรับ Highlight
   const [selectedRowId, setSelectedRowId] = useState<string | null>(highlightIdParam);
-
   const [roleMap, setRoleMap] = useState<Record<string, string>>({});
 
   const [page, setPage] = useState(1);
@@ -114,7 +69,6 @@ export default function UsersPage() {
 
   const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
 
-  // Flash URL Logic
   useEffect(() => {
     if (highlightIdParam) {
       setSelectedRowId(highlightIdParam);
@@ -163,16 +117,16 @@ export default function UsersPage() {
     } catch (error) {
       console.error("Failed to fetch users:", error);
       setUsers([]);
+      toast.error(t.toast.fetchError); 
     } finally {
       setIsLoading(false);
     }
-  }, [page, itemsPerPage, activeSearch]);
+  }, [page, itemsPerPage, activeSearch, t.toast.fetchError]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Auto Scroll
   useEffect(() => {
     if (!isLoading && selectedRowId && rowRefs.current[selectedRowId]) {
       setTimeout(() => {
@@ -194,12 +148,12 @@ export default function UsersPage() {
     try {
       setIsProcessing(true);
       await Promise.all(selectedIds.map(id => userApi.deleteUser(id)));
-      toast.success(`Deleted ${selectedIds.length} user(s) successfully`);
+      toast.success(t.toast.deleteSuccess.replace("{count}", selectedIds.length.toString())); 
       setSelectedIds([]);
       setShowDeleteConfirm(false);
       fetchData(); 
     } catch (error) {
-      toast.error("Failed to delete users");
+      toast.error(t.toast.deleteError); 
     } finally {
       setIsProcessing(false);
     }
@@ -215,11 +169,11 @@ export default function UsersPage() {
       } else {
         await userApi.disableUser(targetUser.orgUserId);
       }
-      toast.success("Updated status successfully");
+      toast.success(t.toast.statusSuccess); 
       setShowStatusConfirm(false);
       fetchData();
     } catch (error) {
-      toast.error("Failed to update status");
+      toast.error(t.toast.statusError); 
     } finally {
       setIsProcessing(false);
       setTargetUser(null);
@@ -256,19 +210,22 @@ export default function UsersPage() {
 
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 text-slate-200 relative font-sans">
+      
+      {/* Header */}
       <div className="flex-none pt-6 px-4 md:px-6 mb-2">
         <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.title}</h1>
         <p className="text-slate-400 text-xs md:text-sm">{t.subHeader}</p>
       </div>
 
+      {/* Toolbar */}
       <div className="flex-none py-4">
         <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800 shadow-sm">
             <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-2">
                 <div className="relative w-full sm:w-auto sm:min-w-[160px]">
                     <select className="w-full appearance-none bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg pl-3 pr-8 py-2.5 focus:outline-none focus:border-blue-500 transition-colors">
-                        <option>Full Text Search</option>
-                        <option>Username</option>
-                        <option>Email</option>
+                        <option>{t.filters.all}</option>
+                        <option>{t.filters.username}</option>
+                        <option>{t.filters.email}</option>
                     </select>
                     <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
                 </div>
@@ -292,8 +249,8 @@ export default function UsersPage() {
 
             <div className="flex gap-2 w-full lg:w-auto justify-end">
                 <Link 
-                    href={selectedRowId ? `/admin/users/create?prevHighlight=${selectedRowId}` : "/admin/users/create"} 
-                    className="flex-1 lg:flex-none"
+                  href={selectedRowId ? `/admin/users/create?prevHighlight=${selectedRowId}` : "/admin/users/create"} 
+                  className="flex-1 lg:flex-none"
                 >
                     <button className="w-full justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg uppercase transition-all">{t.buttons.add}</button>
                 </Link>
@@ -308,6 +265,7 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <div className="flex-1 bg-slate-900 border border-slate-800 rounded-t-xl shadow-2xl overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto no-scrollbar">
@@ -361,6 +319,7 @@ export default function UsersPage() {
                                         </td>
 
                                         <td className="p-4 text-slate-300">{user.userEmail || user.tmpUserEmail || "-"}</td>
+                                        
                                         <td className="p-4">
                                             <div className="flex flex-wrap gap-1">
                                                 {parseTags(user.tags).map((tag, i) => (
@@ -368,14 +327,19 @@ export default function UsersPage() {
                                                 ))}
                                             </div>
                                         </td>
+                                        
                                         <td className="p-4 text-slate-400">{user.customRoleName || "-"}</td>
+                                        
                                         <td className="p-4">
                                             <span className="bg-blue-600 px-2 py-1 rounded-md text-[10px] font-semibold text-white">{formatRoleDisplay(user.rolesList)}</span>
                                         </td>
+                                        
                                         <td className="p-4 text-center">{user.isOrgInitialUser === "YES" ? <Check className="w-4 h-4 text-green-500 mx-auto" /> : <X className="w-4 h-4 text-red-500 mx-auto" />}</td>
+                                        
                                         <td className="p-4 font-medium">
                                             <span className={user.userStatus === 'Disabled' ? 'text-slate-500' : 'text-green-400'}>{user.userStatus}</span>
                                         </td>
+                                        
                                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                                             <DropdownMenu modal={false}>
                                               <DropdownMenuTrigger asChild>
@@ -389,14 +353,14 @@ export default function UsersPage() {
                                                   onClick={() => handleActionClick(user)}
                                                   className={`cursor-pointer focus:bg-slate-800 focus:text-red-400 ${user.userStatus === "Disabled" ? "opacity-30" : "text-red-400"}`}
                                                 >
-                                                  Disable User
+                                                  {t.buttons.disable}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem 
                                                   disabled={user.userStatus !== "Disabled"}
                                                   onClick={() => handleActionClick(user)}
                                                   className={`cursor-pointer focus:bg-slate-800 focus:text-green-400 ${user.userStatus !== "Disabled" ? "opacity-30" : "text-green-400"}`}
                                                 >
-                                                  Enable User
+                                                  {t.buttons.enable}
                                                 </DropdownMenuItem>
                                               </DropdownMenuContent>
                                             </DropdownMenu>
@@ -430,24 +394,25 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {/* Enable/Disable Confirmation Modal */}
       {showStatusConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col items-center text-center">
                     <h3 className="text-lg font-bold text-white mb-2">
-                        {targetUser?.userStatus === "Disabled" ? "Enable User" : "Disable User"}
+                        {targetUser?.userStatus === "Disabled" ? t.modal.enableTitle : t.modal.disableTitle}
                     </h3>
                     <p className="text-sm text-slate-400 mb-6">
-                        Are you sure you want to {targetUser?.userStatus === "Disabled" ? "enable" : "disable"} this user?
+                        {t.modal.statusMessage.replace("{action}", targetUser?.userStatus === "Disabled" ? t.buttons.enable : t.buttons.disable)}
                     </p>
                     <div className="flex justify-end gap-3 w-full">
-                        <button onClick={() => { setShowStatusConfirm(false); setTargetUser(null); }} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">Cancel</button>
+                        <button onClick={() => { setShowStatusConfirm(false); setTargetUser(null); }} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">{t.buttons.cancel}</button>
                         <button 
                             onClick={handleToggleStatus} 
                             disabled={isProcessing} 
                             className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 ${targetUser?.userStatus === "Disabled" ? "bg-green-600 hover:bg-green-500" : "bg-red-600 hover:bg-red-500"}`}
                         >
-                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} OK
+                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} {t.buttons.ok}
                         </button>
                     </div>
                 </div>
@@ -455,22 +420,23 @@ export default function UsersPage() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col items-center text-center">
-                    <h3 className="text-lg font-bold text-white mb-2 uppercase">Delete Users</h3>
+                    <h3 className="text-lg font-bold text-white mb-2 uppercase">{t.modal.deleteTitle}</h3>
                     <p className="text-sm text-slate-400 mb-6">
-                        Are you sure you want to delete <span className="text-white font-semibold">{selectedIds.length}</span> selected user(s)? This action cannot be undone.
+                        {t.modal.deleteMessage.replace("{count}", selectedIds.length.toString())}
                     </p>
                     <div className="flex justify-end gap-3 w-full">
-                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">Cancel</button>
+                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700">{t.buttons.cancel}</button>
                         <button 
                             onClick={handleBulkDelete} 
                             disabled={isProcessing} 
                             className="flex-1 px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all flex items-center justify-center gap-2"
                         >
-                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} DELETE
+                            {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />} {t.buttons.delete}
                         </button>
                     </div>
                 </div>

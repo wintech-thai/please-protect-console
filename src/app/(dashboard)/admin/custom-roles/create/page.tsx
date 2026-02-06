@@ -11,7 +11,8 @@ import {
   Check
 } from "lucide-react";
 import { toast } from "sonner";
-
+import { useLanguage } from "@/context/LanguageContext"; 
+import { translations } from "@/locales/dict"; 
 import { roleApi } from "@/modules/auth/api/role.api";
 
 // --- Interfaces for UI Structure ---
@@ -37,6 +38,10 @@ interface ApiControllerGroup {
 }
 
 export default function CreateCustomRolePage() {
+  const { language } = useLanguage();
+  
+  const t = translations.createRole[language as keyof typeof translations.createRole] || translations.createRole.EN;
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -109,14 +114,14 @@ export default function CreateCustomRolePage() {
         }
       } catch (error) {
         console.error("Failed to load permissions:", error);
-        toast.error("Failed to load permission list");
+        toast.error(t.toast.loadError); 
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchPermissions();
-  }, []);
+  }, [t.toast.loadError]); // Add dependency
 
   // --- Filter Permissions ---
   const filteredPermissions = useMemo(() => {
@@ -191,9 +196,9 @@ export default function CreateCustomRolePage() {
     }
 
     const newErrors: { [key: string]: string } = {};
-    if (!formData.roleName.trim()) newErrors.roleName = "Role Name is required";
-    if (!formData.description.trim()) newErrors.description = "Description is required";
-    if (finalTags.length === 0) newErrors.tags = "At least one tag is required";
+    if (!formData.roleName.trim()) newErrors.roleName = t.validation.roleName; // ✅ ใช้คำแปล validation
+    if (!formData.description.trim()) newErrors.description = t.validation.description;
+    if (finalTags.length === 0) newErrors.tags = t.validation.tags;
     
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -222,12 +227,12 @@ export default function CreateCustomRolePage() {
       const response = await roleApi.createCustomRole(payload);
       const newId = (response as any)?.customRoleId || (response as any)?.id || (response as any)?.roleId;
       
-      toast.success("Role created successfully");
+      toast.success(t.toast.success); 
       goBack(newId); 
 
     } catch (error: any) {
       console.error("Create Role Error:", error.response?.data || error.message);
-      const serverMsg = error.response?.data?.description || "Failed to create role";
+      const serverMsg = error.response?.data?.description || t.toast.error; 
       toast.error(serverMsg);
     } finally {
       setIsSubmitting(false);
@@ -256,9 +261,9 @@ export default function CreateCustomRolePage() {
             </button>
             <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                    Create Role Permission
+                    {t.title}
                 </h1>
-                <p className="text-slate-400 text-sm mt-0.5">Define a new custom role and permissions</p>
+                <p className="text-slate-400 text-sm mt-0.5">{t.subHeader}</p>
             </div>
         </div>
       </div>
@@ -270,36 +275,36 @@ export default function CreateCustomRolePage() {
             {/* 1. Role Information Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 border-b border-slate-800 pb-3">
-                    Role Information
+                    {t.infoTitle}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Role Name <span className="text-red-400">*</span></label>
+                        <label className="text-sm font-medium text-slate-300">{t.labels.roleName} <span className="text-red-400">*</span></label>
                         <input 
                             type="text" 
                             value={formData.roleName}
                             onChange={(e) => setFormData({...formData, roleName: e.target.value})}
                             className={`w-full bg-slate-950 border ${errors.roleName ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
-                            placeholder="e.g. Accountant"
+                            placeholder={t.placeholders.roleName}
                         />
                         {errors.roleName && <p className="text-red-400 text-xs">{errors.roleName}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Description <span className="text-red-400">*</span></label>
+                        <label className="text-sm font-medium text-slate-300">{t.labels.description} <span className="text-red-400">*</span></label>
                         <input 
                             type="text" 
                             value={formData.description}
                             onChange={(e) => setFormData({...formData, description: e.target.value})}
                             className={`w-full bg-slate-950 border ${errors.description ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
-                            placeholder="Role description..."
+                            placeholder={t.placeholders.description}
                         />
                         {errors.description && <p className="text-red-400 text-xs">{errors.description}</p>}
                     </div>
                 </div>
 
                 <div className="space-y-2 mt-6">
-                    <label className="text-sm font-medium text-slate-300">Tags <span className="text-red-400">*</span></label>
+                    <label className="text-sm font-medium text-slate-300">{t.labels.tags} <span className="text-red-400">*</span></label>
                     <div className={`w-full bg-slate-950 border ${errors.tags ? 'border-red-500/50' : 'border-slate-700 focus-within:border-blue-500'} rounded-lg px-3 py-2 min-h-[46px] flex flex-wrap gap-2 items-center transition-all`}>
                         {formData.tags.map(tag => (
                             <span key={tag} className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-in fade-in zoom-in duration-200">
@@ -309,7 +314,7 @@ export default function CreateCustomRolePage() {
                         ))}
                         <input 
                             type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
-                            placeholder={formData.tags.length === 0 ? "Type and press Enter to add tag" : ""}
+                            placeholder={formData.tags.length === 0 ? t.labels.tagsPlaceholder : ""}
                             className="bg-transparent outline-none text-slate-200 flex-1 min-w-[150px] text-sm placeholder:text-slate-600 h-full py-1"
                         />
                     </div>
@@ -320,7 +325,7 @@ export default function CreateCustomRolePage() {
             {/* 2. Permissions Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 border-b border-slate-800 pb-3">
-                    Permissions
+                    {t.permissionsTitle}
                 </h2>
                 
                 <div className="relative mb-6">
@@ -329,7 +334,7 @@ export default function CreateCustomRolePage() {
                         type="text" 
                         value={permissionSearch}
                         onChange={(e) => setPermissionSearch(e.target.value)}
-                        placeholder="Search permissions..."
+                        placeholder={t.searchPlaceholder}
                         className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-slate-200 outline-none focus:border-blue-500 text-sm placeholder:text-slate-600 transition-colors"
                     />
                 </div>
@@ -391,7 +396,7 @@ export default function CreateCustomRolePage() {
                         );
                     }) : (
                         <div className="text-center py-8 text-slate-500 text-sm">
-                            No permissions found matching "{permissionSearch}"
+                            {t.noPermissionsFound.replace("{term}", permissionSearch)}
                         </div>
                     )}
                 </div>
@@ -402,13 +407,15 @@ export default function CreateCustomRolePage() {
 
       {/* Footer Buttons */}
       <div className="flex-none p-4 md:px-8 border-t border-slate-800 bg-slate-950 flex justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-            <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">Cancel</button>
+            <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">
+              {t.buttons.cancel}
+            </button>
             <button 
                 onClick={handleSubmit} 
                 disabled={isSubmitting} 
                 className="px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all font-medium text-sm flex items-center gap-2"
             >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.buttons.save}
             </button>
       </div>
 
@@ -416,11 +423,15 @@ export default function CreateCustomRolePage() {
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
-                <h3 className="text-lg font-bold text-white mb-2">Leave Page</h3>
-                <p className="text-sm text-slate-400 mb-6">You have unsaved changes. Are you sure you want to leave?</p>
+                <h3 className="text-lg font-bold text-white mb-2">{t.modal.title}</h3>
+                <p className="text-sm text-slate-400 mb-6">{t.modal.message}</p>
                 <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => goBack()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
+                    <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+                      {t.buttons.stay}
+                    </button>
+                    <button onClick={() => goBack()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">
+                      {t.modal.ok}
+                    </button>
                 </div>
             </div>
         </div>

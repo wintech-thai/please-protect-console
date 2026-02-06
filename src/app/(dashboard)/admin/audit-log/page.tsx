@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { 
-  FileText, // ใช้ไอคอน FileText สำหรับ Audit Log
+  FileText, 
   Search, 
   Filter, 
   ChevronDown, 
@@ -13,29 +13,12 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
 import { ComingSoon } from "@/components/ui/coming-soon"; 
-
-const translations = {
-  EN: {
-    title: "Audit Log",
-    subHeader: "Track system activities and changes",
-    description: "Coming soon",
-    filters: "Filters",
-    rowsPerPage: "Rows per page:",
-    of: "of"
-  },
-  TH: {
-    title: "บันทึกการใช้งาน",
-    subHeader: "ติดตามกิจกรรมและการเปลี่ยนแปลงในระบบ",
-    description: "พบกันเร็วๆนี้",
-    filters: "ตัวกรอง",
-    rowsPerPage: "แถวต่อหน้า:",
-    of: "จาก"
-  }
-};
+import { translations } from "@/locales/dict";
 
 export default function AuditLogPage() {
   const { language } = useLanguage();
-  const t = translations[language as keyof typeof translations] || translations.EN;
+  
+  const t = translations.auditLog[language as keyof typeof translations.auditLog] || translations.auditLog.EN;
 
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
@@ -65,7 +48,7 @@ export default function AuditLogPage() {
             <Search className="w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search logs..." 
+              placeholder={t.searchPlaceholder}
               className="w-full bg-transparent text-sm outline-none text-slate-200 placeholder:text-slate-500"
             />
           </div>

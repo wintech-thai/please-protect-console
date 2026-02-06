@@ -1,11 +1,12 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react"; 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
 import { userApi } from "@/modules/auth/api/user.api";
+import { translations } from "@/locales/dict"; 
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -18,7 +19,9 @@ export function ChangePasswordModal({
 }: ChangePasswordModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
   const { language } = useLanguage();
+  const t = translations.changePassword[language as keyof typeof translations.changePassword] || translations.changePassword.EN;
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -44,24 +47,16 @@ export function ChangePasswordModal({
 
   const validatePassword = (password: string) => {
     if (password.length < 7 || password.length > 15) {
-      return language === "EN" 
-        ? "Password length must be between 7-15 characters" 
-        : "รหัสผ่านต้องมีความยาว 7-15 ตัวอักษร";
+      return t.validateLength; 
     }
     if (!/[a-z]/.test(password)) {
-      return language === "EN" 
-        ? "Password must contain at least 1 lowercase letter" 
-        : "รหัสผ่านต้องมีตัวพิมพ์เล็กอย่างน้อย 1 ตัว";
+      return t.validateLower; 
     }
     if (!/[A-Z]/.test(password)) {
-      return language === "EN" 
-        ? "Password must contain at least 1 uppercase letter" 
-        : "รหัสผ่านต้องมีตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว";
+      return t.validateUpper; 
     }
     if (!/[!@#]/.test(password)) {
-      return language === "EN" 
-        ? "Password must contain special character (!, @, #)" 
-        : "รหัสผ่านต้องมีอักขระพิเศษ (!, @, #) อย่างน้อย 1 ตัว";
+      return t.validateSpecial; 
     }
     return null;
   };
@@ -70,7 +65,7 @@ export function ChangePasswordModal({
     const { currentPassword, newPassword, confirmPassword } = formData;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error(language === "EN" ? "Please fill in all fields" : "กรุณากรอกข้อมูลให้ครบถ้วน");
+      toast.error(t.errorFields); 
       return;
     }
 
@@ -81,7 +76,7 @@ export function ChangePasswordModal({
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error(language === "EN" ? "Passwords do not match" : "รหัสผ่านใหม่ไม่ตรงกัน");
+      toast.error(t.errorMismatch); 
       return;
     }
 
@@ -90,7 +85,7 @@ export function ChangePasswordModal({
 
       const username = localStorage.getItem("username");
       if (!username) {
-        throw new Error("Username not found");
+        throw new Error(t.errorUserNotFound); 
       }
 
       await userApi.updatePassword({
@@ -99,7 +94,7 @@ export function ChangePasswordModal({
         newPassword: newPassword
       });
       
-      toast.success(language === "EN" ? "Password changed successfully" : "เปลี่ยนรหัสผ่านสำเร็จ");
+      toast.success(t.success); 
       onClose();
 
     } catch (error: any) {
@@ -110,7 +105,7 @@ export function ChangePasswordModal({
       if (errorMsg && typeof errorMsg === 'string') {
         errorMsg = errorMsg.replace(/\n/g, " ").trim();
       } else {
-        errorMsg = language === "EN" ? "Failed to change password" : "เปลี่ยนรหัสผ่านไม่สำเร็จ";
+        errorMsg = t.errorFailed; 
       }
                         
       toast.error(errorMsg);
@@ -118,34 +113,6 @@ export function ChangePasswordModal({
       setIsLoading(false);
     }
   };
-
-  const t = {
-    EN: {
-      title: "Change Password",
-      desc: "Password must be 7-15 chars, contain A-Z, a-z, and special (!@#)",
-      current: "Current Password",
-      new: "New Password",
-      confirm: "Confirm New Password",
-      ph_current: "Enter current password",
-      ph_new: "Enter new password",
-      ph_confirm: "Confirm new password",
-      cancel: "Cancel",
-      save: "Save",
-    },
-    TH: {
-      title: "เปลี่ยนรหัสผ่าน",
-      desc: "รหัสผ่านต้องมี 7-15 ตัวอักษร, มี A-Z, a-z และอักขระพิเศษ (!@#)",
-      current: "รหัสผ่านปัจจุบัน",
-      new: "รหัสผ่านใหม่",
-      confirm: "ยืนยันรหัสผ่านใหม่",
-      ph_current: "กรอกรหัสผ่านปัจจุบัน",
-      ph_new: "กรอกรหัสผ่านใหม่",
-      ph_confirm: "ยืนยันรหัสผ่านใหม่",
-      cancel: "ยกเลิก",
-      save: "บันทึก",
-    },
-  };
-  const text = language === "EN" ? t.EN : t.TH;
 
   if (!isVisible) return null;
 
@@ -173,9 +140,9 @@ export function ChangePasswordModal({
         <div className="flex justify-between items-start p-6 pb-2 border-b border-blue-900/20 bg-[#0F1629]/50 relative z-10">
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              {text.title}
+              {t.title}
             </h2>
-            <p className="text-xs text-yellow-500/80 mt-1 font-medium">{text.desc}</p>
+            <p className="text-xs text-yellow-500/80 mt-1 font-medium">{t.desc}</p>
           </div>
           <button
             onClick={onClose}
@@ -188,35 +155,35 @@ export function ChangePasswordModal({
         {/* Body */}
         <div className="p-6 space-y-5 relative z-10">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-300">{text.current}</label>
+            <label className="text-sm font-medium text-slate-300">{t.current}</label>
             <input
               type="password"
               name="currentPassword"
               value={formData.currentPassword}
               onChange={handleChange}
-              placeholder={text.ph_current}
+              placeholder={t.ph_current}
               className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-300">{text.new}</label>
+            <label className="text-sm font-medium text-slate-300">{t.new}</label>
             <input
               type="password"
               name="newPassword"
               value={formData.newPassword}
               onChange={handleChange}
-              placeholder={text.ph_new}
+              placeholder={t.ph_new}
               className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-300">{text.confirm}</label>
+            <label className="text-sm font-medium text-slate-300">{t.confirm}</label>
             <input
               type="password"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              placeholder={text.ph_confirm}
+              placeholder={t.ph_confirm}
               className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
             />
           </div>
@@ -229,21 +196,21 @@ export function ChangePasswordModal({
             disabled={isLoading}
             className="px-4 py-2 text-sm font-medium text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50"
           >
-            {text.cancel}
+            {t.cancel}
           </button>
           
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center min-w-[100px] gap-2"
           >
             {isLoading ? (
                <>
-                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                 Saving...
+                 <Loader2 className="w-4 h-4 animate-spin" />
+                 {t.saving}
                </>
             ) : (
-               text.save
+               t.save
             )}
           </button>
         </div>

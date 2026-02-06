@@ -13,7 +13,8 @@ import {
   UserPlus
 } from "lucide-react";
 import { toast } from "sonner";
-
+import { useLanguage } from "@/context/LanguageContext"; 
+import { translations } from "@/locales/dict"; 
 import { userApi } from "@/modules/auth/api/user.api";
 import { roleApi } from "@/modules/auth/api/role.api";
 import { InviteUserPayload } from "@/modules/auth/api/types";
@@ -25,6 +26,10 @@ interface RoleItem {
 }
 
 export default function CreateUserPage() {
+  const { language } = useLanguage();
+  
+  const t = translations.createUser[language as keyof typeof translations.createUser] || translations.createUser.EN;
+
   const router = useRouter();
   const pathname = usePathname(); 
   const searchParams = useSearchParams();
@@ -115,14 +120,14 @@ export default function CreateUserPage() {
 
       } catch (error) {
         console.error("Failed to fetch roles:", error);
-        toast.error("Failed to load roles configuration");
+        toast.error(t.toast.rolesError); 
       } finally {
         setIsLoadingData(false);
       }
     };
 
     initData();
-  }, []);
+  }, [t.toast.rolesError]);
 
   // --- Handlers ---
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -185,10 +190,10 @@ export default function CreateUserPage() {
     }
 
     const newErrors: { [key: string]: string } = {};
-    if (!formData.username) newErrors.username = "Username is required";
-    if (!formData.email) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Invalid email format";
-    if (finalTags.length === 0) newErrors.tags = "At least one tag is required";
+    if (!formData.username) newErrors.username = t.validation.username; 
+    if (!formData.email) newErrors.email = t.validation.email;
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.validation.emailInvalid;
+    if (finalTags.length === 0) newErrors.tags = t.validation.tags;
     
     setErrors(newErrors);
 
@@ -211,12 +216,12 @@ export default function CreateUserPage() {
         const link = response?.registrationUrl || "Link not found"; 
         setInviteLink(link);
         
-        toast.success("User invited successfully");
+        toast.success(t.toast.success); 
         setShowInviteModal(true);
 
       } catch (error: any) {
         console.error("Failed to invite user:", error);
-        toast.error(error?.message || "Failed to invite user");
+        toast.error(error?.message || t.toast.error); 
       } finally {
         setIsSubmitting(false);
       }
@@ -226,7 +231,7 @@ export default function CreateUserPage() {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteLink);
     setIsCopied(true);
-    toast.success("Link copied to clipboard");
+    toast.success(t.toast.copySuccess); 
     setTimeout(() => setIsCopied(false), 2000);
   };
 
@@ -245,7 +250,7 @@ export default function CreateUserPage() {
       <div className="flex h-full items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span>Loading configurations...</span>
+          <span>{t.loading}</span> 
         </div>
       </div>
     );
@@ -261,8 +266,8 @@ export default function CreateUserPage() {
                 <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Create User</h1>
-                <p className="text-slate-400 text-sm mt-0.5">Add a new user to the organization</p>
+                <h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+                <p className="text-slate-400 text-sm mt-0.5">{t.subHeader}</p>
             </div>
         </div>
       </div>
@@ -275,14 +280,14 @@ export default function CreateUserPage() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
-                    User Information
+                    {t.infoTitle}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Username <span className="text-red-400">*</span></label>
+                        <label className="text-sm font-medium text-slate-300">{t.labels.username} <span className="text-red-400">*</span></label>
                         <input 
                             type="text" 
-                            placeholder="e.g. johndoe"
+                            placeholder={t.placeholders.username}
                             value={formData.username}
                             onChange={e => setFormData({...formData, username: e.target.value})}
                             className={`w-full bg-slate-950 border ${errors.username ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
@@ -290,20 +295,20 @@ export default function CreateUserPage() {
                         {errors.username && <p className="text-red-400 text-xs">{errors.username}</p>}
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Email <span className="text-red-400">*</span></label>
+                        <label className="text-sm font-medium text-slate-300">{t.labels.email} <span className="text-red-400">*</span></label>
                         <input 
                             type="text" 
-                            placeholder="name@example.com"
+                            placeholder={t.placeholders.email}
                             value={formData.email}
                             onChange={e => setFormData({...formData, email: e.target.value})}
                             className={`w-full bg-slate-950 border ${errors.email ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
                         />
-                         {errors.email && <p className="text-red-400 text-xs">{errors.email}</p>}
+                          {errors.email && <p className="text-red-400 text-xs">{errors.email}</p>}
                     </div>
                 </div>
                 
                 <div className="space-y-2 mt-6">
-                    <label className="text-sm font-medium text-slate-300">Tags <span className="text-red-400">*</span></label>
+                    <label className="text-sm font-medium text-slate-300">{t.labels.tags} <span className="text-red-400">*</span></label>
                     <div className={`w-full bg-slate-950 border ${errors.tags ? 'border-red-500/50' : 'border-slate-700 focus-within:border-blue-500'} rounded-lg px-3 py-2 min-h-[46px] flex flex-wrap gap-2 items-center transition-all`}>
                         {formData.tags.map(tag => (
                             <span key={tag} className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-in fade-in zoom-in duration-200">
@@ -313,7 +318,7 @@ export default function CreateUserPage() {
                         ))}
                         <input 
                             type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
-                            placeholder={formData.tags.length === 0 ? "Type and press Enter to add tags..." : ""}
+                            placeholder={formData.tags.length === 0 ? t.labels.tagsPlaceholder : ""}
                             className="bg-transparent outline-none text-slate-200 flex-1 min-w-[150px] text-sm placeholder:text-slate-600 h-full py-1"
                         />
                     </div>
@@ -325,18 +330,18 @@ export default function CreateUserPage() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
-                    Roles & Permissions
+                    {t.rolesTitle}
                 </h2>
                 
                 <div className="mb-6 max-w-xl">
-                    <label className="text-sm font-medium text-slate-300 mb-2 block">Custom Role (Optional)</label>
+                    <label className="text-sm font-medium text-slate-300 mb-2 block">{t.labels.customRole}</label>
                     <div className="relative">
                         <select 
                             value={formData.customRole}
                             onChange={e => setFormData({...formData, customRole: e.target.value})}
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer text-sm"
                         >
-                            <option value="">Select a custom role...</option>
+                            <option value="">{t.labels.selectRole}</option>
                             {customRolesList.map(role => (
                                 <option key={role.id} value={role.id}>
                                     {role.name}
@@ -351,17 +356,16 @@ export default function CreateUserPage() {
 
                 {/* System Roles Transfer List */}
                 <div>
-                    <h3 className="text-sm font-medium text-slate-300 mb-3">System Roles</h3>
+                    <h3 className="text-sm font-medium text-slate-300 mb-3">{t.labels.systemRoles}</h3>
                     <div className="flex flex-col md:flex-row gap-4 items-center">
-                        {/* Available Roles (Left) */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
-                                <span>Available Roles</span>
+                                <span>{t.labels.availableRoles}</span>
                                 <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] text-slate-500">{leftRoles.length}</span>
                             </div>
                             <div className="p-2 overflow-y-auto flex-1 no-scrollbar space-y-1">
                                 {leftRoles.length === 0 ? (
-                                    <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">No roles available</div>
+                                    <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesAvailable}</div>
                                 ) : (
                                     leftRoles.map(role => (
                                         <div 
@@ -395,14 +399,14 @@ export default function CreateUserPage() {
                         {/* Selected Roles (Right) */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
-                                <span>Selected Roles</span>
+                                <span>{t.labels.selectedRoles}</span>
                                 <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] text-slate-500">{rightRoles.length}</span>
                             </div>
                             <div className="p-2 overflow-y-auto flex-1 no-scrollbar space-y-1">
                                 {rightRoles.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 opacity-50">
                                         <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center"><ChevronRight className="w-5 h-5 text-slate-700" /></div>
-                                        <span className="text-xs">No roles selected</span>
+                                        <span className="text-xs">{t.noRolesSelected}</span>
                                     </div>
                                 ) : (
                                     rightRoles.map(role => (
@@ -432,9 +436,11 @@ export default function CreateUserPage() {
 
       {/* Footer Buttons */}
       <div className="flex-none p-4 md:px-8 border-t border-slate-800 bg-slate-950 flex justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-            <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">Cancel</button>
+            <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">
+                {t.buttons.cancel}
+            </button>
             <button onClick={handleSubmit} disabled={isSubmitting} className="px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all font-medium text-sm flex items-center gap-2">
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.buttons.save}
             </button>
       </div>
 
@@ -445,15 +451,17 @@ export default function CreateUserPage() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-2xl"></div>
                 <div className="flex flex-col items-center text-center">
                     <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mb-4 border border-green-500/20"><UserPlus className="w-7 h-7 text-green-400" /></div>
-                    <h3 className="text-xl font-bold text-white mb-1">User Invited Successfully</h3>
-                    <p className="text-sm text-slate-400 mb-6">An invitation link has been generated. Please copy and share it with the user.</p>
+                    <h3 className="text-xl font-bold text-white mb-1">{t.modal.inviteTitle}</h3>
+                    <p className="text-sm text-slate-400 mb-6">{t.modal.inviteMessage}</p>
                     <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 flex items-center gap-2 mb-6">
                         <div className="flex-1 bg-transparent px-3 text-sm text-slate-300 truncate font-mono select-all">{inviteLink}</div>
                         <button onClick={handleCopyLink} className={`p-2 rounded-md transition-all duration-200 ${isCopied ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}>
                             {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                         </button>
                     </div>
-                    <button onClick={handleFinish} className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/20 transition-all">Done & Return to Users</button>
+                    <button onClick={handleFinish} className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/20 transition-all">
+                        {t.buttons.done}
+                    </button>
                 </div>
             </div>
         </div>
@@ -463,11 +471,15 @@ export default function CreateUserPage() {
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
-                <h3 className="text-lg font-bold text-white mb-2">Leave Page</h3>
-                <p className="text-sm text-slate-400 mb-6">You have unsaved changes. Are you sure you want to leave?</p>
+                <h3 className="text-lg font-bold text-white mb-2">{t.modal.title}</h3>
+                <p className="text-sm text-slate-400 mb-6">{t.modal.message}</p>
                 <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => goBack()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
+                    <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+                        {t.buttons.stay}
+                    </button>
+                    <button onClick={() => goBack()} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">
+                        {t.modal.ok}
+                    </button>
                 </div>
             </div>
         </div>

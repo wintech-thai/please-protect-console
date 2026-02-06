@@ -17,6 +17,7 @@ import {
   ChevronsRight
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
+import { translations } from "@/locales/dict"; 
 
 // Mock Data
 const BASE_TIME = new Date("2024-01-16T12:00:00Z").getTime(); 
@@ -40,46 +41,14 @@ const EVENTS = Array.from({ length: 200 }, (_, i) => ({
 
 export default function Layer7Page() {
   const { language } = useLanguage(); 
+  
+  const t = translations.layer7[language as keyof typeof translations.layer7] || translations.layer7.EN;
+
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState(""); 
   
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-
-  const translations = {
-    EN: {
-      title: "Layer 7 Traffic",
-      subtitle: "HTTP/HTTPS Application Layer Analysis",
-      placeholder: "Search IP, Path, Host, User-Agent...",
-      filters: "Filters",
-      rowsPerPage: "Rows per page:",
-      of: "of",
-      headers: {
-        timestamp: "Timestamp",
-        method: "Method",
-        source: "Source",
-        target: "Target Host & Path",
-        status: "Status"
-      }
-    },
-    TH: {
-      title: "จราจรข้อมูล Layer 7",
-      subtitle: "การวิเคราะห์ HTTP/HTTPS Application Layer",
-      placeholder: "Search IP, Path, Host, User-Agent...", 
-      filters: "ตัวกรอง",
-      rowsPerPage: "แถวต่อหน้า:",
-      of: "จาก",
-      headers: {
-        timestamp: "เวลา",
-        method: "เมธอด",
-        source: "ต้นทาง",
-        target: "โฮสต์ปลายทาง & พาท",
-        status: "สถานะ"
-      }
-    }
-  };
-
-  const t = translations[language as keyof typeof translations] || translations.EN;
 
   const toggleRow = (id: number) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -92,11 +61,12 @@ export default function Layer7Page() {
   const formatDetailedTime = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      const timeStr = date.toLocaleTimeString('th-TH', { 
+      const locale = language === "TH" ? "th-TH" : "en-US"; 
+      const timeStr = date.toLocaleTimeString(locale, { 
         hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' 
       });
       const ms = date.getMilliseconds().toString().padStart(3, '0');
-      const dateStr = date.toLocaleDateString('th-TH', {
+      const dateStr = date.toLocaleDateString(locale, {
         day: '2-digit', month: '2-digit', year: 'numeric'
       });
       return { timeStr, ms, dateStr };
@@ -268,10 +238,10 @@ export default function Layer7Page() {
                           <div className="p-6 bg-slate-950/30 shadow-inner grid grid-cols-1 md:grid-cols-2 gap-6 text-sm px-16">
                             <div className="space-y-4">
                               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                <Activity className="w-3 h-3" /> Request Details
+                                <Activity className="w-3 h-3" /> {t.details.title}
                               </h4>
                               <div className="space-y-1">
-                                <span className="text-xs text-slate-400 block">Full Request URL</span>
+                                <span className="text-xs text-slate-400 block">{t.details.url}</span>
                                 <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-lg text-slate-300 font-mono text-xs break-all">
                                   <span className="text-emerald-500/70 mr-1">{event.method}</span>
                                   {event.host}{event.fullPath}
@@ -279,23 +249,23 @@ export default function Layer7Page() {
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/50">
-                                  <span className="text-xs text-slate-500 block mb-1">Response Time</span>
+                                  <span className="text-xs text-slate-500 block mb-1">{t.details.responseTime}</span>
                                   <span className="text-slate-200 font-mono flex items-center gap-2">
                                     <Clock className="w-3 h-3 text-slate-400" /> {event.latency}
                                   </span>
                                 </div>
                                 <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/50">
-                                  <span className="text-xs text-slate-500 block mb-1">Dest Port</span>
+                                  <span className="text-xs text-slate-500 block mb-1">{t.details.destPort}</span>
                                   <span className="text-slate-200 font-mono">{event.dstPort}</span>
                                 </div>
                               </div>
                             </div>
                             <div className="space-y-4">
                               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                <Monitor className="w-3 h-3" /> Client Info
+                                <Monitor className="w-3 h-3" /> {t.details.clientInfo}
                               </h4>
                               <div className="space-y-1">
-                                <span className="text-xs text-slate-400 block">User Agent</span>
+                                <span className="text-xs text-slate-400 block">{t.details.userAgent}</span>
                                 <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-lg text-slate-400 text-xs break-words font-mono leading-relaxed">
                                   {event.userAgent}
                                 </div>
@@ -304,8 +274,8 @@ export default function Layer7Page() {
                                 <div className="flex items-start gap-3 text-red-400 text-xs mt-3 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
                                   <ShieldAlert className="w-5 h-5 shrink-0" />
                                   <div>
-                                    <span className="font-bold block mb-0.5">Security Alert</span>
-                                    <span>Potential unauthorized access or bad request detected (Status {event.status}).</span>
+                                    <span className="font-bold block mb-0.5">{t.details.securityAlert}</span>
+                                    <span>{t.details.securityMsg.replace("{status}", event.status.toString())}</span>
                                   </div>
                                 </div>
                               )}
@@ -321,7 +291,7 @@ export default function Layer7Page() {
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-500 text-sm">
                     <div className="flex flex-col items-center gap-2">
                         <Search className="w-8 h-8 opacity-20" />
-                        <span>No events found matching "{searchTerm}"</span>
+                        <span>{t.noData.message.replace("{term}", searchTerm)}</span>
                     </div>
                   </td>
                 </tr>

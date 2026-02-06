@@ -18,6 +18,7 @@ import {
   ChevronsRight
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
+import { translations } from "@/locales/dict"; 
 
 // Mock Data
 const BASE_TIME = new Date("2024-01-16T12:00:00Z").getTime();
@@ -44,49 +45,13 @@ const EVENTS = Array.from({ length: 200 }, (_, i) => ({
 
 export default function Layer3Page() {
   const { language } = useLanguage(); 
+  const t = translations.layer3[language as keyof typeof translations.layer3] || translations.layer3.EN;
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25); 
-
-  const content = {
-    EN: {
-      title: "Layer 3 Traffic Analysis",
-      subtitle: "Network Layer Monitoring (TCP/UDP/ICMP)",
-      placeholder: "Search IP, Port, Protocol...", 
-      filters: "Filters",
-      rowsPerPage: "Rows per page:",
-      of: "of",
-      tableHeaders: {
-        timestamp: "Timestamp",
-        protocol: "Protocol",
-        source: "Source",
-        destination: "Destination",
-        status: "Status",
-        size: "Size"
-      }
-    },
-    TH: {
-      title: "วิเคราะห์จราจรข้อมูล Layer 3",
-      subtitle: "การตรวจสอบ Network Layer (TCP/UDP/ICMP)",
-      placeholder: "Search IP, Port, Protocol...", 
-      filters: "ตัวกรอง",
-      rowsPerPage: "แถวต่อหน้า:",
-      of: "จาก",
-      tableHeaders: {
-        timestamp: "เวลา",
-        protocol: "โปรโตคอล",
-        source: "ต้นทาง",
-        destination: "ปลายทาง",
-        status: "สถานะ",
-        size: "ขนาด"
-      }
-    }
-  };
-
-  const t = language === "EN" ? content.EN : content.TH;
 
   const toggleRow = (id: number) => {
     setExpandedRow(expandedRow === id ? null : id);
@@ -99,11 +64,12 @@ export default function Layer3Page() {
   const formatDetailedTime = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      const timeStr = date.toLocaleTimeString('th-TH', { 
+      const locale = language === "TH" ? "th-TH" : "en-US";
+      const timeStr = date.toLocaleTimeString(locale, { 
         hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' 
       });
       const ms = date.getMilliseconds().toString().padStart(3, '0');
-      const dateStr = date.toLocaleDateString('th-TH', {
+      const dateStr = date.toLocaleDateString(locale, {
         day: '2-digit', month: '2-digit', year: 'numeric'
       });
       return { timeStr, ms, dateStr };
@@ -138,7 +104,6 @@ export default function Layer3Page() {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* CSS Custom Scrollbar */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
@@ -170,7 +135,7 @@ export default function Layer3Page() {
             <Search className="w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder={t.placeholder} // ✅ ใช้ placeholder (English)
+              placeholder={t.placeholder}
               className="w-full bg-transparent text-sm outline-none text-slate-200 placeholder:text-slate-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -192,13 +157,13 @@ export default function Layer3Page() {
             <thead className="sticky top-0 z-10 bg-slate-950 text-slate-400 font-medium border-b border-slate-800 uppercase text-[11px] tracking-wider shadow-md">
               <tr>
                 <th className="w-10 px-6 py-4 pl-4 text-center">#</th>
-                <th className="px-4 py-4 min-w-[140px]">{t.tableHeaders.timestamp}</th>
-                <th className="px-4 py-4 w-24 text-center">{t.tableHeaders.protocol}</th>
-                <th className="px-4 py-4 min-w-[180px]">{t.tableHeaders.source}</th>
+                <th className="px-4 py-4 min-w-[140px]">{t.headers.timestamp}</th>
+                <th className="px-4 py-4 w-24 text-center">{t.headers.protocol}</th>
+                <th className="px-4 py-4 min-w-[180px]">{t.headers.source}</th>
                 <th className="px-2 py-4 w-8"></th>
-                <th className="px-4 py-4 min-w-[180px]">{t.tableHeaders.destination}</th>
-                <th className="px-4 py-4 w-28 text-center">{t.tableHeaders.status}</th>
-                <th className="px-6 py-4 pr-4 text-right">{t.tableHeaders.size}</th>
+                <th className="px-4 py-4 min-w-[180px]">{t.headers.destination}</th>
+                <th className="px-4 py-4 w-28 text-center">{t.headers.status}</th>
+                <th className="px-6 py-4 pr-4 text-right">{t.headers.size}</th>
               </tr>
             </thead>
             
@@ -269,7 +234,7 @@ export default function Layer3Page() {
                           </div>
                           {event.dstPort !== 0 && (
                                <span className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                 <Monitor className="w-3 h-3" /> Port: {event.dstPort}
+                                  <Monitor className="w-3 h-3" /> Port: {event.dstPort}
                                </span>
                           )}
                       </div>
@@ -297,11 +262,11 @@ export default function Layer3Page() {
                                 <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500/30"></div>
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-                                        <Network className="w-3.5 h-3.5 text-blue-500" /> Packet Details
+                                        <Network className="w-3.5 h-3.5 text-blue-500" /> {t.details.packetDetails}
                                     </h4>
                                     <div className="grid grid-cols-2 gap-3 text-xs">
                                         <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                                            <span className="text-slate-500 block mb-1">TCP Flags</span>
+                                            <span className="text-slate-500 block mb-1">{t.details.tcpFlags}</span>
                                             <div className="flex gap-1.5 flex-wrap">
                                                 {event.flags && event.flags.length > 0 ? (
                                                     event.flags.map(f => (
@@ -311,11 +276,11 @@ export default function Layer3Page() {
                                             </div>
                                         </div>
                                         <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                                            <span className="text-slate-500 block mb-1">TTL</span>
+                                            <span className="text-slate-500 block mb-1">{t.details.ttl}</span>
                                             <span className="font-mono text-slate-200 font-bold">{event.ttl || "-"}</span>
                                         </div>
                                         <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 col-span-2">
-                                            <span className="text-slate-500 block mb-1">Network Interface</span>
+                                            <span className="text-slate-500 block mb-1">{t.details.networkInterface}</span>
                                             <span className="font-mono text-slate-200 flex items-center gap-2">
                                                 <Activity className="w-3 h-3 text-slate-400" /> {event.interface || "eth0"}
                                             </span>
@@ -324,19 +289,19 @@ export default function Layer3Page() {
                                 </div>
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-                                        <Info className="w-3.5 h-3.5 text-emerald-500" /> Context & Info
+                                        <Info className="w-3.5 h-3.5 text-emerald-500" /> {t.details.contextInfo}
                                     </h4>
                                     <div className="space-y-3">
                                         <div className="flex justify-between border-b border-slate-800 pb-2">
-                                            <span className="text-slate-500 text-xs">Source ASN</span>
+                                            <span className="text-slate-500 text-xs">{t.details.sourceAsn}</span>
                                             <span className="text-slate-300 font-mono text-xs">{event.srcAsn || "Unknown"}</span>
                                         </div>
                                         <div className="flex justify-between border-b border-slate-800 pb-2">
-                                            <span className="text-slate-500 text-xs">Destination ASN</span>
+                                            <span className="text-slate-500 text-xs">{t.details.destAsn}</span>
                                             <span className="text-slate-300 font-mono text-xs">{event.dstAsn || "Unknown"}</span>
                                         </div>
                                         <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg text-slate-400 text-xs italic mt-2">
-                                            Note: <span className="text-slate-300 not-italic">{event.info}</span>
+                                            {t.details.note}: <span className="text-slate-300 not-italic">{event.info}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -351,7 +316,7 @@ export default function Layer3Page() {
                   <td colSpan={8} className="px-6 py-12 text-center text-slate-500 text-sm">
                     <div className="flex flex-col items-center gap-2">
                         <Search className="w-8 h-8 opacity-20" />
-                        <span>No events found matching "{searchTerm}"</span>
+                        <span>{t.noData.message.replace("{term}", searchTerm)}</span>
                     </div>
                   </td>
                 </tr>

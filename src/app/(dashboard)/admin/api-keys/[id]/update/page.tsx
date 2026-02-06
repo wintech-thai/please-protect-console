@@ -12,7 +12,8 @@ import {
   Shield 
 } from "lucide-react";
 import { toast } from "sonner";
-
+import { useLanguage } from "@/context/LanguageContext"; 
+import { translations } from "@/locales/dict"; 
 import { apiKeyApi } from "@/modules/auth/api/api-key.api";
 import { roleApi } from "@/modules/auth/api/role.api";
 
@@ -42,6 +43,10 @@ interface ApiKeyBody {
 }
 
 export default function UpdateApiKeyPage() {
+  const { language } = useLanguage();
+  
+  const t = translations.updateApiKey[language as keyof typeof translations.updateApiKey] || translations.updateApiKey.EN;
+
   const router = useRouter();
   const params = useParams();
   const keyId = params?.id as string;
@@ -111,7 +116,7 @@ export default function UpdateApiKeyPage() {
         }
 
         if (!keyData) {
-            toast.error("API Key data not found");
+            toast.error(t.toast.dataNotFound); 
             return;
         }
 
@@ -137,14 +142,14 @@ export default function UpdateApiKeyPage() {
 
       } catch (error) {
         console.error("Failed to load API key data:", error);
-        toast.error("Failed to load API key information");
+        toast.error(t.toast.loadError); 
       } finally {
         setIsLoadingData(false);
       }
     };
 
     initData();
-  }, [keyId]);
+  }, [keyId, t.toast.loadError, t.toast.dataNotFound]);
 
   // --- Helper: Check Dirty State ---
   const checkIsDirty = () => {
@@ -199,7 +204,7 @@ export default function UpdateApiKeyPage() {
 
   const handleSubmit = async () => {
     const newErrors: { [key: string]: string } = {};
-    if (!formData.description.trim()) newErrors.description = "Description is required";
+    if (!formData.description.trim()) newErrors.description = t.validation.description;
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length > 0) return;
@@ -220,12 +225,12 @@ export default function UpdateApiKeyPage() {
         };
 
         await apiKeyApi.updateApiKeyById(keyId, payload);
-        toast.success("API Key updated successfully");
+        toast.success(t.toast.updateSuccess); 
         
         router.push(`/admin/api-keys?highlight=${keyId}`);
       } catch (error: any) {
         console.error("Failed to update API key:", error);
-        toast.error("Failed to update API key");
+        toast.error(t.toast.updateError); 
       } finally {
         setIsSubmitting(false);
       }
@@ -237,7 +242,7 @@ export default function UpdateApiKeyPage() {
       <div className="flex h-full items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span>Loading API key...</span>
+          <span>{t.loading}</span> 
         </div>
       </div>
     );
@@ -254,12 +259,12 @@ export default function UpdateApiKeyPage() {
             </button>
             <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                    Update API Key
+                    {t.title}
                     <span className="text-xs font-normal text-slate-500 px-2 py-0.5 rounded-full border border-slate-800 bg-slate-900 font-mono">
                       {originalKey?.keyName}
                     </span>
                 </h1>
-                <p className="text-slate-400 text-sm mt-0.5">Edit API key details and permissions</p>
+                <p className="text-slate-400 text-sm mt-0.5">{t.subHeader}</p>
             </div>
         </div>
       </div>
@@ -272,13 +277,13 @@ export default function UpdateApiKeyPage() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
-                    API Key Information
+                    {t.infoTitle}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Key Name - Read Only & cursor-default */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-400">
-                            Key Name <span className="text-red-400">*</span>
+                            {t.labels.keyName} <span className="text-red-400">*</span>
                         </label>
                         <input 
                             type="text" 
@@ -291,13 +296,13 @@ export default function UpdateApiKeyPage() {
                     {/* Description - Editable */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">
-                            Key Description <span className="text-red-400">*</span>
+                            {t.labels.description} <span className="text-red-400">*</span>
                         </label>
                         <input 
                             type="text" 
                             value={formData.description}
                             onChange={e => setFormData({...formData, description: e.target.value})}
-                            placeholder="Purpose of this key..."
+                            placeholder={t.placeholders.description}
                             className={`w-full bg-slate-950 border ${errors.description ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
                         />
                          {errors.description && <p className="text-red-400 text-xs">{errors.description}</p>}
@@ -309,19 +314,18 @@ export default function UpdateApiKeyPage() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
-                    Roles & Permissions
+                    {t.rolesTitle}
                 </h2>
                 
-                {/* Custom Role Dropdown */}
                 <div className="mb-6 max-w-xl">
-                    <label className="text-sm font-medium text-slate-300 mb-2 block">Select Custom Role (Optional)</label>
+                    <label className="text-sm font-medium text-slate-300 mb-2 block">{t.labels.customRole}</label>
                     <div className="relative">
                         <select 
                             value={formData.customRole}
                             onChange={e => setFormData({...formData, customRole: e.target.value})}
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer text-sm"
                         >
-                            <option value="">Select custom role...</option>
+                            <option value="">{t.labels.selectRole}</option>
                             {customRolesList.map(role => (
                                 <option key={role.id} value={role.id}>
                                     {role.name}
@@ -334,21 +338,20 @@ export default function UpdateApiKeyPage() {
                     </div>
                 </div>
 
-                {/* System Roles Transfer List */}
                 <div>
                     <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-purple-400" /> System Roles
+                        <Shield className="w-4 h-4 text-purple-400" /> {t.labels.systemRoles}
                     </h3>
                     <div className="flex flex-col md:flex-row gap-4 items-center">
                         {/* Available Roles (Left) */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
-                                <span>Available Roles</span>
+                                <span>{t.labels.availableRoles}</span>
                                 <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] text-slate-500">{leftRoles.length}</span>
                             </div>
                             <div className="p-2 overflow-y-auto flex-1 no-scrollbar space-y-1">
                                 {leftRoles.length === 0 ? (
-                                    <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">No roles available</div>
+                                    <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesAvailable}</div>
                                 ) : (
                                     leftRoles.map(role => (
                                         <div 
@@ -382,27 +385,24 @@ export default function UpdateApiKeyPage() {
                         {/* Selected Roles (Right) */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
-                                <span>Selected Roles</span>
+                                <span>{t.labels.selectedRoles}</span>
                                 <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] text-slate-500">{rightRoles.length}</span>
                             </div>
                             <div className="p-2 overflow-y-auto flex-1 no-scrollbar space-y-1">
                                 {rightRoles.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 opacity-50">
-                                        <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center"><ChevronRight className="w-5 h-5 text-slate-700" /></div>
-                                        <span className="text-xs">No roles selected</span>
-                                    </div>
+                                    <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesSelected}</div>
                                 ) : (
                                     rightRoles.map(role => (
                                         <div 
                                             key={role.id} 
-                                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedRight.includes(role.id) ? 'bg-red-500/10 border border-red-500/30' : 'hover:bg-slate-900 border border-transparent'}`}
+                                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedRight.includes(role.id) ? 'bg-blue-600/10 border border-blue-600/30' : 'hover:bg-slate-900 border border-transparent'}`}
                                             onClick={() => handleCheck(role.id, "right")}
                                         >
-                                            <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors ${checkedRight.includes(role.id) ? 'bg-red-500 border-red-500' : 'border-slate-600'}`}>
+                                            <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors ${checkedRight.includes(role.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
                                                 {checkedRight.includes(role.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
                                             </div>
                                             <div>
-                                                <p className={`text-sm font-medium ${checkedRight.includes(role.id) ? 'text-red-400' : 'text-slate-200'}`}>{role.name}</p>
+                                                <p className={`text-sm font-medium ${checkedRight.includes(role.id) ? 'text-blue-400' : 'text-slate-200'}`}>{role.name}</p>
                                                 <p className="text-xs text-slate-500 leading-relaxed mt-0.5">{role.desc}</p>
                                             </div>
                                         </div>
@@ -419,13 +419,15 @@ export default function UpdateApiKeyPage() {
 
       {/* Footer Buttons */}
       <div className="flex-none p-4 md:px-8 border-t border-slate-800 bg-slate-950 flex justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-            <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">Cancel</button>
+            <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">
+                {t.buttons.cancel}
+            </button>
             <button 
                 onClick={handleSubmit} 
                 disabled={isSubmitting} 
                 className={`px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all font-medium text-sm flex items-center gap-2`}
             >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.buttons.save}
             </button>
       </div>
 
@@ -433,11 +435,15 @@ export default function UpdateApiKeyPage() {
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
-                <h3 className="text-lg font-bold text-white mb-2">Leave Page</h3>
-                <p className="text-sm text-slate-400 mb-6">You have unsaved changes. Are you sure you want to leave?</p>
+                <h3 className="text-lg font-bold text-white mb-2">{t.modal.title}</h3>
+                <p className="text-sm text-slate-400 mb-6">{t.modal.message}</p>
                 <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={() => router.push(`/admin/api-keys?highlight=${keyId}`)} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">OK</button>
+                    <button onClick={() => setShowExitDialog(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+                        {t.buttons.stay}
+                    </button>
+                    <button onClick={() => router.push(`/admin/api-keys?highlight=${keyId}`)} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg shadow-red-500/20 transition-all">
+                        {t.modal.ok}
+                    </button>
                 </div>
             </div>
         </div>

@@ -6,26 +6,10 @@ import { LanguageProvider } from "@/context/LanguageContext";
 
 const prompt = localFont({
   src: [
-    {
-      path: './fonts/Prompt-Light.ttf',
-      weight: '300',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Prompt-Regular.ttf',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Prompt-Medium.ttf',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Prompt-Bold.ttf',
-      weight: '700',
-      style: 'normal',
-    },
+    { path: './fonts/Prompt-Light.ttf', weight: '300', style: 'normal' },
+    { path: './fonts/Prompt-Regular.ttf', weight: '400', style: 'normal' },
+    { path: './fonts/Prompt-Medium.ttf', weight: '500', style: 'normal' },
+    { path: './fonts/Prompt-Bold.ttf', weight: '700', style: 'normal' },
   ],
   variable: '--font-prompt', 
   display: 'swap',
@@ -62,10 +46,12 @@ export default function RootLayout({
           {children}
           
           <Toaster 
-            richColors        // ให้สีเขียว/แดง สดใส
-            position="top-center" // ย้ายมาอยู่ตรงกลางด้านบน
-            closeButton       // มีปุ่มปิด
-            theme="dark"      // ปรับธีมให้เข้ากับพื้นหลังสีเข้มของเว็บ
+            richColors       
+            position="top-center"
+            closeButton      
+            theme="dark"
+            className={prompt.className}
+            style={{ fontFamily: 'var(--font-prompt)' }} 
           />
           
         </LanguageProvider>

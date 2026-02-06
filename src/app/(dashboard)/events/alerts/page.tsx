@@ -13,31 +13,13 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
 import { ComingSoon } from "@/components/ui/coming-soon"; 
-
-const translations = {
-  EN: {
-    header: "Security Alerts",
-    subHeader: "Real-time threat detection module",
-    cardTitle: "Security Alerts",
-    description: "Coming soon",
-    filters: "Filters",
-    rowsPerPage: "Rows per page:",
-    of: "of"
-  },
-  TH: {
-    header: "การแจ้งเตือนความปลอดภัย",
-    subHeader: "โมดูลตรวจจับภัยคุกคามแบบเรียลไทม์",
-    cardTitle: "การแจ้งเตือนความปลอดภัย",
-    description: "พบกันเร็วๆนี้",
-    filters: "ตัวกรอง",
-    rowsPerPage: "แถวต่อหน้า:",
-    of: "จาก"
-  }
-};
+import { translations } from "@/locales/dict"; // ✅ Import Dictionary
 
 export default function AlertsPage() {
   const { language } = useLanguage();
-  const t = translations[language as keyof typeof translations] || translations.EN;
+  
+  // ✅ ดึงคำแปลจาก Dictionary
+  const t = translations.alerts[language as keyof typeof translations.alerts] || translations.alerts.EN;
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -67,7 +49,7 @@ export default function AlertsPage() {
             <Search className="w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search alerts..." 
+              placeholder={t.searchPlaceholder} // ✅ ใช้คำแปล
               className="w-full bg-transparent text-sm outline-none text-slate-200 placeholder:text-slate-500"
             />
           </div>
