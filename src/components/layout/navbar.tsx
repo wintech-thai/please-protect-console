@@ -19,13 +19,20 @@ import {
   FileText,
   ShieldAlert
 } from "lucide-react";
-import { useState, useMemo } from "react"; 
+import { useState, useMemo, useEffect } from "react"; 
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+// ✅ 1. Import Tooltip components
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext"; 
 import { authApi } from "@/modules/auth/api/auth.api"; 
@@ -48,10 +55,23 @@ export function Navbar() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   
   const [userAvatar, setUserAvatar] = useState<string | null>(null); 
-
   
+  // ✅ 2. เพิ่ม State สำหรับเก็บชื่อ Username
+  const [username, setUsername] = useState<string | null>(null);
+
   const { language, setLanguage } = useLanguage(); 
   const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
+
+  // ✅ 3. ดึงชื่อ User จาก LocalStorage เมื่อโหลดหน้าเว็บ
+  useEffect(() => {
+    // ตรวจสอบว่ารันบน Client side
+    if (typeof window !== "undefined") {
+      const storedUsername = localStorage.getItem("username"); // หรือ key ที่คุณใช้เก็บชื่อ
+      if (storedUsername) {
+        setUsername(storedUsername);
+      }
+    }
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -238,19 +258,35 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* User Profile Dropdown */}
+            {/* User Profile Dropdown with Tooltip */}
             <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-center outline-none group">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-900 to-slate-800 border border-blue-700/50 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.15)] group-hover:border-cyan-500/50 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 overflow-hidden">
-                          {userAvatar ? (
-                             <img src={userAvatar} alt="User Avatar" className="w-full h-full object-cover" />
-                          ) : (
-                             <User className="w-5 h-5 text-blue-200 group-hover:text-cyan-400 transition-colors" />
-                          )}
-                      </div>
-                  </button>
-              </DropdownMenuTrigger>
+              
+              {/* ✅ 4. ใช้ TooltipProvider และ Tooltip ครอบ DropdownMenuTrigger */}
+              <TooltipProvider disableHoverableContent>
+                <Tooltip delayDuration={100}>
+                  
+                  {/* TooltipTrigger */}
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                        <button className="flex items-center justify-center outline-none group">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-900 to-slate-800 border border-blue-700/50 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.15)] group-hover:border-cyan-500/50 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 overflow-hidden">
+                                {userAvatar ? (
+                                  <img src={userAvatar} alt="User Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="w-5 h-5 text-blue-200 group-hover:text-cyan-400 transition-colors" />
+                                )}
+                            </div>
+                        </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+
+                  {/* ✅ 5. ส่วนเนื้อหาของ Tooltip แสดงชื่อ Username */}
+                  <TooltipContent side="bottom" align="end" className="bg-[#0B1120] text-blue-100 border-blue-900/30 shadow-lg px-3 py-1.5 rounded-md">
+                    <p className="font-medium text-xs">{username || "User"}</p>
+                  </TooltipContent>
+
+                </Tooltip>
+              </TooltipProvider>
               
               <DropdownMenuContent align="end" className="w-[200px] p-1 bg-[#0B1120] border border-blue-900/30 shadow-2xl shadow-black rounded-lg text-blue-100 mt-2">
                   <DropdownMenuItem 
