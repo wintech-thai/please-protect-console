@@ -40,7 +40,6 @@ interface GetUserResponse {
 
 export default function UpdateUserPage() {
   const { language } = useLanguage();
-  
   const t = translations.updateUser[language as keyof typeof translations.updateUser] || translations.updateUser.EN;
 
   const router = useRouter();
@@ -108,7 +107,7 @@ export default function UpdateUserPage() {
         const userData = responseWrapper.orgUser;
 
         if (!userData) {
-            toast.error(t.toast.dataNotFound); 
+            toast.error(t.toast.dataNotFound);
             return;
         }
 
@@ -121,34 +120,34 @@ export default function UpdateUserPage() {
             customRole: userData.customRoleId || ""
         });
 
-        // Map User Roles
-        let userRoleIds: string[] = [];
+        let userRoleNames: string[] = [];
         if (Array.isArray(userData.roles)) {
-            userRoleIds = userData.roles.map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)));
+            userRoleNames = userData.roles.map((r: any) => 
+              (typeof r === 'string' ? r : (r.roleName || r.name || ""))
+            );
         }
 
-        const selectedRoles = allSystemRoles.filter(r => userRoleIds.includes(r.id));
-        const availableRoles = allSystemRoles.filter(r => !userRoleIds.includes(r.id));
+        const selectedRoles = allSystemRoles.filter(r => userRoleNames.includes(r.name));
+        const availableRoles = allSystemRoles.filter(r => !userRoleNames.includes(r.name));
 
         setRightRoles(selectedRoles);
         setLeftRoles(availableRoles);
 
       } catch (error) {
         console.error("Failed to load user data:", error);
-        toast.error(t.toast.loadError); 
+        toast.error(t.toast.loadError);
       } finally {
         setIsLoadingData(false);
       }
     };
 
     initData();
-  }, [userId, t.toast.loadError, t.toast.dataNotFound]); 
+  }, [userId, t.toast.loadError, t.toast.dataNotFound]);
 
   // --- Helper: Check Dirty State ---
   const checkIsDirty = () => {
     if (!originalUser) return false;
 
-    // 1. Check Tags
     const originalTags = originalUser.tags 
         ? originalUser.tags.split(',').filter(t => t.trim() !== "").sort().join(',') 
         : "";
@@ -156,26 +155,23 @@ export default function UpdateUserPage() {
     if (originalTags !== currentTags) return true;
     if (tagInput.trim() !== "") return true;
 
-    // 2. Check Custom Role
     const originalCustomRole = originalUser.customRoleId || "";
     if (formData.customRole !== originalCustomRole) return true;
 
-    // 3. Check System Roles
     let originalRoleIdsStr = "";
     if (Array.isArray(originalUser.roles)) {
         originalRoleIdsStr = originalUser.roles
-            .map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)))
+            .map((r: any) => (typeof r === 'string' ? r : (r.roleName || r.name)))
             .sort()
             .join(',');
     }
     
-    const currentRoleIds = rightRoles.map(r => r.id).slice().sort().join(',');
-    if (originalRoleIdsStr !== currentRoleIds) return true;
+    const currentRoleIdsStr = rightRoles.map(r => r.name).slice().sort().join(',');
+    if (originalRoleIdsStr !== currentRoleIdsStr) return true;
 
     return false;
   };
 
-  // --- Handlers ---
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim()) {
       e.preventDefault();
@@ -221,14 +217,12 @@ export default function UpdateUserPage() {
   };
 
   const handleSubmit = async () => {
-    // 1. Prepare Tags
     let finalTags = [...formData.tags];
     const pendingTag = tagInput.trim();
     if (pendingTag && !finalTags.includes(pendingTag)) {
         finalTags.push(pendingTag);
     }
 
-    // 2. Validation
     const newErrors: { [key: string]: string } = {};
     if (finalTags.length === 0) newErrors.tags = "At least one tag is required";
     setErrors(newErrors);
@@ -246,11 +240,12 @@ export default function UpdateUserPage() {
         let originalRoleIdsStr = "";
         if (Array.isArray(originalUser.roles)) {
             originalRoleIdsStr = originalUser.roles
-                .map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)))
+                .map((r: any) => (typeof r === 'string' ? r : (r.roleName || r.name)))
                 .sort()
                 .join(',');
         }
-        const currentRoleIdsStr = rightRoles.map(r => r.id).slice().sort().join(',');
+        
+        const currentRoleIdsStr = rightRoles.map(r => r.name).slice().sort().join(',');
 
         const isChanged = 
             originalTags !== finalTagsStr ||
@@ -271,7 +266,8 @@ export default function UpdateUserPage() {
                 userEmail: formData.email || originalUser.userEmail,
                 tags: finalTags.join(','),
                 customRoleId: formData.customRole || null,
-                roles: rightRoles.map(r => r.id)
+                
+                roles: rightRoles.map(r => r.name)
             };
 
             await userApi.updateUserById(userId, payload);
@@ -281,7 +277,7 @@ export default function UpdateUserPage() {
 
         } catch (error: any) {
             console.error("Failed to update user:", error);
-            toast.error(t.toast.updateError); 
+            toast.error(t.toast.updateError);
         } finally {
             setIsSubmitting(false);
         }
@@ -293,7 +289,7 @@ export default function UpdateUserPage() {
       <div className="flex h-full items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span>{t.loading}</span> 
+          <span>{t.loading}</span>
         </div>
       </div>
     );
@@ -456,10 +452,7 @@ export default function UpdateUserPage() {
                             </div>
                             <div className="p-2 overflow-y-auto flex-1 no-scrollbar space-y-1">
                                 {rightRoles.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 opacity-50">
-                                        <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center"><ChevronRight className="w-5 h-5 text-slate-700" /></div>
-                                        <span className="text-xs">{t.noRolesSelected}</span>
-                                    </div>
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesSelected}</div>
                                 ) : (
                                     rightRoles.map(role => (
                                         <div 

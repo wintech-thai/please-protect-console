@@ -13,12 +13,11 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
 import { ComingSoon } from "@/components/ui/coming-soon"; 
-import { translations } from "@/locales/dict"; // ✅ Import Dictionary
+import { translations } from "@/locales/dict"; 
 
 export default function AlertsPage() {
   const { language } = useLanguage();
   
-  // ✅ ดึงคำแปลจาก Dictionary
   const t = translations.alerts[language as keyof typeof translations.alerts] || translations.alerts.EN;
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,7 +48,7 @@ export default function AlertsPage() {
             <Search className="w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder={t.searchPlaceholder} // ✅ ใช้คำแปล
+              placeholder={t.searchPlaceholder} 
               className="w-full bg-transparent text-sm outline-none text-slate-200 placeholder:text-slate-500"
             />
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
 import { 
   ChevronLeft, 
   X, 
@@ -27,7 +27,6 @@ interface RoleItem {
 
 export default function CreateUserPage() {
   const { language } = useLanguage();
-  
   const t = translations.createUser[language as keyof typeof translations.createUser] || translations.createUser.EN;
 
   const router = useRouter();
@@ -71,13 +70,10 @@ export default function CreateUserPage() {
     const prevHighlight = searchParams.get("prevHighlight");
     if (prevHighlight) {
         setReturnToId(prevHighlight);
-
         const params = new URLSearchParams(searchParams.toString());
         params.delete("prevHighlight");
-        
         const newQuery = params.toString();
         const newPath = newQuery ? `${pathname}?${newQuery}` : pathname;
-        
         window.history.replaceState(null, '', newPath);
     }
   }, [searchParams, pathname]);
@@ -120,7 +116,7 @@ export default function CreateUserPage() {
 
       } catch (error) {
         console.error("Failed to fetch roles:", error);
-        toast.error(t.toast.rolesError); 
+        toast.error(t.toast.rolesError);
       } finally {
         setIsLoadingData(false);
       }
@@ -190,7 +186,7 @@ export default function CreateUserPage() {
     }
 
     const newErrors: { [key: string]: string } = {};
-    if (!formData.username) newErrors.username = t.validation.username; 
+    if (!formData.username) newErrors.username = t.validation.username;
     if (!formData.email) newErrors.email = t.validation.email;
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.validation.emailInvalid;
     if (finalTags.length === 0) newErrors.tags = t.validation.tags;
@@ -205,7 +201,8 @@ export default function CreateUserPage() {
           tmpUserEmail: formData.email,
           tags: finalTags.join(','), 
           customRoleId: formData.customRole, 
-          roles: rightRoles.map(r => r.id),
+          
+          roles: rightRoles.map(r => r.name), 
         };
 
         const response = await userApi.inviteUser(payload);
@@ -221,7 +218,7 @@ export default function CreateUserPage() {
 
       } catch (error: any) {
         console.error("Failed to invite user:", error);
-        toast.error(error?.message || t.toast.error); 
+        toast.error(error?.message || t.toast.error);
       } finally {
         setIsSubmitting(false);
       }
@@ -231,13 +228,12 @@ export default function CreateUserPage() {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteLink);
     setIsCopied(true);
-    toast.success(t.toast.copySuccess); 
+    toast.success(t.toast.copySuccess);
     setTimeout(() => setIsCopied(false), 2000);
   };
 
   const handleFinish = () => {
     setShowInviteModal(false);
-    
     if (createdUserId) {
         router.push(`/admin/users?highlight=${createdUserId}`);
     } else {
@@ -250,7 +246,7 @@ export default function CreateUserPage() {
       <div className="flex h-full items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span>{t.loading}</span> 
+          <span>{t.loading}</span>
         </div>
       </div>
     );
@@ -258,8 +254,6 @@ export default function CreateUserPage() {
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 text-slate-200">
-      
-      {/* Header */}
       <div className="flex-none pt-6 px-4 md:px-8 mb-4">
         <div className="flex items-center gap-4">
             <button onClick={handleCancel} className="p-2 hover:bg-slate-800 rounded-full transition-colors border border-slate-700/50 text-slate-400 hover:text-white">
@@ -272,11 +266,9 @@ export default function CreateUserPage() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 overflow-y-auto pb-8 no-scrollbar">
         <div className="px-4 md:px-8 space-y-6"> 
             
-            {/* 1. User Information Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
@@ -326,7 +318,6 @@ export default function CreateUserPage() {
                 </div>
             </div>
 
-            {/* 2. Roles & Permissions Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
@@ -354,7 +345,6 @@ export default function CreateUserPage() {
                     </div>
                 </div>
 
-                {/* System Roles Transfer List */}
                 <div>
                     <h3 className="text-sm font-medium text-slate-300 mb-3">{t.labels.systemRoles}</h3>
                     <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -386,7 +376,6 @@ export default function CreateUserPage() {
                             </div>
                         </div>
 
-                        {/* Middle Buttons */}
                         <div className="flex flex-row md:flex-col gap-3">
                              <button onClick={moveRight} disabled={checkedLeft.length === 0} className="p-2.5 bg-slate-800 hover:bg-blue-600 disabled:opacity-30 disabled:hover:bg-slate-800 rounded-full border border-slate-700 text-slate-300 hover:text-white transition-all shadow-lg">
                                  <ChevronRight className="w-5 h-5" />
@@ -396,7 +385,6 @@ export default function CreateUserPage() {
                              </button>
                         </div>
 
-                        {/* Selected Roles (Right) */}
                         <div className="flex-1 w-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-[320px]">
                             <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider flex justify-between items-center">
                                 <span>{t.labels.selectedRoles}</span>
@@ -434,7 +422,6 @@ export default function CreateUserPage() {
         </div>
       </div>
 
-      {/* Footer Buttons */}
       <div className="flex-none p-4 md:px-8 border-t border-slate-800 bg-slate-950 flex justify-end gap-3 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
             <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">
                 {t.buttons.cancel}
@@ -444,7 +431,6 @@ export default function CreateUserPage() {
             </button>
       </div>
 
-      {/* Invitation Success Modal */}
       {showInviteModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-100 animate-in zoom-in-95 duration-300 relative">
@@ -467,7 +453,6 @@ export default function CreateUserPage() {
         </div>
       )}
 
-      {/* Exit Modal & CSS */}
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
