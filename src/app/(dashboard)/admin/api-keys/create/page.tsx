@@ -174,7 +174,7 @@ export default function CreateApiKeyPage() {
           keyName: formData.keyName,
           description: formData.description,
           customRoleId: formData.customRole, 
-          roles: rightRoles.map(r => r.id),
+          roles: rightRoles.map(r => r.name),
         };
 
         const response = await apiKeyApi.createApiKey(payload);

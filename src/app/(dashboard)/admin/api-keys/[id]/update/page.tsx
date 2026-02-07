@@ -76,7 +76,6 @@ export default function UpdateApiKeyPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showExitDialog, setShowExitDialog] = useState(false);
 
-  // --- 1. Fetch Data ---
   useEffect(() => {
     const initData = async () => {
       if (!keyId) return;
@@ -89,7 +88,6 @@ export default function UpdateApiKeyPage() {
           roleApi.getCustomRoles()
         ]);
 
-        // 1.1 Process System Roles
         const systemRolesData = Array.isArray(rolesRes) ? rolesRes : (rolesRes?.data || []);
         const allSystemRoles: RoleItem[] = systemRolesData.map((r: any) => ({
           id: r.roleId || r.id, 
@@ -97,7 +95,6 @@ export default function UpdateApiKeyPage() {
           desc: r.roleDescription || r.roleDesc || "-" 
         }));
 
-        // 1.2 Process Custom Roles
         const customRolesData = Array.isArray(customRolesRes) ? customRolesRes : (customRolesRes?.data || []);
         const mappedCustomRoles = customRolesData.map((r: any) => ({
           id: r.customRoleId || r.roleId || r.id,
@@ -106,7 +103,6 @@ export default function UpdateApiKeyPage() {
         }));
         setCustomRolesList(mappedCustomRoles);
 
-        // 1.3 Process API Key Data
         let keyData = keyRes as any;
         if (keyData.apiKey) keyData = keyData.apiKey;
         else if (keyData.orgApiKey) keyData = keyData.orgApiKey;
@@ -128,14 +124,13 @@ export default function UpdateApiKeyPage() {
             customRole: keyData.customRoleId || ""
         });
 
-        // 1.4 Map Existing Roles
-        let currentRoleIds: string[] = [];
+        let currentRoleNames: string[] = [];
         if (Array.isArray(keyData.roles)) {
-            currentRoleIds = keyData.roles.map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)));
+            currentRoleNames = keyData.roles.map((r: any) => (typeof r === 'string' ? r : (r.roleName || r.name)));
         }
 
-        const selectedRoles = allSystemRoles.filter(r => currentRoleIds.includes(r.id));
-        const availableRoles = allSystemRoles.filter(r => !currentRoleIds.includes(r.id));
+        const selectedRoles = allSystemRoles.filter(r => currentRoleNames.includes(r.name));
+        const availableRoles = allSystemRoles.filter(r => !currentRoleNames.includes(r.name));
 
         setRightRoles(selectedRoles);
         setLeftRoles(availableRoles);
@@ -158,15 +153,15 @@ export default function UpdateApiKeyPage() {
     if (formData.description !== (originalKey.keyDescription || "")) return true;
     if (formData.customRole !== (originalKey.customRoleId || "")) return true;
 
-    let originalRoleIdsStr = "";
+    let originalRoleNamesStr = "";
     if (Array.isArray(originalKey.roles)) {
-        originalRoleIdsStr = originalKey.roles
-            .map((r: any) => (typeof r === 'string' ? r : (r.roleId || r.id)))
+        originalRoleNamesStr = originalKey.roles
+            .map((r: any) => (typeof r === 'string' ? r : (r.roleName || r.name)))
             .sort()
             .join(',');
     }
-    const currentRoleIdsStr = rightRoles.map(r => r.id).slice().sort().join(',');
-    if (originalRoleIdsStr !== currentRoleIdsStr) return true;
+    const currentRoleNamesStr = rightRoles.map(r => r.name).sort().join(',');
+    if (originalRoleNamesStr !== currentRoleNamesStr) return true;
 
     return false;
   };
@@ -221,7 +216,7 @@ export default function UpdateApiKeyPage() {
             ...originalKey,
             keyDescription: formData.description,
             customRoleId: formData.customRole || null,
-            roles: rightRoles.map(r => r.id)
+            roles: rightRoles.map(r => r.name)
         };
 
         await apiKeyApi.updateApiKeyById(keyId, payload);
@@ -280,7 +275,7 @@ export default function UpdateApiKeyPage() {
                     {t.infoTitle}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Key Name - Read Only & cursor-default */}
+                    {/* Key Name - Read Only */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-400">
                             {t.labels.keyName} <span className="text-red-400">*</span>
@@ -434,7 +429,7 @@ export default function UpdateApiKeyPage() {
       {/* Exit Modal */}
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <h3 className="text-lg font-bold text-white mb-2">{t.modal.title}</h3>
                 <p className="text-sm text-slate-400 mb-6">{t.modal.message}</p>
                 <div className="flex justify-end gap-3">
