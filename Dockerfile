@@ -8,12 +8,14 @@ COPY package.json package-lock.json ./
 RUN npm install
 
 FROM node:20-alpine AS builder
+ARG version
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL=/api/proxy
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_APP_VERSION=$version
 
 ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
