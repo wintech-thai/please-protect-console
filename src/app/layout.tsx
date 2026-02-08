@@ -1,30 +1,15 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local"; 
+import { Toaster } from "sonner";
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext"; 
 
 const prompt = localFont({
   src: [
-    {
-      path: './fonts/Prompt-Light.ttf',
-      weight: '300',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Prompt-Regular.ttf',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Prompt-Medium.ttf',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Prompt-Bold.ttf',
-      weight: '700',
-      style: 'normal',
-    },
+    { path: './fonts/Prompt-Light.ttf', weight: '300', style: 'normal' },
+    { path: './fonts/Prompt-Regular.ttf', weight: '400', style: 'normal' },
+    { path: './fonts/Prompt-Medium.ttf', weight: '500', style: 'normal' },
+    { path: './fonts/Prompt-Bold.ttf', weight: '700', style: 'normal' },
   ],
   variable: '--font-prompt', 
   display: 'swap',
@@ -59,6 +44,16 @@ export default function RootLayout({
       >
         <LanguageProvider>
           {children}
+          
+          <Toaster 
+            richColors       
+            position="top-center"
+            closeButton      
+            theme="dark"
+            className={prompt.className}
+            style={{ fontFamily: 'var(--font-prompt)' }} 
+          />
+          
         </LanguageProvider>
       </body>
     </html>

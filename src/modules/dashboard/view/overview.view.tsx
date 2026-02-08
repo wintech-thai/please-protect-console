@@ -3,53 +3,21 @@
 import { Activity, ShieldCheck, AlertTriangle, Server, Wifi } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
 import { useEffect, useState } from "react";
+import { translations } from "@/locales/dict";
 
 export default function OverviewView() {
   const { language } = useLanguage();
   const [mounted, setMounted] = useState(false);
+  const t = translations.overview[language as keyof typeof translations.overview] || translations.overview.EN;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const content = {
-    EN: {
-      title: "System Overview",
-      subtitle: "Real-time monitoring dashboard",
-      stats: [
-        { label: "Total Traffic", sub: "+12% from last hour" },
-        { label: "Threats Blocked", sub: "High Severity" },
-        { label: "Active Sensors", sub: "All systems operational" },
-        { label: "Pending Alerts", sub: "Action required" },
-      ],
-      chartTitle: "Traffic Analysis (Layer 7)",
-      recentAlertsTitle: "Recent Alerts",
-      alertMessage: "Suspicious Activity Detected",
-      timeAgo: "2m ago",
-      waitingForData: "Waiting for traffic data..."
-    },
-    TH: {
-      title: "ภาพรวมระบบ",
-      subtitle: "แดชบอร์ดติดตามสถานะแบบเรียลไทม์",
-      stats: [
-        { label: "ปริมาณ Traffic รวม", sub: "+12% จากชั่วโมงก่อน" },
-        { label: "ภัยคุกคามที่ถูกบล็อก", sub: "ความรุนแรงระดับสูง" },
-        { label: "เซ็นเซอร์ที่ทำงาน", sub: "ระบบทำงานปกติทั้งหมด" },
-        { label: "การแจ้งเตือนรอตรวจสอบ", sub: "ต้องดำเนินการทันที" },
-      ],
-      chartTitle: "วิเคราะห์จราจรข้อมูล (Layer 7)",
-      recentAlertsTitle: "การแจ้งเตือนล่าสุด",
-      alertMessage: "ตรวจพบกิจกรรมน่าสงสัย",
-      timeAgo: "2 นาทีที่แล้ว",
-      waitingForData: "กำลังรอข้อมูลจราจร..."
-    }
-  };
-
-  const t = language === "EN" ? content.EN : content.TH;
-
   const STATS_DATA = [
     { 
-      ...t.stats[0], 
+      label: t.stats.traffic.label,
+      sub: t.stats.traffic.sub,
       value: "2.4 GB", 
       icon: <Activity />, 
       bg: "bg-blue-500/10", 
@@ -57,27 +25,30 @@ export default function OverviewView() {
       border: "border-blue-500/20"
     },
     { 
-      ...t.stats[1],
+      label: t.stats.threats.label,
+      sub: t.stats.threats.sub,
       value: "1,024", 
       icon: <ShieldCheck />, 
       bg: "bg-cyan-500/10", 
-      text: "text-cyan-400",
+      text: "text-cyan-400", 
       border: "border-cyan-500/20" 
     },
     { 
-      ...t.stats[2],
+      label: t.stats.sensors.label,
+      sub: t.stats.sensors.sub,
       value: "12/12", 
       icon: <Server />, 
       bg: "bg-emerald-500/10", 
-      text: "text-emerald-400",
+      text: "text-emerald-400", 
       border: "border-emerald-500/20" 
     },
     { 
-      ...t.stats[3],
+      label: t.stats.alerts.label,
+      sub: t.stats.alerts.sub,
       value: "5", 
       icon: <AlertTriangle />, 
       bg: "bg-amber-500/10", 
-      text: "text-amber-400",
+      text: "text-amber-400", 
       border: "border-amber-500/20" 
     },
   ];
@@ -85,15 +56,12 @@ export default function OverviewView() {
   return (
     <div className="w-full h-full flex flex-col gap-6 pt-6 px-8 md:px-12 pb-10 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* ✅ CSS: รวม Style ไว้ที่นี่ที่เดียว เพื่อแก้ Error Nested Tag */}
       <style jsx>{`
-        /* Scrollbar หลัก */
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; border: 2px solid #0f172a; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        /* Scrollbar แบบบาง (สำหรับ Alerts) */
         .custom-scrollbar-thin::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -193,7 +161,6 @@ export default function OverviewView() {
              <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">Today</span>
           </div>
 
-          {/* ✅ ใช้ class 'custom-scrollbar-thin' ที่ประกาศไว้ด้านบน (เอา style tag ออกแล้ว) */}
           <div className="space-y-3 overflow-y-auto custom-scrollbar-thin pr-2 -mr-2">
               {[1, 2, 3, 4, 5, 6].map((_, i) => (
                 <div 

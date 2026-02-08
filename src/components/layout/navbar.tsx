@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LogOut, 
   Menu, 
@@ -12,26 +12,34 @@ import {
   AlertTriangle,
   Globe,
   Check,
-  User,      
+  User,       
   Lock,
-  X,
-  Mail,
-  Briefcase,
-  Camera,
   Users,
   Key,
   FileText,
   ShieldAlert
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react"; 
+import { useState, useMemo, useEffect } from "react"; 
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+// ✅ 1. Import Tooltip components
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext"; 
+import { authApi } from "@/modules/auth/api/auth.api"; 
+import { toast } from "sonner";
+import { UpdateProfileModal } from "@/components/modals/update-profile-modal"; 
+import { ChangePasswordModal } from "@/components/modals/change-password-modal";
+import { translations } from "@/locales/dict"; 
 
 interface NavItem {
   label: string;
@@ -41,122 +49,74 @@ interface NavItem {
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null); 
+  
+  // ✅ 2. เพิ่ม State สำหรับเก็บชื่อ Username
+  const [username, setUsername] = useState<string | null>(null);
 
   const { language, setLanguage } = useLanguage(); 
+  const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
 
-  const translations = {
-    EN: {
-      profile: "Profile",
-      changePassword: "Change Password",
-      logout: "Logout",
-      updateProfile: "Update Profile",
-      manageAccount: "Manage your account information.",
-      fullName: "Full Name",
-      email: "Email Address",
-      role: "Role",
-      cancel: "Cancel",
-      saveProfile: "Save Profile",
-      saveChanges: "Save Changes",
-      currentPass: "Current Password",
-      newPass: "New Password",
-      confirmPass: "Confirm New Password",
-      enterCurrent: "Enter current password",
-      enterNew: "Enter new password",
-      confirmNew: "Confirm new password",
-      updatePassDesc: "Please update your password to continue.",
-      clickToChange: "Click image to change avatar",
-      // Administrator Submenu
-      adminUsers: "Users",
-      adminRoles: "Custom Roles",
-      adminApi: "API Keys",
-      adminAudit: "Audit Log"
-    },
-    TH: {
-      profile: "ข้อมูลส่วนตัว",
-      changePassword: "เปลี่ยนรหัสผ่าน",
-      logout: "ออกจากระบบ",
-      updateProfile: "แก้ไขข้อมูลส่วนตัว",
-      manageAccount: "จัดการข้อมูลบัญชีผู้ใช้ของคุณ",
-      fullName: "ชื่อ-นามสกุล",
-      email: "อีเมล",
-      role: "สิทธิ์การใช้งาน",
-      cancel: "ยกเลิก",
-      saveProfile: "บันทึกข้อมูล",
-      saveChanges: "บันทึกการเปลี่ยนแปลง",
-      currentPass: "รหัสผ่านปัจจุบัน",
-      newPass: "รหัสผ่านใหม่",
-      confirmPass: "ยืนยันรหัสผ่านใหม่",
-      enterCurrent: "กรอกรหัสผ่านปัจจุบัน",
-      enterNew: "กรอกรหัสผ่านใหม่",
-      confirmNew: "ยืนยันรหัสผ่านใหม่",
-      updatePassDesc: "กรุณาอัปเดตรหัสผ่านเพื่อดำเนินการต่อ",
-      clickToChange: "คลิกที่รูปเพื่อเปลี่ยนโปรไฟล์",
-      // Administrator Submenu
-      adminUsers: "ผู้ใช้งาน",
-      adminRoles: "สิทธิ์การใช้งาน",
-      adminApi: "คีย์ API",
-      adminAudit: "บันทึกการใช้งาน"
+  // ✅ 3. ดึงชื่อ User จาก LocalStorage เมื่อโหลดหน้าเว็บ
+  useEffect(() => {
+    // ตรวจสอบว่ารันบน Client side
+    if (typeof window !== "undefined") {
+      const storedUsername = localStorage.getItem("username"); // หรือ key ที่คุณใช้เก็บชื่อ
+      if (storedUsername) {
+        setUsername(storedUsername);
+      }
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await authApi.signOut();
+    } catch (error) {
+      console.error("Logout API failed:", error);
+    } finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("username");
+      localStorage.removeItem("orgId");
+
+      document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "refreshToken=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
+      document.cookie = "orgId=; path=/; max-age=0; SameSite=Lax";
+
+      toast.success(t.logoutSuccess); 
+      setIsMobileMenuOpen(false);
+      router.push("/login");
     }
   };
 
-  const text = language === "EN" ? translations.EN : translations.TH;
-
-  const menuItems = {
-    EN: [
-      { label: "Overview", href: "/overview" },
-      { 
-        label: "Events", 
-        href: "/events/layer7",
-        children: [
-          { label: "Layer7 Events", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-          { label: "Layer3 Events", href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
-          { label: "Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
-        ]
-      },
-      // Administrator with Submenu restored
-      { 
-        label: "Administrator", 
-        href: "/admin/users", 
-        children: [
-          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
-          { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
-          { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
-          { label: text.adminAudit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
-        ]
-      },
-    ],
-    TH: [
-      { label: "ภาพรวมระบบ", href: "/overview" },
-      { 
-        label: "เหตุการณ์", 
-        href: "/events/layer7",
-        children: [
-          { label: "เหตุการณ์ Layer 7", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-          { label: "เหตุการณ์ Layer 3", href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
-          { label: "การแจ้งเตือน", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
-        ]
-      },
-      // Administrator with Submenu restored
-      { 
-        label: "ผู้ดูแลระบบ", 
-        href: "/admin/users", 
-        children: [
-          { label: text.adminUsers, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
-          { label: text.adminRoles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
-          { label: text.adminApi, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
-          { label: text.adminAudit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
-        ]
-      },
-    ]
-  };
-
-  const NAV_ITEMS: NavItem[] = language === "EN" ? menuItems.EN : menuItems.TH;
+  const navItems: NavItem[] = useMemo(() => [
+    { label: t.overview, href: "/overview" },
+    { 
+      label: t.events, 
+      href: "/events/layer7",
+      children: [
+        { label: t.layer7, href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
+        { label: t.layer3, href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
+        { label: t.alerts, href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
+      ]
+    },
+    { 
+      label: t.administrator, 
+      href: "/admin/users", 
+      children: [
+        { label: t.roles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
+        { label: t.users, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
+        { label: t.apiKeys, href: "/admin/api-keys", icon: <Key className="w-4 h-4 mr-2" /> },
+        { label: t.audit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
+      ]
+    },
+  ], [t]); 
 
   const isActive = (path: string) => {
     if (path === "/overview") return pathname === path;
@@ -171,25 +131,6 @@ export function Navbar() {
     }
     return false;
   };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  useEffect(() => {
-    if (showPasswordModal || showProfileModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-  }, [showPasswordModal, showProfileModal]);
 
   return (
     <>
@@ -208,14 +149,14 @@ export function Navbar() {
               />
             </div>
             
-            <span className="text-2xl font-bold tracking-tight text-white">
+            <span className="text-2xl font-bold tracking-tight text-white hidden sm:block">
               RTARF <span className="text-cyan-400">SENSOR</span>
             </span>
           </div>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               if (item.children) {
                 return (
                   <DropdownMenu key={item.href} modal={false}>
@@ -224,8 +165,8 @@ export function Navbar() {
                         className={`
                           flex items-center gap-1 px-4 py-2 text-base font-medium transition-all duration-200 rounded-md outline-none
                           ${isParentActive(item) 
-                              ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]" 
-                              : "text-slate-400 hover:text-blue-200 hover:bg-blue-900/20" 
+                            ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]" 
+                            : "text-slate-400 hover:text-blue-200 hover:bg-blue-900/20" 
                           }
                         `} 
                       >
@@ -317,19 +258,35 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* User Profile Dropdown */}
+            {/* User Profile Dropdown with Tooltip */}
             <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-center outline-none group">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-900 to-slate-800 border border-blue-700/50 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.15)] group-hover:border-cyan-500/50 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 overflow-hidden">
-                          {avatarPreview ? (
-                             <img src={avatarPreview} alt="User Avatar" className="w-full h-full object-cover" />
-                          ) : (
-                             <User className="w-5 h-5 text-blue-200 group-hover:text-cyan-400 transition-colors" />
-                          )}
-                      </div>
-                  </button>
-              </DropdownMenuTrigger>
+              
+              {/* ✅ 4. ใช้ TooltipProvider และ Tooltip ครอบ DropdownMenuTrigger */}
+              <TooltipProvider disableHoverableContent>
+                <Tooltip delayDuration={100}>
+                  
+                  {/* TooltipTrigger */}
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                        <button className="flex items-center justify-center outline-none group">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-900 to-slate-800 border border-blue-700/50 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.15)] group-hover:border-cyan-500/50 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all duration-300 overflow-hidden">
+                                {userAvatar ? (
+                                  <img src={userAvatar} alt="User Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="w-5 h-5 text-blue-200 group-hover:text-cyan-400 transition-colors" />
+                                )}
+                            </div>
+                        </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+
+                  {/* ✅ 5. ส่วนเนื้อหาของ Tooltip แสดงชื่อ Username */}
+                  <TooltipContent side="bottom" align="end" className="bg-[#0B1120] text-blue-100 border-blue-900/30 shadow-lg px-3 py-1.5 rounded-md">
+                    <p className="font-medium text-xs">{username || "User"}</p>
+                  </TooltipContent>
+
+                </Tooltip>
+              </TooltipProvider>
               
               <DropdownMenuContent align="end" className="w-[200px] p-1 bg-[#0B1120] border border-blue-900/30 shadow-2xl shadow-black rounded-lg text-blue-100 mt-2">
                   <DropdownMenuItem 
@@ -340,7 +297,7 @@ export function Navbar() {
                     className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-md cursor-pointer outline-none text-slate-300 hover:bg-blue-900/30 hover:text-cyan-400 transition-colors"
                   >
                       <User className="w-4 h-4" />
-                      <span>{text.profile}</span>
+                      <span>{t.profile}</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem 
@@ -351,16 +308,22 @@ export function Navbar() {
                     className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-md cursor-pointer outline-none text-slate-300 hover:bg-blue-900/30 hover:text-cyan-400 transition-colors"
                   >
                       <Lock className="w-4 h-4" />
-                      <span>{text.changePassword}</span>
+                      <span>{t.changePassword}</span>
+                  </DropdownMenuItem>
+
+                  {/* Logout */}
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleLogout();
+                    }}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-md cursor-pointer outline-none text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors border-t border-blue-900/30 mt-1"
+                  >
+                      <LogOut className="w-4 h-4" />
+                      <span>{t.logout}</span>
                   </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <div className="h-6 w-[1px] bg-blue-900/30 mx-1"></div>
-
-            <Link href="/login" className="flex items-center justify-center w-9 h-9 rounded-full text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors" title={text.logout}>
-              <LogOut className="w-5 h-5" />
-            </Link>
 
             <button 
               className="md:hidden text-slate-300 hover:text-white p-1"
@@ -374,7 +337,7 @@ export function Navbar() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 w-full bg-[#0B1120] border-b border-blue-900/30 shadow-lg max-h-[80vh] overflow-y-auto z-40 animate-in slide-in-from-top-2 text-blue-100">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <div key={item.label}>
                 <Link
                   href={item.href}
@@ -409,7 +372,7 @@ export function Navbar() {
                 }}
                 className="flex w-full items-center gap-3 px-4 py-4 text-base text-slate-400 hover:text-cyan-400 hover:bg-blue-900/10 outline-none"
               >
-                  <User className="w-5 h-5" /> {text.profile}
+                  <User className="w-5 h-5" /> {t.profile}
               </button>
               <button 
                 onClick={() => {
@@ -418,28 +381,35 @@ export function Navbar() {
                 }}
                 className="flex w-full items-center gap-3 px-4 py-4 text-base text-slate-400 hover:text-cyan-400 hover:bg-blue-900/10 outline-none"
               >
-                  <Lock className="w-5 h-5" /> {text.changePassword}
+                  <Lock className="w-5 h-5" /> {t.changePassword}
+              </button>
+
+              <button 
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 px-4 py-4 text-base text-red-400 hover:text-red-300 hover:bg-red-900/10 outline-none"
+              >
+                  <LogOut className="w-5 h-5" /> {t.logout}
               </button>
             </div>
 
             <div className="p-4 bg-[#020617]/50">
-              <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Language</p>
+              <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">{t.language}</p>
               <div className="grid grid-cols-2 gap-2">
                   <button 
-                      onClick={() => setLanguage("EN")}
-                      className={cn(
-                          "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
-                          language === "EN" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
-                      )}
+                    onClick={() => setLanguage("EN")}
+                    className={cn(
+                        "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
+                        language === "EN" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
+                    )}
                   >
                     🇬🇧 English
                   </button>
                   <button 
-                      onClick={() => setLanguage("TH")}
-                      className={cn(
-                          "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
-                          language === "TH" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
-                      )}
+                    onClick={() => setLanguage("TH")}
+                    className={cn(
+                        "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
+                        language === "TH" ? "bg-[#0B1120] border-cyan-500 text-cyan-400" : "bg-[#0B1120] border-blue-900/30 text-slate-400"
+                    )}
                   >
                     🇹🇭 ไทย
                   </button>
@@ -449,134 +419,15 @@ export function Navbar() {
         )}
       </nav>
 
-      {/* CHANGE PASSWORD MODAL */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0B1120] border border-blue-900/30 rounded-xl shadow-2xl shadow-black w-full max-w-[500px] mx-4 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-start p-6 pb-2 border-b border-blue-900/20">
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">{text.changePassword}</h2>
-                <p className="text-sm text-slate-400 mt-1">{text.updatePassDesc}</p>
-              </div>
-              <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">{text.currentPass}</label>
-                <input type="password" placeholder={text.enterCurrent} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"/>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">{text.newPass}</label>
-                <input type="password" placeholder={text.enterNew} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"/>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">{text.confirmPass}</label>
-                <input type="password" placeholder={text.confirmNew} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"/>
-              </div>
-            </div>
-            <div className="p-4 px-6 border-t border-blue-900/20 flex justify-end gap-3 bg-[#020617]/30">
-              <button onClick={() => setShowPasswordModal(false)} className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:text-white transition-colors">{text.cancel}</button>
-              <button className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all shadow-lg shadow-blue-500/20">{text.saveChanges}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ChangePasswordModal 
+        isOpen={showPasswordModal} 
+        onClose={() => setShowPasswordModal(false)} 
+      />
 
-      {/* PROFILE MODAL */}
-      {showProfileModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0B1120] border border-blue-900/30 rounded-xl shadow-2xl shadow-black w-full max-w-[500px] mx-4 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
-            
-            {/* Header */}
-            <div className="flex justify-between items-start p-6 pb-2 border-b border-blue-900/20">
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">{text.updateProfile}</h2>
-                <p className="text-sm text-slate-400 mt-1">{text.manageAccount}</p>
-              </div>
-              <button onClick={() => setShowProfileModal(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-5">
-              
-              {/* Profile Picture */}
-              <div className="flex flex-col items-center mb-6">
-                 <div 
-                    className="relative group cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                 >
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-900 to-slate-800 border-2 border-blue-700/50 flex items-center justify-center shadow-lg shadow-blue-500/10 overflow-hidden relative">
-                        {avatarPreview ? (
-                           <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
-                        ) : (
-                           <User className="w-10 h-10 text-cyan-400" />
-                        )}
-                    </div>
-                    
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <Camera className="w-8 h-8 text-white/90" />
-                    </div>
-                 </div>
-                 
-                 {/* Hidden Input */}
-                 <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={handleImageChange}
-                 />
-                 <p className="mt-3 text-sm font-medium text-slate-300">Administrator</p>
-                 <p className="text-xs text-slate-500">{text.clickToChange}</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                   <User className="w-3.5 h-3.5 text-cyan-500" /> {text.fullName}
-                </label>
-                <input 
-                  type="text" 
-                  placeholder={text.fullName}
-                  className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                   <Mail className="w-3.5 h-3.5 text-cyan-500" /> {text.email}
-                </label>
-                <input 
-                  type="email" 
-                  placeholder={text.email}
-                  className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                   <Briefcase className="w-3.5 h-3.5 text-slate-500" /> {text.role}
-                </label>
-                <input 
-                  type="text" 
-                  placeholder={text.role}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-500 placeholder:text-slate-600"
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 px-6 border-t border-blue-900/20 flex justify-end gap-3 bg-[#020617]/30">
-              <button onClick={() => setShowProfileModal(false)} className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:text-white transition-colors">{text.cancel}</button>
-              <button className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all shadow-lg shadow-blue-500/20">{text.saveProfile}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UpdateProfileModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+      />
     </>
   );
 }

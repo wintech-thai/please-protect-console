@@ -13,31 +13,12 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
 import { ComingSoon } from "@/components/ui/coming-soon"; 
-
-const translations = {
-  EN: {
-    header: "Security Alerts",
-    subHeader: "Real-time threat detection module",
-    cardTitle: "Security Alerts",
-    description: "Coming soon",
-    filters: "Filters",
-    rowsPerPage: "Rows per page:",
-    of: "of"
-  },
-  TH: {
-    header: "การแจ้งเตือนความปลอดภัย",
-    subHeader: "โมดูลตรวจจับภัยคุกคามแบบเรียลไทม์",
-    cardTitle: "การแจ้งเตือนความปลอดภัย",
-    description: "พบกันเร็วๆนี้",
-    filters: "ตัวกรอง",
-    rowsPerPage: "แถวต่อหน้า:",
-    of: "จาก"
-  }
-};
+import { translations } from "@/locales/dict"; 
 
 export default function AlertsPage() {
   const { language } = useLanguage();
-  const t = translations[language as keyof typeof translations] || translations.EN;
+  
+  const t = translations.alerts[language as keyof typeof translations.alerts] || translations.alerts.EN;
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -67,7 +48,7 @@ export default function AlertsPage() {
             <Search className="w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search alerts..." 
+              placeholder={t.searchPlaceholder} 
               className="w-full bg-transparent text-sm outline-none text-slate-200 placeholder:text-slate-500"
             />
           </div>
@@ -81,7 +62,6 @@ export default function AlertsPage() {
       {/* Main Content Card */}
       <div className="flex-1 bg-slate-900 border-y border-slate-800 shadow-2xl overflow-hidden backdrop-blur-sm flex flex-col min-h-0 relative">
         
-        {/* ✅ Middle Content: เปลี่ยนเป็น overflow-hidden เพื่อไม่ให้มี Scrollbar */}
         <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden">
              <ComingSoon 
                 title={t.cardTitle} 
