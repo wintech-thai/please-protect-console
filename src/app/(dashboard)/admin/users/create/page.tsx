@@ -201,7 +201,6 @@ export default function CreateUserPage() {
           tmpUserEmail: formData.email,
           tags: finalTags.join(','), 
           customRoleId: formData.customRole, 
-          
           roles: rightRoles.map(r => r.name), 
         };
 
@@ -210,8 +209,21 @@ export default function CreateUserPage() {
         const newId = (response as any)?.orgUserId || (response as any)?.id || null;
         setCreatedUserId(newId);
 
-        const link = response?.registrationUrl || "Link not found"; 
-        setInviteLink(link);
+        const rawLink = (response as any)?.registrationUrl || ""; 
+        let finalLink = rawLink;
+
+        if (rawLink && typeof window !== "undefined") {
+            const targetDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || window.location.host;
+            
+            let targetProtocol = window.location.protocol; // default
+            if (!targetDomain.includes("localhost")) {
+                targetProtocol = "https:";
+            }
+
+            finalLink = rawLink.replace(/(https?:\/\/)?<REGISTER_SERVICE_DOMAIN>/, `${targetProtocol}//${targetDomain}`);
+        }
+
+        setInviteLink(finalLink || "Link not found");
         
         toast.success(t.toast.success); 
         setShowInviteModal(true);
@@ -432,7 +444,7 @@ export default function CreateUserPage() {
       </div>
 
       {showInviteModal && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-100 animate-in zoom-in-95 duration-300 relative">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-2xl"></div>
                 <div className="flex flex-col items-center text-center">
@@ -454,7 +466,7 @@ export default function CreateUserPage() {
       )}
 
       {showExitDialog && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <h3 className="text-lg font-bold text-white mb-2">{t.modal.title}</h3>
                 <p className="text-sm text-slate-400 mb-6">{t.modal.message}</p>

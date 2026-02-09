@@ -1,4 +1,3 @@
-
 export const translations = {
   profile: {
     EN: {
@@ -67,7 +66,12 @@ export const translations = {
       loading: "Loading...",
       action: "Action",
       save: "Save",
-      cancel: "Cancel"
+      cancel: "Cancel",
+      // [Added] Common fields for forms
+      organization: "Organization",
+      username: "Username",
+      newPassword: "New Password",
+      confirmNewPassword: "Confirm New Password"
     },
     TH: {
       search: "ค้นหา",
@@ -78,7 +82,52 @@ export const translations = {
       loading: "กำลังโหลด...",
       action: "จัดการ",
       save: "บันทึก",
-      cancel: "ยกเลิก"
+      cancel: "ยกเลิก",
+      // [Added]
+      organization: "หน่วยงาน",
+      username: "ชื่อผู้ใช้",
+      newPassword: "รหัสผ่านใหม่",
+      confirmNewPassword: "ยืนยันรหัสผ่านใหม่"
+    }
+  },
+
+  // [New Section] สำหรับหน้า Reset Password
+  customerResetPassword: {
+    EN: {
+      title: "Reset Your Password",
+      description: "Please create a new password for your account.",
+      submitButton: "Reset Password",
+      securityNote: "For your security, this link will expire after 24 hours.",
+      successTitle: "Password Reset Successful",
+      successDesc: "Your password has been successfully updated. You can now log in.",
+      backToLogin: "Back to Login"
+    },
+    TH: {
+      title: "ตั้งรหัสผ่านใหม่",
+      description: "กรุณากำหนดรหัสผ่านใหม่สำหรับบัญชีของคุณ",
+      submitButton: "บันทึกรหัสผ่าน",
+      securityNote: "เพื่อความปลอดภัย ลิงก์นี้จะหมดอายุภายใน 24 ชั่วโมง",
+      successTitle: "เปลี่ยนรหัสผ่านสำเร็จ",
+      successDesc: "รหัสผ่านของคุณได้รับการอัปเดตเรียบร้อยแล้ว คุณสามารถเข้าสู่ระบบได้ทันที",
+      backToLogin: "กลับไปหน้าเข้าสู่ระบบ"
+    }
+  },
+
+  // [New Section] สำหรับเงื่อนไขรหัสผ่าน (ใช้ร่วมกันได้)
+  passwordRequirements: {
+    EN: {
+      title: "Password Requirements:",
+      length: "7-15 characters",
+      upper: "At least one uppercase letter",
+      lower: "At least one lowercase letter",
+      special: "One special character (!, @, #)"
+    },
+    TH: {
+      title: "เงื่อนไขรหัสผ่าน:",
+      length: "ความยาว 7-15 ตัวอักษร",
+      upper: "ตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว",
+      lower: "ตัวพิมพ์เล็กอย่างน้อย 1 ตัว",
+      special: "อักขระพิเศษ (!, @, #) 1 ตัว"
     }
   },
 
@@ -610,6 +659,7 @@ export const translations = {
         disable: "Disable User",
         enable: "Enable User",
         cancel: "Cancel",
+        resetPassword: "Reset Password Link",
         ok: "OK"
       },
       modal: {
@@ -656,6 +706,7 @@ export const translations = {
         disable: "ระงับการใช้งาน",
         enable: "เปิดใช้งาน",
         cancel: "ยกเลิก",
+        resetPassword: "ลิ้งก์รีเซ็ตรหัสผ่าน",
         ok: "ตกลง"
       },
       modal: {
@@ -1154,5 +1205,6 @@ export const translations = {
       of: "จาก"
     }
   }
+  
 
 };

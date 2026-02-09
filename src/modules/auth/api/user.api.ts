@@ -36,6 +36,25 @@ export const userApi = {
     return response.data;
   },
 
+  confirmInvite: async (orgId: string, token: string, payload: any) => {
+    const url = `/api/Registration/org/${orgId}/action/ConfirmNewUserInvitation/${token}/${payload.username}`;
+    const body = {
+      Email: payload.email,
+      UserName: payload.username,
+      Password: payload.password,
+      Name: payload.firstName,
+      LastName: payload.lastName,
+      OrgUserId: payload.orgUserId
+    };
+    const response = await client.post(url, body);
+    return response.data;
+  },
+
+  getForgotPasswordLink: async (orgUserId: string) => {
+    const response = await client.get(`/api/OrganizationUser/org/${getOrgId()}/action/GetForgotPasswordLink/${orgUserId}`);
+    return response.data;
+  },
+
   getUserDetail: async (userName: string) => {
     const response = await client.get(`/api/OnlyUser/org/${getOrgId()}/action/GetUserByUserName/${userName}`);
     return response.data;
@@ -51,6 +70,18 @@ export const userApi = {
     return response.data;
   },
 
+  confirmResetPassword: async (orgId: string, token: string, payload: { password: string; username?: string }) => {
+    const url = `/api/Registration/org/${orgId}/action/ConfirmForgotPasswordReset/${token}`;
+    
+    const body = {
+      Password: payload.password,
+      UserName: payload.username,
+    };
+
+    const response = await client.post(url, body);
+    return response.data;
+  },
+  
   updateUserById: async (userId: string, data: any) => {
     const response = await client.post(`/api/OrganizationUser/org/${getOrgId()}/action/UpdateUserById/${userId}`, data);
     return response.data;
@@ -74,5 +105,5 @@ export const userApi = {
   deleteUser: async (orgUserId: string) => {
     const response = await client.delete(`/api/OrganizationUser/org/${getOrgId()}/action/DeleteUserById/${orgUserId}`);
     return response.data;
-  },
+  }
 };

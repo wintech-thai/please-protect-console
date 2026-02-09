@@ -26,7 +26,6 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-// ✅ 1. Import Tooltip components
 import {
   Tooltip,
   TooltipContent,
@@ -56,17 +55,14 @@ export function Navbar() {
   
   const [userAvatar, setUserAvatar] = useState<string | null>(null); 
   
-  // ✅ 2. เพิ่ม State สำหรับเก็บชื่อ Username
   const [username, setUsername] = useState<string | null>(null);
 
   const { language, setLanguage } = useLanguage(); 
   const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
 
-  // ✅ 3. ดึงชื่อ User จาก LocalStorage เมื่อโหลดหน้าเว็บ
   useEffect(() => {
-    // ตรวจสอบว่ารันบน Client side
     if (typeof window !== "undefined") {
-      const storedUsername = localStorage.getItem("username"); // หรือ key ที่คุณใช้เก็บชื่อ
+      const storedUsername = localStorage.getItem("username"); 
       if (storedUsername) {
         setUsername(storedUsername);
       }
@@ -261,7 +257,6 @@ export function Navbar() {
             {/* User Profile Dropdown with Tooltip */}
             <DropdownMenu modal={false}>
               
-              {/* ✅ 4. ใช้ TooltipProvider และ Tooltip ครอบ DropdownMenuTrigger */}
               <TooltipProvider disableHoverableContent>
                 <Tooltip delayDuration={100}>
                   
@@ -280,7 +275,6 @@ export function Navbar() {
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
 
-                  {/* ✅ 5. ส่วนเนื้อหาของ Tooltip แสดงชื่อ Username */}
                   <TooltipContent side="bottom" align="end" className="bg-[#0B1120] text-blue-100 border-blue-900/30 shadow-lg px-3 py-1.5 rounded-md">
                     <p className="font-medium text-xs">{username || "User"}</p>
                   </TooltipContent>
