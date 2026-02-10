@@ -446,7 +446,7 @@ export default function CreateUserPage() {
       {showInviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-100 animate-in zoom-in-95 duration-300 relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-t-2xl"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r rounded-t-2xl"></div>
                 <div className="flex flex-col items-center text-center">
                     <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mb-4 border border-green-500/20"><UserPlus className="w-7 h-7 text-green-400" /></div>
                     <h3 className="text-xl font-bold text-white mb-1">{t.modal.inviteTitle}</h3>
