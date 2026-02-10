@@ -4,12 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { 
-  LogOut, 
   Menu, 
   ChevronDown, 
   Globe,
   Check,
-  Lock,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react"; 
 import { 
@@ -116,7 +114,7 @@ export function Navbar() {
           {/* Right Actions */}
           <div className="flex items-center gap-3">
             
-            {/* Language Switcher */}
+            {/* Language Switcher (Desktop) */}
             {mounted && (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
@@ -175,27 +173,11 @@ export function Navbar() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 w-full bg-[#0B1120] border-b border-blue-900/30 shadow-lg max-h-[80vh] overflow-y-auto z-40 animate-in slide-in-from-top-2 text-blue-100">
-            <div className="border-b border-blue-900/30">
-              <button 
-                onClick={() => {
-                  setShowPasswordModal(true);
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex w-full items-center gap-3 px-4 py-4 text-base text-slate-400 hover:text-cyan-400 hover:bg-blue-900/10 outline-none"
-              >
-                  <Lock className="w-5 h-5" /> {t.changePassword}
-              </button>
-
-              <button 
-                onClick={handleLogout}
-                className="flex w-full items-center gap-3 px-4 py-4 text-base text-red-400 hover:text-red-300 hover:bg-red-900/10 outline-none"
-              >
-                  <LogOut className="w-5 h-5" /> {t.logout}
-              </button>
-            </div>
-
+            
             <div className="p-4 bg-[#020617]/50">
-              <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">{t.language}</p>
+              <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider flex items-center gap-2">
+                 <Globe className="w-3 h-3" /> {t.language}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                   <button 
                     onClick={() => setLanguage("EN")}

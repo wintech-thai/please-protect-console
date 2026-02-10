@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { UpdateProfileModal } from "@/components/modals/update-profile-modal"; 
 import { ChangePasswordModal } from "@/components/modals/change-password-modal";
 import { translations } from "@/locales/dict"; 
+import { AppVersionDisplay } from "@/components/layout/app-version-display"; 
 
 interface NavItem {
   label: string;
@@ -54,7 +55,6 @@ export function Navbar() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   
   const [userAvatar, setUserAvatar] = useState<string | null>(null); 
-  
   const [username, setUsername] = useState<string | null>(null);
 
   const { language, setLanguage } = useLanguage(); 
@@ -213,6 +213,10 @@ export function Navbar() {
           {/* Right Actions */}
           <div className="flex items-center gap-3">
             
+            <div className="hidden lg:block mr-2 border-r border-blue-900/30 pr-4 h-8 flex items-center">
+                <AppVersionDisplay className="items-end" />
+            </div>
+
             {/* Language Switcher */}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -256,11 +260,8 @@ export function Navbar() {
 
             {/* User Profile Dropdown with Tooltip */}
             <DropdownMenu modal={false}>
-              
               <TooltipProvider disableHoverableContent>
                 <Tooltip delayDuration={100}>
-                  
-                  {/* TooltipTrigger */}
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                         <button className="flex items-center justify-center outline-none group">
@@ -274,11 +275,9 @@ export function Navbar() {
                         </button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
-
                   <TooltipContent side="bottom" align="end" className="bg-[#0B1120] text-blue-100 border-blue-900/30 shadow-lg px-3 py-1.5 rounded-md">
                     <p className="font-medium text-xs">{username || "User"}</p>
                   </TooltipContent>
-
                 </Tooltip>
               </TooltipProvider>
               
@@ -305,7 +304,6 @@ export function Navbar() {
                       <span>{t.changePassword}</span>
                   </DropdownMenuItem>
 
-                  {/* Logout */}
                   <DropdownMenuItem 
                     onSelect={(e) => {
                       e.preventDefault();
@@ -409,6 +407,11 @@ export function Navbar() {
                   </button>
               </div>
             </div>
+
+            <div className="p-6 bg-[#0B1120] border-t border-blue-900/30 ">
+               <AppVersionDisplay />
+            </div>
+
           </div>
         )}
       </nav>

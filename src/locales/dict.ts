@@ -67,7 +67,6 @@ export const translations = {
       action: "Action",
       save: "Save",
       cancel: "Cancel",
-      // [Added] Common fields for forms
       organization: "Organization",
       username: "Username",
       newPassword: "New Password",
@@ -83,7 +82,6 @@ export const translations = {
       action: "จัดการ",
       save: "บันทึก",
       cancel: "ยกเลิก",
-      // [Added]
       organization: "หน่วยงาน",
       username: "ชื่อผู้ใช้",
       newPassword: "รหัสผ่านใหม่",
@@ -91,13 +89,13 @@ export const translations = {
     }
   },
 
-  // [New Section] สำหรับหน้า Reset Password
   customerResetPassword: {
     EN: {
       title: "Reset Your Password",
       description: "Please create a new password for your account.",
       submitButton: "Reset Password",
-      securityNote: "For your security, this link will expire after 24 hours.",
+      subHeader: "Please enter a new password for your account",
+      registrationTermsAndExpiry: "By completing registration, you agree to our Terms of Service and Privacy Policy. This invitation link will expire after 24 hours.",
       successTitle: "Password Reset Successful",
       successDesc: "Your password has been successfully updated. You can now log in.",
       backToLogin: "Back to Login"
@@ -106,28 +104,28 @@ export const translations = {
       title: "ตั้งรหัสผ่านใหม่",
       description: "กรุณากำหนดรหัสผ่านใหม่สำหรับบัญชีของคุณ",
       submitButton: "บันทึกรหัสผ่าน",
-      securityNote: "เพื่อความปลอดภัย ลิงก์นี้จะหมดอายุภายใน 24 ชั่วโมง",
+      subHeader: "กรุณากรอกรหัสผ่านใหม่สำหรับบัญชีของคุณ",
+      registrationTermsAndExpiry: "เมื่อเสร็จสิ้นการลงทะเบียน ถือว่าคุณยอมรับเงื่อนไขการให้บริการและนโยบายความเป็นส่วนตัวของเรา ลิงก์คำเชิญนี้จะหมดอายุภายใน 24 ชั่วโมง",
       successTitle: "เปลี่ยนรหัสผ่านสำเร็จ",
       successDesc: "รหัสผ่านของคุณได้รับการอัปเดตเรียบร้อยแล้ว คุณสามารถเข้าสู่ระบบได้ทันที",
       backToLogin: "กลับไปหน้าเข้าสู่ระบบ"
     }
   },
 
-  // [New Section] สำหรับเงื่อนไขรหัสผ่าน (ใช้ร่วมกันได้)
   passwordRequirements: {
     EN: {
       title: "Password Requirements:",
-      length: "7-15 characters",
-      upper: "At least one uppercase letter",
-      lower: "At least one lowercase letter",
-      special: "One special character (!, @, #)"
+      length: "Password must be between 7-15 characters",
+      upper: "Password must contain at least one uppercase letter",
+      lower: "Password must contain at least one lowercase letter",
+      special: "Password must contain at least one special character (!, @, or #)"
     },
     TH: {
       title: "เงื่อนไขรหัสผ่าน:",
-      length: "ความยาว 7-15 ตัวอักษร",
-      upper: "ตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว",
-      lower: "ตัวพิมพ์เล็กอย่างน้อย 1 ตัว",
-      special: "อักขระพิเศษ (!, @, #) 1 ตัว"
+      length: "รหัสผ่านต้องมีความยาวระหว่าง 7-15 ตัวอักษร",
+      upper: "รหัสผ่านต้องมีตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว",
+      lower: "รหัสผ่านต้องมีตัวพิมพ์เล็กอย่างน้อย 1 ตัว",
+      special: "รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว (!, @, หรือ #)"
     }
   },
 
@@ -1204,7 +1202,46 @@ export const translations = {
       rowsPerPage: "แถวต่อหน้า:",
       of: "จาก"
     }
-  }
+  },
+  userSignup: {
+    EN: {
+      title: "Complete Your Profile",
+      subHeader: "Please fill in your details to continue",
+      submit: "Complete Registration",
+      processing: "Processing...",
+      success: "Registration Completed Successfully",
+      registrationTermsAndExpiry: "By completing registration, you agree to our Terms of Service and Privacy Policy. This invitation link will expire after 24 hours.",
+      error: "Registration Failed. Please try again.",
+      required: "This field is required",
+      passwordMismatch: "Passwords do not match",
+      labels: {
+        firstName: "First Name",
+        lastName: "Last Name",
+        username: "Username",
+        email: "Email",
+        password: "Password",
+        confirmPassword: "Confirm Password"
+      }
+    },
+    TH: {
+      title: "กรอกข้อมูลโปรไฟล์",
+      subHeader: "กรุณากรอกข้อมูลของคุณเพื่อดำเนินการต่อ",
+      submit: "ยืนยันการลงทะเบียน",
+      processing: "กำลังดำเนินการ...",
+      success: "ลงทะเบียนสำเร็จ",
+      registrationTermsAndExpiry: "เมื่อเสร็จสิ้นการลงทะเบียน ถือว่าคุณยอมรับเงื่อนไขการให้บริการและนโยบายความเป็นส่วนตัวของเรา ลิงก์คำเชิญนี้จะหมดอายุภายใน 24 ชั่วโมง",
+      error: "ลงทะเบียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+      required: "กรุณาระบุข้อมูล",
+      passwordMismatch: "รหัสผ่านไม่ตรงกัน",
+      labels: {
+        firstName: "ชื่อจริง",
+        lastName: "นามสกุล",
+        username: "ชื่อผู้ใช้",
+        email: "อีเมล",
+        password: "รหัสผ่าน",
+        confirmPassword: "ยืนยันรหัสผ่าน"
+      }
+    }
+  },
   
-
 };

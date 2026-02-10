@@ -70,13 +70,28 @@ export const userApi = {
     return response.data;
   },
 
-  confirmResetPassword: async (orgId: string, token: string, payload: { password: string; username?: string }) => {
-    const url = `/api/Registration/org/${orgId}/action/ConfirmForgotPasswordReset/${token}`;
+  confirmResetPassword: async (
+    orgId: string, 
+    token: string, 
+    payload: { 
+      password: string; 
+      username: string; 
+      email: string;      
+      orgUserId: string;  
+    }
+  ) => {
     
+    const url = `/api/Registration/org/${orgId}/action/ConfirmForgotPasswordReset/${token}/${payload.username}`;
+
     const body = {
       Password: payload.password,
       UserName: payload.username,
+      Email: payload.email,         
+      OrgUserId: payload.orgUserId, 
     };
+
+    console.log("🚀 Calling API:", url);
+    console.log("📦 Payload:", body);
 
     const response = await client.post(url, body);
     return response.data;
