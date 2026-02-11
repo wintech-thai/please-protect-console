@@ -184,7 +184,7 @@ export const translations = {
       changePassword: "Change Password",
       logout: "Logout",
       logoutSuccess: "Logged out successfully",
-      
+
       overview: "Overview",
       events: "Events",
       layer7: "Layer7 Events",
@@ -195,7 +195,7 @@ export const translations = {
       roles: "Custom Roles",
       apiKeys: "API Keys",
       audit: "Audit Log",
-      
+
       language: "Language"
     },
     TH: {
@@ -214,7 +214,7 @@ export const translations = {
       roles: "สิทธิ์ตามบทบาท",
       apiKeys: "กุญแจ API",
       audit: "ตรวจสอบการใช้งาน",
-      
+
       language: "ภาษา"
     }
   },
@@ -222,33 +222,63 @@ export const translations = {
   overview: {
     EN: {
       title: "System Overview",
-      subtitle: "Real-time monitoring dashboard",
+      subtitle: "Real-time server metrics from Prometheus",
       stats: {
-        traffic: { label: "Total Traffic", sub: "+12% from last hour" },
-        threats: { label: "Threats Blocked", sub: "High Severity" },
-        sensors: { label: "Active Sensors", sub: "All systems operational" },
-        alerts: { label: "Pending Alerts", sub: "Action required" }
+        cpu: { label: "CPU Usage", sub: "Average across all cores" },
+        memory: { label: "Memory Usage", sub: "Used / Total" },
+        network: { label: "Network I/O", sub: "RX + TX combined rate" },
+        disk: { label: "Disk Usage", sub: "Used / Total" }
       },
-      chartTitle: "Traffic Analysis (Layer 7)",
-      recentAlertsTitle: "Recent Alerts",
-      alertMessage: "Suspicious Activity Detected",
-      timeAgo: "2m ago",
-      waitingForData: "Waiting for traffic data..."
+      chartTitle: "CPU Load (1h)",
+      load1: "Load 1m",
+      load5: "Load 5m",
+      load15: "Load 15m",
+      systemInfo: "System Information",
+      cpuCores: "CPU Cores",
+      loadAvg: "Load Average",
+      memBreakdown: "Memory",
+      diskBreakdown: "Disk",
+      total: "Total",
+      used: "Used",
+      available: "Available",
+      mountpoint: "Mount",
+      loading: "Loading metrics...",
+      error: "Failed to load metrics",
+      retry: "Retry",
+      lastUpdated: "Last updated",
+      autoRefresh: "Auto-refresh: 30s",
+      rxRate: "RX",
+      txRate: "TX"
     },
     TH: {
       title: "ภาพรวมระบบ",
-      subtitle: "แดชบอร์ดติดตามสถานะแบบเรียลไทม์",
+      subtitle: "ข้อมูล Metric แบบเรียลไทม์จาก Prometheus",
       stats: {
-        traffic: { label: "ปริมาณ Traffic รวม", sub: "+12% จากชั่วโมงก่อน" },
-        threats: { label: "ภัยคุกคามที่ถูกบล็อก", sub: "ความรุนแรงระดับสูง" },
-        sensors: { label: "เซ็นเซอร์ที่ทำงาน", sub: "ระบบทำงานปกติทั้งหมด" },
-        alerts: { label: "การแจ้งเตือนรอตรวจสอบ", sub: "ต้องดำเนินการทันที" }
+        cpu: { label: "การใช้ CPU", sub: "เฉลี่ยทุก Core" },
+        memory: { label: "การใช้หน่วยความจำ", sub: "ใช้งาน / ทั้งหมด" },
+        network: { label: "เครือข่าย I/O", sub: "อัตรา RX + TX รวม" },
+        disk: { label: "การใช้ดิสก์", sub: "ใช้งาน / ทั้งหมด" }
       },
-      chartTitle: "วิเคราะห์จราจรข้อมูล (Layer 7)",
-      recentAlertsTitle: "การแจ้งเตือนล่าสุด",
-      alertMessage: "ตรวจพบกิจกรรมน่าสงสัย",
-      timeAgo: "2 นาทีที่แล้ว",
-      waitingForData: "กำลังรอข้อมูลจราจร..."
+      chartTitle: "โหลด CPU (1 ชั่วโมง)",
+      load1: "โหลด 1 นาที",
+      load5: "โหลด 5 นาที",
+      load15: "โหลด 15 นาที",
+      systemInfo: "ข้อมูลระบบ",
+      cpuCores: "จำนวน Core",
+      loadAvg: "โหลดเฉลี่ย",
+      memBreakdown: "หน่วยความจำ",
+      diskBreakdown: "ดิสก์",
+      total: "ทั้งหมด",
+      used: "ใช้งาน",
+      available: "คงเหลือ",
+      mountpoint: "จุดเมานท์",
+      loading: "กำลังโหลด Metrics...",
+      error: "โหลด Metrics ไม่สำเร็จ",
+      retry: "ลองอีกครั้ง",
+      lastUpdated: "อัปเดตล่าสุด",
+      autoRefresh: "รีเฟรชอัตโนมัติ: 30 วินาที",
+      rxRate: "รับ",
+      txRate: "ส่ง"
     }
   },
 
@@ -315,7 +345,7 @@ export const translations = {
     EN: {
       title: "Layer 3 Traffic Analysis",
       subtitle: "Network Layer Monitoring (TCP/UDP/ICMP)",
-      placeholder: "Search IP, Port, Protocol...", 
+      placeholder: "Search IP, Port, Protocol...",
       filters: "Filters",
       rowsPerPage: "Rows per page:",
       of: "of",
@@ -344,7 +374,7 @@ export const translations = {
     TH: {
       title: "วิเคราะห์จราจรข้อมูล Layer 3",
       subtitle: "การตรวจสอบ Network Layer (TCP/UDP/ICMP)",
-      placeholder: "ค้นหา IP, Port, Protocol...", 
+      placeholder: "ค้นหา IP, Port, Protocol...",
       filters: "ตัวกรอง",
       rowsPerPage: "แถวต่อหน้า:",
       of: "จาก",
@@ -1245,5 +1275,5 @@ export const translations = {
       }
     }
   },
-  
+
 };
