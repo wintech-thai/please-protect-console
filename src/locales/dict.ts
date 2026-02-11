@@ -98,6 +98,7 @@ export const translations = {
       registrationTermsAndExpiry: "By completing registration, you agree to our Terms of Service and Privacy Policy. This invitation link will expire after 24 hours.",
       successTitle: "Password Reset Successful",
       successDesc: "Your password has been successfully updated. You can now log in.",
+      passwordMismatch: "Passwords do not match",
       backToLogin: "Back to Login"
     },
     TH: {
@@ -108,6 +109,7 @@ export const translations = {
       registrationTermsAndExpiry: "เมื่อเสร็จสิ้นการลงทะเบียน ถือว่าคุณยอมรับเงื่อนไขการให้บริการและนโยบายความเป็นส่วนตัวของเรา ลิงก์คำเชิญนี้จะหมดอายุภายใน 24 ชั่วโมง",
       successTitle: "เปลี่ยนรหัสผ่านสำเร็จ",
       successDesc: "รหัสผ่านของคุณได้รับการอัปเดตเรียบร้อยแล้ว คุณสามารถเข้าสู่ระบบได้ทันที",
+      passwordMismatch: "รหัสผ่านไม่ตรงกัน",
       backToLogin: "กลับไปหน้าเข้าสู่ระบบ"
     }
   },

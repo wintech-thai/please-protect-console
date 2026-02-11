@@ -46,7 +46,6 @@ export default function CustomerResetPasswordForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Destructure dictionary
   const t = dictionary?.forms?.customerResetPassword || {};
   const common = dictionary?.forms?.common || {};
   const reqsDict = dictionary?.forms?.passwordRequirements || {};

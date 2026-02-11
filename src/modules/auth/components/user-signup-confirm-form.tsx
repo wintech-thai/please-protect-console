@@ -234,11 +234,11 @@ export default function UserSignupConfirmForm({
                 )}
               </button>
             </div>
-            {errors.password && (
+            {/* {errors.password && (
               <p className="text-red-400 text-xs ml-1">
                 {errors.password.message}
               </p>
-            )}
+            )} */}
           </div>
 
           <div className="space-y-1.5">
