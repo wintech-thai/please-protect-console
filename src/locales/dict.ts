@@ -1207,8 +1207,8 @@ export const translations = {
   },
   userSignup: {
     EN: {
-      title: "Complete Your Profile",
-      subHeader: "Please fill in your details to continue",
+      title: "Complete Your Registration",
+      subHeader: "Please fill in your details to complete registration",
       submit: "Complete Registration",
       processing: "Processing...",
       success: "Registration Completed Successfully",
@@ -1226,8 +1226,8 @@ export const translations = {
       }
     },
     TH: {
-      title: "กรอกข้อมูลโปรไฟล์",
-      subHeader: "กรุณากรอกข้อมูลของคุณเพื่อดำเนินการต่อ",
+      title: "ลงทะเบียนของคุณให้เสร็จสิ้น",
+      subHeader: "กรุณากรอกรายละเอียดเพื่อทำการลงทะเบียนให้เสร็จสมบูรณ์",
       submit: "ยืนยันการลงทะเบียน",
       processing: "กำลังดำเนินการ...",
       success: "ลงทะเบียนสำเร็จ",
