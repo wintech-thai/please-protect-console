@@ -59,7 +59,6 @@ export default function SignInView() {
 
   const onSubmit = async (data: LoginSchemaType) => {
     try {
-      //เรียก API Login
       const res = await authApi.signIn(data);
       const token = res?.token?.access_token;
 
@@ -81,18 +80,24 @@ export default function SignInView() {
         try {
           const orgs = await authApi.getUserAllowedOrg();
           
+          let orgIdToSave = "default"; 
+
           if (Array.isArray(orgs) && orgs.length > 0) {
             const firstOrg = orgs[0] as any;
-            const orgIdToSave = firstOrg.orgCustomId || "default";
-            localStorage.setItem("orgId", orgIdToSave);
-            document.cookie = `orgId=${orgIdToSave}; path=/; max-age=604800; SameSite=Lax`;
-            console.log("🏢 Organization ID set to:", orgIdToSave);
+            orgIdToSave = firstOrg.orgCustomId || firstOrg.id || "default";
+            console.log("Organization ID found:", orgIdToSave);
           } else {
-             localStorage.setItem("orgId", "default");
+             console.log("No orgs found, using default");
           }
+
+          localStorage.setItem("orgId", orgIdToSave);
+          document.cookie = `orgId=${orgIdToSave}; path=/; max-age=604800; SameSite=Lax`;
+
         } catch (orgError) {
           console.error("⚠️ Failed to fetch allowed org:", orgError);
-          localStorage.setItem("orgId", "default");
+          const fallbackOrg = "default";
+          localStorage.setItem("orgId", fallbackOrg);
+          document.cookie = `orgId=${fallbackOrg}; path=/; max-age=604800; SameSite=Lax`;
         }
 
         // --- Success Toast ---

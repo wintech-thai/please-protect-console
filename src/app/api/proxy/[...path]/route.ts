@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
-// ✅ ใช้ BACKEND_URL (Server จริง)
-const BACKEND_URL = process.env.BACKEND_URL || "http://tunnel-api-dev.rtarf-censor.dev-hubs.com";
+const BACKEND_URL = process.env.BACKEND_URL;
 
 async function handleProxy(
   req: NextRequest,
@@ -33,7 +32,6 @@ async function handleProxy(
             console.warn("⚠️ JSON Body parsing failed");
           }
       } else {
-          // รองรับ File Upload / Form Data
           body = await req.blob(); 
           console.log("📤 Sending Blob/Form Body");
       }
@@ -42,12 +40,10 @@ async function handleProxy(
     // --- จัดการ Headers ---
     const headers: Record<string, string> = {};
     
-    // Copy Content-Type ถ้ามี
     if (contentType) {
         headers["Content-Type"] = contentType;
     }
 
-    // Copy Authorization Header (ข้ามถ้าเป็น Login)
     const isLoginPath = endpoint.toLowerCase().includes("login");
     if (!isLoginPath) {
         const authHeader = req.headers.get("Authorization");
@@ -56,7 +52,6 @@ async function handleProxy(
         }
     }
 
-    // --- ยิง Request ไป Backend ---
     const response = await axios({
         method: req.method,
         url: targetUrl,
@@ -68,7 +63,6 @@ async function handleProxy(
 
     console.log(`📥 Backend Status: ${response.status}`);
 
-    // --- แปลง Response กลับไปให้ Frontend ---
     const responseHeaders = new Headers();
     Object.entries(response.headers).forEach(([key, value]) => {
         if (value && key !== 'content-length' && key !== 'content-encoding') {
@@ -84,9 +78,6 @@ async function handleProxy(
   } catch (error: any) {
     console.error(`🔥 [Proxy Crash] Error:`, error.message);
 
-    // ✅✅✅ ส่วนที่เพิ่มเข้ามาใหม่ ✅✅✅
-    // ดักจับ Error ที่เกิดจาก Backend ตัดสายทิ้ง (Connection Aborted / Reset)
-    // สาเหตุ: มักเกิดจาก Token ผิดรูปแบบจน Backend รับไม่ได้และตัด Connection
     const isNetworkError = 
         error.code === 'ECONNRESET' || 
         error.code === 'ETIMEDOUT' || 
@@ -100,10 +91,9 @@ async function handleProxy(
                 message: "Backend connection aborted (Token might be invalid or expired)", 
                 code: "PROXY_FORCE_401" 
             },
-            { status: 401 } // 👈 ส่ง 401 แทน 500 เพื่อให้ Axios Interceptor ทำงาน
+            { status: 401 } 
         );
     }
-    // ✅✅✅ จบส่วนที่เพิ่ม ✅✅✅
 
     return NextResponse.json(
       { message: "Proxy Connection Failed", error: error.message },

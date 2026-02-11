@@ -122,7 +122,6 @@ export default function OverviewView() {
           
           {/* Empty State for Chart */}
           <div className="flex-1 flex flex-col justify-end relative">
-             {/* Grid Lines */}
              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
                 <div className="border-t border-slate-800 w-full h-full"></div>
                 <div className="border-t border-slate-800 w-full h-full"></div>
@@ -130,13 +129,11 @@ export default function OverviewView() {
                 <div className="border-t border-slate-800 w-full h-full"></div>
              </div>
 
-             {/* Placeholder Content */}
              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 opacity-40">
                 <Activity className="w-12 h-12 text-slate-600" />
                 <span className="text-sm font-medium text-slate-500">{t.waitingForData}</span>
              </div>
 
-             {/* Time Labels */}
              <div className="flex justify-between mt-auto pt-4 text-xs text-slate-600 font-mono z-10">
                 <span>00:00</span>
                 <span>06:00</span>
@@ -186,6 +183,7 @@ export default function OverviewView() {
         </div>
 
       </div>
+
     </div>
   );
 }

@@ -26,7 +26,6 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-// ✅ 1. Import Tooltip components
 import {
   Tooltip,
   TooltipContent,
@@ -40,6 +39,7 @@ import { toast } from "sonner";
 import { UpdateProfileModal } from "@/components/modals/update-profile-modal"; 
 import { ChangePasswordModal } from "@/components/modals/change-password-modal";
 import { translations } from "@/locales/dict"; 
+import { AppVersionDisplay } from "@/components/layout/app-version-display"; 
 
 interface NavItem {
   label: string;
@@ -55,18 +55,14 @@ export function Navbar() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   
   const [userAvatar, setUserAvatar] = useState<string | null>(null); 
-  
-  // ✅ 2. เพิ่ม State สำหรับเก็บชื่อ Username
   const [username, setUsername] = useState<string | null>(null);
 
   const { language, setLanguage } = useLanguage(); 
   const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
 
-  // ✅ 3. ดึงชื่อ User จาก LocalStorage เมื่อโหลดหน้าเว็บ
   useEffect(() => {
-    // ตรวจสอบว่ารันบน Client side
     if (typeof window !== "undefined") {
-      const storedUsername = localStorage.getItem("username"); // หรือ key ที่คุณใช้เก็บชื่อ
+      const storedUsername = localStorage.getItem("username"); 
       if (storedUsername) {
         setUsername(storedUsername);
       }
@@ -217,6 +213,10 @@ export function Navbar() {
           {/* Right Actions */}
           <div className="flex items-center gap-3">
             
+            <div className="hidden lg:block mr-2 border-r border-blue-900/30 pr-4 h-8 flex items-center">
+                <AppVersionDisplay className="items-end" />
+            </div>
+
             {/* Language Switcher */}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -260,12 +260,8 @@ export function Navbar() {
 
             {/* User Profile Dropdown with Tooltip */}
             <DropdownMenu modal={false}>
-              
-              {/* ✅ 4. ใช้ TooltipProvider และ Tooltip ครอบ DropdownMenuTrigger */}
               <TooltipProvider disableHoverableContent>
                 <Tooltip delayDuration={100}>
-                  
-                  {/* TooltipTrigger */}
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                         <button className="flex items-center justify-center outline-none group">
@@ -279,12 +275,9 @@ export function Navbar() {
                         </button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
-
-                  {/* ✅ 5. ส่วนเนื้อหาของ Tooltip แสดงชื่อ Username */}
                   <TooltipContent side="bottom" align="end" className="bg-[#0B1120] text-blue-100 border-blue-900/30 shadow-lg px-3 py-1.5 rounded-md">
                     <p className="font-medium text-xs">{username || "User"}</p>
                   </TooltipContent>
-
                 </Tooltip>
               </TooltipProvider>
               
@@ -311,7 +304,6 @@ export function Navbar() {
                       <span>{t.changePassword}</span>
                   </DropdownMenuItem>
 
-                  {/* Logout */}
                   <DropdownMenuItem 
                     onSelect={(e) => {
                       e.preventDefault();
@@ -415,6 +407,11 @@ export function Navbar() {
                   </button>
               </div>
             </div>
+
+            <div className="p-6 bg-[#0B1120] border-t border-blue-900/30 ">
+               <AppVersionDisplay />
+            </div>
+
           </div>
         )}
       </nav>
