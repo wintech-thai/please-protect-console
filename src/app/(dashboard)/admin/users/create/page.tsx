@@ -91,29 +91,24 @@ export default function CreateUserPage() {
     const initData = async () => {
       try {
         setIsLoadingData(true);
-        
         const [rolesRes, customRolesRes] = await Promise.all([
           roleApi.getRoles(),
           roleApi.getCustomRoles()
         ]);
-
         const systemRolesData = Array.isArray(rolesRes) ? rolesRes : (rolesRes?.data || []);
         const mappedSystemRoles = systemRolesData.map((r: any) => ({
           id: r.roleId || r.id, 
           name: r.roleName || r.name,
           desc: r.roleDescription || r.roleDesc || "-" 
         }));
-
         const customRolesData = Array.isArray(customRolesRes) ? customRolesRes : (customRolesRes?.data || []);
         const mappedCustomRoles = customRolesData.map((r: any) => ({
           id: r.customRoleId || r.roleId || r.id, 
           name: r.customRoleName || r.roleName || r.name,
           desc: r.customRoleDesc || r.roleDescription || "-"
         }));
-
         setLeftRoles(mappedSystemRoles);
         setCustomRolesList(mappedCustomRoles);
-
       } catch (error) {
         console.error("Failed to fetch roles:", error);
         toast.error(t.toast.rolesError);
@@ -121,11 +116,9 @@ export default function CreateUserPage() {
         setIsLoadingData(false);
       }
     };
-
     initData();
   }, [t.toast.rolesError]);
 
-  // --- Handlers ---
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim()) {
       e.preventDefault();
@@ -163,27 +156,15 @@ export default function CreateUserPage() {
   };
 
   const handleCancel = () => {
-    const isDirty = 
-        formData.username.trim() !== "" || 
-        formData.email.trim() !== "" || 
-        formData.tags.length > 0 || 
-        formData.customRole !== "" || 
-        rightRoles.length > 0 || 
-        tagInput.trim() !== "";
-
-    if (isDirty) {
-        setShowExitDialog(true);
-    } else {
-        goBack(); 
-    }
+    const isDirty = formData.username.trim() !== "" || formData.email.trim() !== "" || formData.tags.length > 0 || formData.customRole !== "" || rightRoles.length > 0 || tagInput.trim() !== "";
+    if (isDirty) setShowExitDialog(true);
+    else goBack(); 
   };
 
   const handleSubmit = async () => {
     let finalTags = [...formData.tags];
     const pendingTag = tagInput.trim();
-    if (pendingTag && !finalTags.includes(pendingTag)) {
-        finalTags.push(pendingTag);
-    }
+    if (pendingTag && !finalTags.includes(pendingTag)) finalTags.push(pendingTag);
 
     const newErrors: { [key: string]: string } = {};
     if (!formData.username) newErrors.username = t.validation.username;
@@ -196,35 +177,50 @@ export default function CreateUserPage() {
     if (Object.keys(newErrors).length === 0) {
       try {
         setIsSubmitting(true);
+
+        const searchRes = await userApi.getUsers({ fullTextSearch: formData.email.trim() });
+        const existingUsers = Array.isArray(searchRes) ? searchRes : (searchRes?.data || []);
+
+        const duplicate = existingUsers.find((u: any) => 
+          u.tmpUserEmail?.toLowerCase() === formData.email.trim().toLowerCase() ||
+          u.userEmail?.toLowerCase() === formData.email.trim().toLowerCase()
+        );
+
+        if (duplicate) {
+          toast.error(`อีเมล ${formData.email} ถูกใช้งานแล้วในระบบ (สถานะ: ${duplicate.userStatus})`);
+          setIsSubmitting(false);
+          return; 
+        }
+
         const payload: InviteUserPayload = {
-          userName: formData.username,
-          tmpUserEmail: formData.email,
+          userName: formData.username.trim(),
+          tmpUserEmail: formData.email.trim(),
           tags: finalTags.join(','), 
           customRoleId: formData.customRole, 
           roles: rightRoles.map(r => r.name), 
         };
 
         const response = await userApi.inviteUser(payload);
-        
-        const newId = (response as any)?.orgUserId || (response as any)?.id || null;
+        const resData = response as any;
+
+        if (resData?.status === "OK" && !resData?.registrationUrl) {
+           throw new Error("ระบบตรวจพบข้อมูลซ้ำซ้อน ไม่สามารถสร้างการเชิญใหม่ได้");
+        }
+
+        const newId = resData?.orgUserId || resData?.id || null;
         setCreatedUserId(newId);
 
-        const rawLink = (response as any)?.registrationUrl || ""; 
+        const rawLink = resData?.registrationUrl || ""; 
         let finalLink = rawLink;
 
         if (rawLink && typeof window !== "undefined") {
             const targetDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || window.location.host;
-            
-            let targetProtocol = window.location.protocol; // default
-            if (!targetDomain.includes("localhost")) {
-                targetProtocol = "https:";
-            }
-
+            let targetProtocol = window.location.protocol;
+            if (!targetDomain.includes("localhost")) targetProtocol = "https:";
             finalLink = rawLink.replace(/(https?:\/\/)?<REGISTER_SERVICE_DOMAIN>/, `${targetProtocol}//${targetDomain}`);
         }
 
         setInviteLink(finalLink || "Link not found");
-        
         toast.success(t.toast.success); 
         setShowInviteModal(true);
 
@@ -246,11 +242,8 @@ export default function CreateUserPage() {
 
   const handleFinish = () => {
     setShowInviteModal(false);
-    if (createdUserId) {
-        router.push(`/admin/users?highlight=${createdUserId}`);
-    } else {
-        goBack();
-    }
+    if (createdUserId) router.push(`/admin/users?highlight=${createdUserId}`);
+    else goBack();
   };
 
   if (isLoadingData) {
@@ -446,7 +439,6 @@ export default function CreateUserPage() {
       {showInviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-6 transform scale-100 animate-in zoom-in-95 duration-300 relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r rounded-t-2xl"></div>
                 <div className="flex flex-col items-center text-center">
                     <div className="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mb-4 border border-green-500/20"><UserPlus className="w-7 h-7 text-green-400" /></div>
                     <h3 className="text-xl font-bold text-white mb-1">{t.modal.inviteTitle}</h3>

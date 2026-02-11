@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://tunnel-api-dev.rtarf-censor.dev-hubs.com";
+const BACKEND_URL = process.env.BACKEND_URL;
 
 async function handleProxy(
   req: NextRequest,

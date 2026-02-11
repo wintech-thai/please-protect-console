@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios";
 
 const API_URL = "/api/proxy";
 
@@ -31,32 +31,32 @@ const encodeBase64 = (str: string): string => {
   try {
     if (typeof window !== "undefined" && window.btoa) {
       return window.btoa(str);
-    } 
+    }
     return Buffer.from(str).toString("base64");
   } catch (e) {
-    return str; 
+    return str;
   }
 };
 
 const setAuthCookies = (accessToken: string, refreshToken?: string) => {
-    if (typeof document === "undefined") return;
-    document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=Lax`; 
-    if (refreshToken) {
-        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=Lax`; 
-    }
+  if (typeof document === "undefined") return;
+  document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=Lax`;
+  if (refreshToken) {
+    document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
+  }
 };
 
 const clearAuthData = () => {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("username");
-    localStorage.removeItem("orgId");
-    
-    document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
-    document.cookie = "refreshToken=; path=/; max-age=0; SameSite=Lax";
-    document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
-    document.cookie = "orgId=; path=/; max-age=0; SameSite=Lax";
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("username");
+  localStorage.removeItem("orgId");
+
+  document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
+  document.cookie = "refreshToken=; path=/; max-age=0; SameSite=Lax";
+  document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
+  document.cookie = "orgId=; path=/; max-age=0; SameSite=Lax";
 };
 
 // --- Interceptors ---
@@ -76,19 +76,46 @@ client.interceptors.request.use(
 );
 
 client.interceptors.response.use(
-  (response) => response,
+  (response: AxiosResponse) => {
+    const { status, description } = response.data || {};
+
+    const statusUpper = status?.toString().toUpperCase();
+
+    const isBusinessError = 
+        status && 
+        (typeof status === 'string') &&
+        (statusUpper.startsWith("ERROR") || (statusUpper !== "OK" && statusUpper !== "SUCCESS"));
+
+    if (isBusinessError) {
+      const customError = new AxiosError(
+        description || status || "Unknown Business Error",
+        status, 
+        response.config,
+        response.request,
+        response
+      );
+      
+      return Promise.reject(customError);
+    }
+
+    return response;
+  },
+  
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const errorData = error.response?.data as any;
     const status = error.response?.status;
+    
+    const businessCode = error.code; 
 
     const isTokenExpired =
-      status === 401 || 
+      status === 401 ||
+      businessCode === "ERROR_TOKEN_EXPIRED" || 
       (typeof errorData === "string" && (errorData.includes("IDX10223") || errorData.includes("expired"))) ||
       (errorData?.raw && typeof errorData.raw === "string" && (errorData.raw.includes("IDX10223") || errorData.raw.includes("expired")));
 
     if (!isTokenExpired || !originalRequest || originalRequest._retry) {
-        return Promise.reject(error);
+      return Promise.reject(error);
     }
 
     if (isRefreshing) {
@@ -125,19 +152,17 @@ client.interceptors.response.use(
       const { access_token, refresh_token } = tokenData;
 
       if (!access_token) {
-          throw new Error("Refresh failed: No access token received");
+        throw new Error("Refresh failed: No access token received");
       }
 
-      // Update Tokens
       localStorage.setItem("accessToken", access_token);
       if (refresh_token) {
-          localStorage.setItem("refreshToken", refresh_token);
+        localStorage.setItem("refreshToken", refresh_token);
       }
       setAuthCookies(access_token, refresh_token);
 
       processQueue(null, access_token);
 
-      // Retry Request เดิม
       const newEncodedToken = encodeBase64(access_token);
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${newEncodedToken}`;
@@ -148,11 +173,11 @@ client.interceptors.response.use(
     } catch (refreshError) {
       processQueue(refreshError, null);
       clearAuthData();
-      
+
       if (typeof window !== "undefined") {
-         window.location.href = "/login";
+        window.location.href = "/login";
       }
-      
+
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
