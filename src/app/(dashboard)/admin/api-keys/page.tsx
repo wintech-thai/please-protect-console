@@ -136,10 +136,11 @@ export default function ApiKeysPage() {
 
       setApiKeys(mappedKeys);
       setTotalCount(typeof countData === 'number' ? countData : 0);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch API keys:", error);
       setApiKeys([]);
-      toast.error(t.toast.fetchError); 
+      const errorMsg = error?.message || t.toast.fetchError;
+      toast.error(errorMsg); 
     } finally {
       setIsLoading(false);
     }
@@ -170,12 +171,14 @@ export default function ApiKeysPage() {
     try {
       setIsProcessing(true);
       await Promise.all(selectedIds.map(id => apiKeyApi.deleteApiKey(id)));
+      
       toast.success(t.toast.deleteSuccess.replace("{count}", selectedIds.length.toString())); 
       setSelectedIds([]);
       setShowDeleteConfirm(false);
       fetchData(); 
-    } catch (error) {
-      toast.error(t.toast.deleteError); 
+    } catch (error: any) {
+      const errorMsg = error?.message || t.toast.deleteError;
+      toast.error(errorMsg); 
     } finally {
       setIsProcessing(false);
     }
@@ -197,9 +200,10 @@ export default function ApiKeysPage() {
       toast.success(t.toast.statusSuccess); 
       setShowStatusConfirm(false);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error(t.toast.statusError); 
+      const errorMsg = error?.message || t.toast.statusError;
+      toast.error(errorMsg); 
     } finally {
       setIsProcessing(false);
       setTargetKey(null);
@@ -243,8 +247,12 @@ export default function ApiKeysPage() {
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 text-slate-200 relative font-sans">
       <div className="flex-none pt-6 px-4 md:px-6 mb-2">
-        <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.title}</h1>
-        <p className="text-slate-400 text-xs md:text-sm">{t.subHeader}</p>
+        <div className="flex items-center gap-4">
+            <div>
+                <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+                <p className="text-slate-400 text-xs md:text-sm">{t.subHeader}</p>
+            </div>
+        </div>
       </div>
 
       <div className="flex-none py-4">
