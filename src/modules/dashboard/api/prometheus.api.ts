@@ -101,20 +101,67 @@ export const prometheusApi = {
       'node_filesystem_avail_bytes{job="node-exporter",fstype!~"tmpfs|overlay"}'
     ),
 
-  /** CPU Load history (range) — last 1 hour, 30s step */
-  getLoadHistory: () => {
-    const end = Math.floor(Date.now() / 1000);
-    const start = end - 3600;
-    const step = 30;
-    return Promise.all([
+  /** History Queries */
+  getCpuHistory: (start: number, end: number, step: number) =>
+    queryRangePrometheus(
+      '100 - (avg(rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m])) * 100)',
+      start,
+      end,
+      step
+    ),
+
+  getLoadHistory: (start: number, end: number, step: number) =>
+    Promise.all([
       queryRangePrometheus('node_load1{job="node-exporter"}', start, end, step),
       queryRangePrometheus('node_load5{job="node-exporter"}', start, end, step),
+      queryRangePrometheus('node_load15{job="node-exporter"}', start, end, step),
+    ]),
+
+  getMemoryHistory: (start: number, end: number, step: number) =>
+    Promise.all([
       queryRangePrometheus(
-        'node_load15{job="node-exporter"}',
+        'node_memory_MemTotal_bytes{job="node-exporter"}',
         start,
         end,
         step
       ),
-    ]);
-  },
+      queryRangePrometheus(
+        'node_memory_MemAvailable_bytes{job="node-exporter"}',
+        start,
+        end,
+        step
+      ),
+    ]),
+
+  getNetworkHistory: (start: number, end: number, step: number) =>
+    Promise.all([
+      queryRangePrometheus(
+        'sum(rate(node_network_receive_bytes_total{job="node-exporter",device!="lo"}[5m]))',
+        start,
+        end,
+        step
+      ),
+      queryRangePrometheus(
+        'sum(rate(node_network_transmit_bytes_total{job="node-exporter",device!="lo"}[5m]))',
+        start,
+        end,
+        step
+      ),
+    ]),
+
+  getDiskIoHistory: (start: number, end: number, step: number) =>
+    Promise.all([
+      queryRangePrometheus(
+        'sum(rate(node_disk_read_bytes_total{job="node-exporter"}[5m]))',
+        start,
+        end,
+        step
+      ),
+      queryRangePrometheus(
+        'sum(rate(node_disk_written_bytes_total{job="node-exporter"}[5m]))',
+        start,
+        end,
+        step
+      ),
+    ]),
 };

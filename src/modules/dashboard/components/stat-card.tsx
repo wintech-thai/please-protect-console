@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { RadialGauge } from "./radial-gauge";
+import { Area, AreaChart, ResponsiveContainer } from "recharts";
 
 // ─── Stat Card ───────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ export interface StatCardData {
   bg: string;
   text: string;
   border: string;
+  chartData?: { value: number }[]; // For sparkline
 }
 
 interface StatCardProps {
@@ -50,7 +52,7 @@ export function StatCard({ stat, index, mounted }: StatCardProps) {
             {stat.sub}
           </p>
         </div>
-        {stat.gauge !== undefined && (
+        {stat.gauge !== undefined && !stat.chartData && (
           <div className="relative shrink-0">
             <RadialGauge value={stat.gauge} color={stat.gaugeColor!} />
             <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-slate-300 transform rotate-0">
@@ -59,6 +61,45 @@ export function StatCard({ stat, index, mounted }: StatCardProps) {
           </div>
         )}
       </div>
+
+      {/* Sparkline Area */}
+      {stat.chartData && stat.chartData.length > 0 && (
+        <div className="h-10 mt-2 -mx-2 opacity-50 hover:opacity-100 transition-opacity">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={stat.chartData}>
+              <defs>
+                <linearGradient
+                  id={`gradSpark-${index}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor="currentColor"
+                    stopOpacity={0.4}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="currentColor"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="currentColor"
+                fill={`url(#gradSpark-${index})`}
+                strokeWidth={2}
+                isAnimationActive={false}
+                className={stat.text}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

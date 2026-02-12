@@ -135,9 +135,10 @@ export default function UpdateApiKeyPage() {
         setRightRoles(selectedRoles);
         setLeftRoles(availableRoles);
 
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load API key data:", error);
-        toast.error(t.toast.loadError); 
+        const msg = error?.message || t.toast.loadError;
+        toast.error(msg); 
       } finally {
         setIsLoadingData(false);
       }
@@ -225,7 +226,8 @@ export default function UpdateApiKeyPage() {
         router.push(`/admin/api-keys?highlight=${keyId}`);
       } catch (error: any) {
         console.error("Failed to update API key:", error);
-        toast.error(t.toast.updateError); 
+        const msg = error?.message || t.toast.updateError;
+        toast.error(msg); 
       } finally {
         setIsSubmitting(false);
       }
@@ -300,7 +302,7 @@ export default function UpdateApiKeyPage() {
                             placeholder={t.placeholders.description}
                             className={`w-full bg-slate-950 border ${errors.description ? 'border-red-500/50 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'} rounded-lg px-4 py-2.5 text-slate-200 outline-none transition-all placeholder:text-slate-600 text-sm`}
                         />
-                         {errors.description && <p className="text-red-400 text-xs">{errors.description}</p>}
+                          {errors.description && <p className="text-red-400 text-xs">{errors.description}</p>}
                     </div>
                 </div>
             </div>
@@ -390,14 +392,14 @@ export default function UpdateApiKeyPage() {
                                     rightRoles.map(role => (
                                         <div 
                                             key={role.id} 
-                                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedRight.includes(role.id) ? 'bg-blue-600/10 border border-blue-600/30' : 'hover:bg-slate-900 border border-transparent'}`}
+                                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedRight.includes(role.id) ? 'bg-red-500/10 border border-red-500/30' : 'hover:bg-slate-900 border border-transparent'}`}
                                             onClick={() => handleCheck(role.id, "right")}
                                         >
-                                            <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors ${checkedRight.includes(role.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
+                                            <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors ${checkedRight.includes(role.id) ? 'bg-red-500 border-red-500' : 'border-slate-600'}`}>
                                                 {checkedRight.includes(role.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
                                             </div>
                                             <div>
-                                                <p className={`text-sm font-medium ${checkedRight.includes(role.id) ? 'text-blue-400' : 'text-slate-200'}`}>{role.name}</p>
+                                                <p className={`text-sm font-medium ${checkedRight.includes(role.id) ? 'text-red-400' : 'text-slate-200'}`}>{role.name}</p>
                                                 <p className="text-xs text-slate-500 leading-relaxed mt-0.5">{role.desc}</p>
                                             </div>
                                         </div>
@@ -429,7 +431,7 @@ export default function UpdateApiKeyPage() {
       {/* Exit Modal */}
       {showExitDialog && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <h3 className="text-lg font-bold text-white mb-2">{t.modal.title}</h3>
                 <p className="text-sm text-slate-400 mb-6">{t.modal.message}</p>
                 <div className="flex justify-end gap-3">

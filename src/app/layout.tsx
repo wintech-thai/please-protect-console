@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local"; 
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import "./globals.css";
-import { LanguageProvider } from "@/context/LanguageContext"; 
+import { LanguageProvider } from "@/context/LanguageContext";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 const prompt = localFont({
   src: [
@@ -11,7 +12,7 @@ const prompt = localFont({
     { path: './fonts/Prompt-Medium.ttf', weight: '500', style: 'normal' },
     { path: './fonts/Prompt-Bold.ttf', weight: '700', style: 'normal' },
   ],
-  variable: '--font-prompt', 
+  variable: '--font-prompt',
   display: 'swap',
 });
 
@@ -32,28 +33,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body 
+      <body
         className={`
-          ${prompt.className} 
-          ${prompt.variable} 
-          antialiased 
-          bg-[#020617] 
-          text-blue-100 
+          ${prompt.className}
+          ${prompt.variable}
+          antialiased
+          bg-[#020617]
+          text-blue-100
           selection:bg-cyan-500/30
         `}
       >
         <LanguageProvider>
-          {children}
-          
-          <Toaster 
-            richColors       
+          <NuqsAdapter>
+            {children}
+          </NuqsAdapter>
+
+          <Toaster
+            richColors
             position="top-center"
-            closeButton      
+            closeButton
             theme="dark"
             className={prompt.className}
-            style={{ fontFamily: 'var(--font-prompt)' }} 
+            style={{ fontFamily: 'var(--font-prompt)' }}
           />
-          
+
         </LanguageProvider>
       </body>
     </html>

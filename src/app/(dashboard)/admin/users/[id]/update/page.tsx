@@ -277,7 +277,7 @@ export default function UpdateUserPage() {
 
         } catch (error: any) {
             console.error("Failed to update user:", error);
-            toast.error(t.toast.updateError);
+            toast.error(error?.message || t.toast.updateError);
         } finally {
             setIsSubmitting(false);
         }

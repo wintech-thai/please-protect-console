@@ -14,6 +14,8 @@ interface OverviewHeaderProps {
   refreshInterval: number;
   language: string;
   mounted: boolean;
+  refreshLabel?: string;
+  refreshOff?: string;
   onRefresh: () => void;
   onIntervalChange: (ms: number) => void;
 }
@@ -27,6 +29,8 @@ export function OverviewHeader({
   refreshInterval,
   language,
   mounted,
+  refreshLabel,
+  refreshOff,
   onRefresh,
   onIntervalChange,
 }: OverviewHeaderProps) {
@@ -45,7 +49,7 @@ export function OverviewHeader({
 
       <div className="flex items-center gap-3 mt-2">
         {lastUpdated && (
-          <span className="text-xs md:text-base text-slate-500 font-mono">
+          <span className="text-xs md:text-base text-slate-500">
             {lastUpdatedLabel}: {lastUpdated.toLocaleTimeString()}
           </span>
         )}
@@ -53,7 +57,7 @@ export function OverviewHeader({
           onClick={onRefresh}
           disabled={loading}
           className="p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-cyan-400 transition-all border border-slate-700/50 disabled:opacity-40"
-          title="Refresh"
+          title={refreshLabel || "Refresh"}
         >
           <RefreshCw
             className={`shrink-0 size-4 ${loading ? "animate-spin" : ""}`}
@@ -72,9 +76,7 @@ export function OverviewHeader({
           {REFRESH_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value} className="text-lg">
               {opt.value === 0
-                ? language === "TH"
-                  ? "ปิด"
-                  : "Off"
+                ? refreshOff || (language === "TH" ? "ปิด" : "Off")
                 : `${opt.label}`}
             </option>
           ))}

@@ -158,11 +158,14 @@ export default function UpdateCustomRolePage() {
             
             setSelectedPermissions(activePerms);
             setOriginalPermissions(activePerms); 
+        } else {
+            toast.error("Role not found");
         }
 
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load role data:", error);
-        toast.error(t.toast.loadError);
+        const msg = error?.message || t.toast.loadError;
+        toast.error(msg);
       } finally {
         setIsLoading(false);
       }
@@ -295,7 +298,8 @@ export default function UpdateCustomRolePage() {
 
     } catch (error: any) {
       console.error("Update Role Error:", error);
-      toast.error(error?.message || t.toast.error);
+      const msg = error?.message || t.toast.error;
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -386,6 +390,7 @@ export default function UpdateCustomRolePage() {
                 </div>
             </div>
 
+            {/* 2. Permissions Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 border-b border-slate-800 pb-3">
                     {t.permissionsTitle}
@@ -414,13 +419,12 @@ export default function UpdateCustomRolePage() {
                                     onClick={() => toggleCategory(group.category, group.items)}
                                 >
                                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                                            ${isAllSelected 
-                                                ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-500/30' 
-                                                : isSomeSelected 
-                                                    ? 'bg-blue-600/50 border-blue-500' 
-                                                    : 'bg-slate-950 border-slate-700 group-hover:border-slate-500'}
-                                        `}
-                                    >
+                                        ${isAllSelected 
+                                            ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-500/30' 
+                                            : isSomeSelected 
+                                                ? 'bg-blue-600/50 border-blue-500' 
+                                                : 'bg-slate-950 border-slate-700 group-hover:border-slate-500'}
+                                    `}>
                                         {isAllSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                                         {!isAllSelected && isSomeSelected && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
                                     </div>
@@ -444,8 +448,7 @@ export default function UpdateCustomRolePage() {
                                                         ${isSelected 
                                                             ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-500/20' 
                                                             : 'bg-slate-950 border-slate-700 hover:border-slate-500'}
-                                                    `}
-                                                >
+                                                    `}>
                                                     {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                                                 </div>
                                                 <span className={`text-sm ${isSelected ? 'text-blue-200' : 'text-slate-400'}`}>

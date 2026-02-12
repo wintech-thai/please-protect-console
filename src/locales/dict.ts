@@ -224,7 +224,7 @@ export const translations = {
   overview: {
     EN: {
       title: "System Overview",
-      subtitle: "Real-time server metrics from Prometheus",
+      subtitle: "Real-time server metrics",
       stats: {
         cpu: { label: "CPU Usage", sub: "Average across all cores" },
         memory: { label: "Memory Usage", sub: "Used / Total" },
@@ -250,11 +250,51 @@ export const translations = {
       lastUpdated: "Last updated",
       autoRefresh: "Auto-refresh: 30s",
       rxRate: "RX",
-      txRate: "TX"
+      txRate: "TX",
+      timeRange: {
+        last5m: "Last 5 minutes",
+        last1h: "Last 1 hour",
+        last6h: "Last 6 hours",
+        last24h: "Last 24 hours",
+        last7d: "Last 7 days"
+      },
+      charts: {
+        cpu: "CPU Usage History",
+        memory: "Memory Usage History",
+        network: "Network Traffic History",
+        disk: "Disk I/O History",
+        read: "Read",
+        write: "Write"
+      },
+      noData: "No data available for the selected time range",
+      noDataSub: "No data in selected range",
+      refresh: "Refresh",
+      refreshOff: "Off",
+      tooltipCpuUsage: "CPU Usage",
+      tooltipMemUsed: "Used",
+      timePicker: {
+        absoluteTitle: "Absolute time range",
+        from: "From",
+        to: "To",
+        apply: "Apply time range",
+        searchPlaceholder: "Search quick ranges",
+        customRange: "Custom Range",
+        last5m: "Last 5 minutes",
+        last15m: "Last 15 minutes",
+        last30m: "Last 30 minutes",
+        last1h: "Last 1 hour",
+        last3h: "Last 3 hours",
+        last6h: "Last 6 hours",
+        last12h: "Last 12 hours",
+        last24h: "Last 24 hours",
+        last2d: "Last 2 days",
+        last7d: "Last 7 days",
+        last30d: "Last 30 days"
+      }
     },
     TH: {
       title: "ภาพรวมระบบ",
-      subtitle: "ข้อมูล Metric แบบเรียลไทม์จาก Prometheus",
+      subtitle: "ข้อมูล Metric แบบเรียลไทม์",
       stats: {
         cpu: { label: "การใช้ CPU", sub: "เฉลี่ยทุก Core" },
         memory: { label: "การใช้หน่วยความจำ", sub: "ใช้งาน / ทั้งหมด" },
@@ -280,7 +320,47 @@ export const translations = {
       lastUpdated: "อัปเดตล่าสุด",
       autoRefresh: "รีเฟรชอัตโนมัติ: 30 วินาที",
       rxRate: "รับ",
-      txRate: "ส่ง"
+      txRate: "ส่ง",
+      timeRange: {
+        last5m: "5 นาทีล่าสุด",
+        last1h: "1 ชั่วโมงล่าสุด",
+        last6h: "6 ชั่วโมงล่าสุด",
+        last24h: "24 ชั่วโมงล่าสุด",
+        last7d: "7 วันล่าสุด"
+      },
+      charts: {
+        cpu: "ประวัติการใช้ CPU",
+        memory: "ประวัติการใช้หน่วยความจำ",
+        network: "ประวัติการจราจรเครือข่าย",
+        disk: "ประวัติการอ่าน/เขียนดิสก์",
+        read: "อ่าน",
+        write: "เขียน"
+      },
+      noData: "ไม่มีข้อมูลในช่วงเวลาที่เลือก",
+      noDataSub: "ไม่มีข้อมูลในช่วงเวลาที่เลือก",
+      refresh: "รีเฟรช",
+      refreshOff: "ปิด",
+      tooltipCpuUsage: "การใช้ CPU",
+      tooltipMemUsed: "ใช้งาน",
+      timePicker: {
+        absoluteTitle: "ช่วงเวลาแบบกำหนดเอง",
+        from: "จาก",
+        to: "ถึง",
+        apply: "ใช้ช่วงเวลา",
+        searchPlaceholder: "ค้นหาช่วงเวลา",
+        customRange: "กำหนดเอง",
+        last5m: "5 นาทีล่าสุด",
+        last15m: "15 นาทีล่าสุด",
+        last30m: "30 นาทีล่าสุด",
+        last1h: "1 ชั่วโมงล่าสุด",
+        last3h: "3 ชั่วโมงล่าสุด",
+        last6h: "6 ชั่วโมงล่าสุด",
+        last12h: "12 ชั่วโมงล่าสุด",
+        last24h: "24 ชั่วโมงล่าสุด",
+        last2d: "2 วันล่าสุด",
+        last7d: "7 วันล่าสุด",
+        last30d: "30 วันล่าสุด"
+      }
     }
   },
 

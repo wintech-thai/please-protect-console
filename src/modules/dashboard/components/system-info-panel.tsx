@@ -3,6 +3,7 @@
 import { Server } from "lucide-react";
 import type { Metrics } from "./overview-types";
 import { formatBytes } from "./overview-types";
+import { cn } from "@/lib/utils";
 
 // ─── System Info Panel ───────────────────────────────────────────────
 
@@ -31,9 +32,13 @@ export function SystemInfoPanel({
 }: SystemInfoPanelProps) {
   return (
     <div
-      className={`p-6 bg-slate-900 border border-slate-800 rounded-xl shadow-lg transition-all duration-700 delay-500 transform h-[400px] overflow-hidden flex flex-col ${
-        mounted ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-      }`}
+      className={cn(
+        `p-6 bg-slate-900 border border-slate-800 rounded-xl shadow-lg transition-all duration-700 delay-500 transform min-h-100 overflow-hidden flex flex-col`,
+        {
+          "translate-y-0 opacity-100": mounted,
+          "translate-y-8 opacity-0": !mounted,
+        },
+      )}
     >
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
@@ -108,7 +113,7 @@ export function SystemInfoPanel({
                 >
                   <div className="flex justify-between items-center mb-1">
                     <span
-                      className="text-[11px] font-mono text-slate-400 truncate max-w-[120px]"
+                      className="text-[11px] font-mono text-slate-400 truncate max-w-30"
                       title={d.mountpoint}
                     >
                       {d.mountpoint}
@@ -123,8 +128,8 @@ export function SystemInfoPanel({
                         pct > 90
                           ? "bg-red-500"
                           : pct > 70
-                          ? "bg-amber-500"
-                          : "bg-orange-400"
+                            ? "bg-amber-500"
+                            : "bg-orange-400"
                       }`}
                       style={{ width: `${pct}%` }}
                     />

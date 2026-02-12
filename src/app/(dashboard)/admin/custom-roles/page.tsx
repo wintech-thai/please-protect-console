@@ -100,10 +100,11 @@ export default function CustomRolesPage() {
       
       setTotalCount(count);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch roles:", error);
       setRoles([]);
-      toast.error(t.toast.loadError); 
+      const errorMsg = error?.message || t.toast.loadError;
+      toast.error(errorMsg); 
     } finally {
       setIsLoading(false);
     }
@@ -141,8 +142,9 @@ export default function CustomRolesPage() {
       setSelectedIds([]);
       setShowDeleteConfirm(false);
       fetchData(); 
-    } catch (error) {
-      toast.error(t.toast.deleteError); 
+    } catch (error: any) {
+      const errorMsg = error?.message || t.toast.deleteError;
+      toast.error(errorMsg); 
     } finally {
       setIsProcessing(false);
     }
@@ -171,8 +173,12 @@ export default function CustomRolesPage() {
       
       {/* Header */}
       <div className="flex-none pt-6 px-4 md:px-6 mb-2">
-        <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.title}</h1>
-        <p className="text-slate-400 text-xs md:text-sm">{t.subHeader}</p>
+        <div className="flex items-center gap-4">
+            <div>
+                <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+                <p className="text-slate-400 text-xs md:text-sm">{t.subHeader}</p>
+            </div>
+        </div>
       </div>
 
       {/* Toolbar */}

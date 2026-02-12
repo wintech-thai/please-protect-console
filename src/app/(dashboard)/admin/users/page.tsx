@@ -113,16 +113,17 @@ export default function UsersPage() {
       const offset = (page - 1) * itemsPerPage;
       const [usersData, countData] = await Promise.all([
         userApi.getUsers({ offset, limit: itemsPerPage, fullTextSearch: activeSearch }), 
-        userApi.getUserCount({ fullTextSearch: activeSearch })                           
+        userApi.getUserCount({ fullTextSearch: activeSearch })                          
       ]);
       if (Array.isArray(usersData)) setUsers(usersData);
       else if (usersData?.data) setUsers(usersData.data);
       else setUsers([]);
       setTotalCount(typeof countData === 'number' ? countData : 0);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch users:", error);
       setUsers([]);
-      toast.error(t.toast.fetchError); 
+      const errorMsg = error?.message || t.toast.fetchError;
+      toast.error(errorMsg); 
     } finally {
       setIsLoading(false);
     }
@@ -157,8 +158,9 @@ export default function UsersPage() {
       setSelectedIds([]);
       setShowDeleteConfirm(false);
       fetchData(); 
-    } catch (error) {
-      toast.error(t.toast.deleteError); 
+    } catch (error: any) {
+      const errorMsg = error?.message || t.toast.deleteError;
+      toast.error(errorMsg); 
     } finally {
       setIsProcessing(false);
     }
@@ -177,8 +179,9 @@ export default function UsersPage() {
       toast.success(t.toast.statusSuccess); 
       setShowStatusConfirm(false);
       fetchData();
-    } catch (error) {
-      toast.error(t.toast.statusError); 
+    } catch (error: any) {
+      const errorMsg = error?.message || t.toast.statusError;
+      toast.error(errorMsg); 
     } finally {
       setIsProcessing(false);
       setTargetUser(null);
@@ -207,10 +210,11 @@ export default function UsersPage() {
         toast.error(t.toast?.invalidResponse || "Invalid response from server.");
       }
 
-    } catch (error) {
+    } catch (error: any) {
       toast.dismiss("gen-link");
       console.error("Reset link error:", error);
-      toast.error(t.toast?.resetLinkError || "Failed to generate reset link");
+      const errorMsg = error?.message || t.toast?.resetLinkError || "Failed to generate reset link";
+      toast.error(errorMsg);
     }
   };
 
@@ -257,8 +261,12 @@ export default function UsersPage() {
       
       {/* Header */}
       <div className="flex-none pt-6 px-4 md:px-6 mb-2">
-        <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.title}</h1>
-        <p className="text-slate-400 text-xs md:text-sm">{t.subHeader}</p>
+        <div className="flex items-center gap-4">
+            <div>
+                <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+                <p className="text-slate-400 text-xs md:text-sm">{t.subHeader}</p>
+            </div>
+        </div>
       </div>
 
       {/* Toolbar */}
