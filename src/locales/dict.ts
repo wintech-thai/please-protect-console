@@ -531,6 +531,7 @@ export const translations = {
       toast: {
         success: "Role created successfully",
         error: "Failed to create role",
+        duplicateRoleName: "Role Name '{name}' is already in use.",
         loadError: "Failed to load permission list"
       },
       validation: {
@@ -571,6 +572,7 @@ export const translations = {
       toast: {
         success: "สร้างบทบาทสำเร็จ",
         error: "สร้างบทบาทไม่สำเร็จ",
+        duplicateRoleName: "ชื่อบทบาท '{name}' ถูกใช้งานแล้วในระบบ",
         loadError: "โหลดรายการสิทธิ์ไม่สำเร็จ"
       },
       validation: {
@@ -663,7 +665,7 @@ export const translations = {
       }
     }
   },
-  
+
   users: {
     EN: {
       title: "Users",
@@ -818,7 +820,10 @@ export const translations = {
         success: "User invited successfully",
         error: "Failed to invite user",
         rolesError: "Failed to load roles configuration",
-        copySuccess: "Link copied to clipboard"
+        copySuccess: "Link copied to clipboard",
+        duplicateEmail: "Email '{email}' is already in use",
+        duplicateUsername: "Username '{username}' is already in use",
+        duplicateData: "Duplicate data detected. Cannot create a new invitation."
       },
       validation: {
         username: "Username is required",
@@ -868,7 +873,10 @@ export const translations = {
         success: "เชิญผู้ใช้งานสำเร็จ",
         error: "เชิญผู้ใช้งานไม่สำเร็จ",
         rolesError: "โหลดข้อมูลบทบาทไม่สำเร็จ",
-        copySuccess: "คัดลอกลิงก์แล้ว"
+        copySuccess: "คัดลอกลิงก์แล้ว",
+        duplicateEmail: "อีเมล '{email}' ถูกใช้งานแล้วในระบบ",
+        duplicateUsername: "ชื่อผู้ใช้งาน '{username}' ถูกใช้งานแล้วในระบบ",
+        duplicateData: "ระบบตรวจพบข้อมูลซ้ำซ้อน ไม่สามารถสร้างการเชิญใหม่ได้"
       },
       validation: {
         username: "กรุณาระบุชื่อผู้ใช้",
@@ -881,6 +889,7 @@ export const translations = {
       noRolesSelected: "ยังไม่ได้เลือกบทบาท"
     }
   },
+
   updateUser: {
     EN: {
       title: "Update User",
@@ -1091,7 +1100,8 @@ export const translations = {
         error: "Failed to create API Key",
         rolesError: "Failed to load roles configuration",
         copySuccess: "Copied to clipboard",
-        tokenError: "API Key created but failed to retrieve the token string."
+        tokenError: "API Key created but failed to retrieve the token string.",
+        duplicateKeyName: "API Key Name '{name}' is already in use"
       },
       validation: {
         keyName: "Key Name is required",
@@ -1138,6 +1148,7 @@ export const translations = {
         error: "สร้างคีย์ API ไม่สำเร็จ",
         rolesError: "โหลดข้อมูลบทบาทไม่สำเร็จ",
         copySuccess: "คัดลอกลงคลิปบอร์ดแล้ว",
+        duplicateKeyName: "ชื่อคีย์ '{name}' ถูกใช้งานแล้วในระบบ",
         tokenError: "สร้างคีย์สำเร็จแต่ไม่สามารถดึงข้อมูลโทเค็นได้"
       },
       validation: {

@@ -121,7 +121,7 @@ export default function CreateCustomRolePage() {
     };
 
     fetchPermissions();
-  }, [t.toast.loadError]); // Add dependency
+  }, [t.toast.loadError]);
 
   // --- Filter Permissions ---
   const filteredPermissions = useMemo(() => {
@@ -196,7 +196,7 @@ export default function CreateCustomRolePage() {
     }
 
     const newErrors: { [key: string]: string } = {};
-    if (!formData.roleName.trim()) newErrors.roleName = t.validation.roleName; // ✅ ใช้คำแปล validation
+    if (!formData.roleName.trim()) newErrors.roleName = t.validation.roleName; 
     if (!formData.description.trim()) newErrors.description = t.validation.description;
     if (finalTags.length === 0) newErrors.tags = t.validation.tags;
     
@@ -205,6 +205,20 @@ export default function CreateCustomRolePage() {
 
     try {
       setIsSubmitting(true);
+
+      const rolesRes = await roleApi.getCustomRoles();
+      const existingRoles = Array.isArray(rolesRes) ? rolesRes : (rolesRes?.data || []);
+
+      const isDuplicate = existingRoles.some((r: any) => 
+        (r.customRoleName || r.roleName || "").toLowerCase() === formData.roleName.trim().toLowerCase()
+      );
+
+      if (isDuplicate) {
+        const msg = (t.toast as any).duplicateRoleName || "Role Name '{name}' is already in use.";
+        toast.error(msg.replace("{name}", formData.roleName));
+        setIsSubmitting(false);
+        return; 
+      }
       
       const permissionsPayload = permissionList.map(group => ({
           controllerName: group.category,
@@ -216,8 +230,8 @@ export default function CreateCustomRolePage() {
       }));
 
       const payload = {
-          roleName: formData.roleName,
-          roleDescription: formData.description,
+          roleName: formData.roleName.trim(), 
+          roleDescription: formData.description.trim(),
           roleDefinition: "", 
           tags: finalTags.join(','),
           level: "1",
@@ -351,13 +365,12 @@ export default function CreateCustomRolePage() {
                                     onClick={() => toggleCategory(group.category, group.items)}
                                 >
                                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                                            ${isAllSelected 
-                                                ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-500/30' 
-                                                : isSomeSelected 
-                                                    ? 'bg-blue-600/50 border-blue-500' 
-                                                    : 'bg-slate-950 border-slate-700 group-hover:border-slate-500'}
-                                        `}
-                                    >
+                                        ${isAllSelected 
+                                            ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-500/30' 
+                                            : isSomeSelected 
+                                                ? 'bg-blue-600/50 border-blue-500' 
+                                                : 'bg-slate-950 border-slate-700 group-hover:border-slate-500'}
+                                    `}>
                                         {isAllSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                                         {!isAllSelected && isSomeSelected && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
                                     </div>
@@ -381,8 +394,7 @@ export default function CreateCustomRolePage() {
                                                         ${isSelected 
                                                             ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-500/20' 
                                                             : 'bg-slate-950 border-slate-700 hover:border-slate-500'}
-                                                    `}
-                                                >
+                                                    `}>
                                                     {isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                                                 </div>
                                                 <span className={`text-sm ${isSelected ? 'text-blue-200' : 'text-slate-400'}`}>

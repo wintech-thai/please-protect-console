@@ -170,9 +170,30 @@ export default function CreateApiKeyPage() {
     if (Object.keys(newErrors).length === 0) {
       try {
         setIsSubmitting(true);
+
+        const checkRes = await apiKeyApi.getApiKeys({ offset: 0, limit: 1000 });
+        const existingKeys = Array.isArray(checkRes) ? checkRes : (checkRes?.data || []);
+
+        const duplicateKey = existingKeys.find((k: any) => 
+            k.keyName?.toLowerCase() === formData.keyName.trim().toLowerCase()
+        );
+
+        if (duplicateKey) {
+            const errorMsg = (t.toast as any).duplicateKeyName || "API Key Name '{name}' is already in use (Status: {status}).";
+            
+            toast.error(
+                errorMsg
+                    .replace("{name}", formData.keyName)
+                    .replace("{status}", duplicateKey.status || "Active") 
+            );
+            
+            setIsSubmitting(false);
+            return; 
+        }
+
         const payload: CreateApiKeyPayload = {
-          keyName: formData.keyName,
-          description: formData.description,
+          keyName: formData.keyName.trim(),
+          description: formData.description.trim(),
           customRoleId: formData.customRole, 
           roles: rightRoles.map(r => r.name),
         };
@@ -355,7 +376,10 @@ export default function CreateApiKeyPage() {
                             </div>
                             <div className="p-2 overflow-y-auto flex-1 no-scrollbar space-y-1">
                                 {rightRoles.length === 0 ? (
-                                    <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesSelected}</div>
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 opacity-50">
+                                        <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center"><ChevronRight className="w-5 h-5 text-slate-700" /></div>
+                                        <span className="text-xs">{t.noRolesSelected}</span>
+                                    </div>
                                 ) : (
                                     rightRoles.map(role => (
                                         <div 

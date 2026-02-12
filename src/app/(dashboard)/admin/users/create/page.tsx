@@ -178,18 +178,40 @@ export default function CreateUserPage() {
       try {
         setIsSubmitting(true);
 
-        const searchRes = await userApi.getUsers({ fullTextSearch: formData.email.trim() });
+        const searchRes = await userApi.getUsers({ offset: 0, limit: 1000 });
         const existingUsers = Array.isArray(searchRes) ? searchRes : (searchRes?.data || []);
 
-        const duplicate = existingUsers.find((u: any) => 
+        const dupEmail = existingUsers.find((u: any) => 
           u.tmpUserEmail?.toLowerCase() === formData.email.trim().toLowerCase() ||
           u.userEmail?.toLowerCase() === formData.email.trim().toLowerCase()
         );
 
-        if (duplicate) {
-          toast.error(`อีเมล ${formData.email} ถูกใช้งานแล้วในระบบ (สถานะ: ${duplicate.userStatus})`);
+        if (dupEmail) {
+          const msg = (t.toast as any).duplicateEmail || "Email '{email}' is already in use (Status: {status})";
+          
+          toast.error(
+            msg
+              .replace("{email}", formData.email)
+              .replace("{status}", dupEmail.userStatus)
+          );
           setIsSubmitting(false);
           return; 
+        }
+
+        const dupUser = existingUsers.find((u: any) => 
+          u.userName?.toLowerCase() === formData.username.trim().toLowerCase()
+        );
+
+        if (dupUser) {
+          const msg = (t.toast as any).duplicateUsername || "Username '{username}' is already in use (Status: {status})";
+
+          toast.error(
+            msg
+              .replace("{username}", formData.username)
+              .replace("{status}", dupUser.userStatus)
+          );
+          setIsSubmitting(false);
+          return;
         }
 
         const payload: InviteUserPayload = {
@@ -204,7 +226,8 @@ export default function CreateUserPage() {
         const resData = response as any;
 
         if (resData?.status === "OK" && !resData?.registrationUrl) {
-           throw new Error("ระบบตรวจพบข้อมูลซ้ำซ้อน ไม่สามารถสร้างการเชิญใหม่ได้");
+           const msg = (t.toast as any).duplicateData || "Duplicate data detected.";
+           throw new Error(msg);
         }
 
         const newId = resData?.orgUserId || resData?.id || null;
