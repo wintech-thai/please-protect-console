@@ -171,8 +171,8 @@ export default function CreateApiKeyPage() {
       try {
         setIsSubmitting(true);
         const payload: CreateApiKeyPayload = {
-          keyName: formData.keyName,
-          description: formData.description,
+          keyName: formData.keyName.trim(),
+          description: formData.description.trim(),
           customRoleId: formData.customRole, 
           roles: rightRoles.map(r => r.name),
         };
@@ -195,7 +195,10 @@ export default function CreateApiKeyPage() {
 
       } catch (error: any) {
         console.error("Failed to create API Key:", error);
-        toast.error(error?.message || t.toast.error); 
+        
+        const errorMsg = error?.message || t.toast.error;
+        toast.error(errorMsg);
+        
       } finally {
         setIsSubmitting(false);
       }
@@ -355,7 +358,7 @@ export default function CreateApiKeyPage() {
                             </div>
                             <div className="p-2 overflow-y-auto flex-1 no-scrollbar space-y-1">
                                 {rightRoles.length === 0 ? (
-                                    <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesSelected}</div>
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesSelected}</div>
                                 ) : (
                                     rightRoles.map(role => (
                                         <div 

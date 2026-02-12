@@ -113,7 +113,7 @@ export default function UsersPage() {
       const offset = (page - 1) * itemsPerPage;
       const [usersData, countData] = await Promise.all([
         userApi.getUsers({ offset, limit: itemsPerPage, fullTextSearch: activeSearch }), 
-        userApi.getUserCount({ fullTextSearch: activeSearch })                          
+        userApi.getUserCount({ fullTextSearch: activeSearch })                           
       ]);
       if (Array.isArray(usersData)) setUsers(usersData);
       else if (usersData?.data) setUsers(usersData.data);
@@ -189,7 +189,7 @@ export default function UsersPage() {
     if (user.userStatus !== "Active") return;
     
     try {
-      toast.loading("Generating reset link...", { id: "gen-link" });
+      toast.loading(t.toast?.generatingLink || "Generating reset link...", { id: "gen-link" });
       
       const response = await userApi.getForgotPasswordLink(user.orgUserId);
       
@@ -204,13 +204,13 @@ export default function UsersPage() {
         setTargetUser(user);
         setShowResetLinkModal(true);
       } else {
-        toast.error("Invalid response from server.");
+        toast.error(t.toast?.invalidResponse || "Invalid response from server.");
       }
 
     } catch (error) {
       toast.dismiss("gen-link");
       console.error("Reset link error:", error);
-      toast.error("Failed to generate reset link");
+      toast.error(t.toast?.resetLinkError || "Failed to generate reset link");
     }
   };
 
@@ -218,9 +218,9 @@ export default function UsersPage() {
     if (!generatedLink) return;
     try {
       await navigator.clipboard.writeText(generatedLink);
-      toast.success("Link copied to clipboard!");
+      toast.success(t.toast?.copySuccess || "Link copied to clipboard!");
     } catch (err) {
-      toast.error("Failed to copy link.");
+      toast.error(t.toast?.copyError || "Failed to copy link.");
     }
   };
 
@@ -512,20 +512,23 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* [NEW] Reset Password Link Modal */}
+      {/* Reset Password Link Modal */}
       {showResetLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
             <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6 transform scale-100 animate-in zoom-in-95 duration-200">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-white">Reset Password Link</h3>
+                        <h3 className="text-lg font-bold text-white">
+                          {t.modal?.resetPasswordTitle || "Reset Password Link"}
+                        </h3>
                         <button onClick={() => setShowResetLinkModal(false)} className="text-slate-400 hover:text-white transition-colors">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
                     
                     <p className="text-sm text-slate-400">
-                        Copy the link below and send it to <strong>{targetUser?.userName}</strong> to reset their password.
+                        {(t.modal?.resetPasswordMessage || "Copy the link below and send it to {name} to reset their password.")
+                          .replace("{name}", targetUser?.userName || "")}
                     </p>
 
                     <div className="relative">
@@ -538,7 +541,7 @@ export default function UsersPage() {
                         <button 
                             onClick={copyToClipboard}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors"
-                            title="Copy to clipboard"
+                            title={t.buttons?.copy || "Copy to clipboard"}
                         >
                             <Copy className="w-4 h-4" />
                         </button>
@@ -549,7 +552,7 @@ export default function UsersPage() {
                             onClick={() => setShowResetLinkModal(false)} 
                             className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
                         >
-                            Done
+                            {t.buttons?.done || "Done"}
                         </button>
                     </div>
                 </div>

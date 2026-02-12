@@ -178,20 +178,6 @@ export default function CreateUserPage() {
       try {
         setIsSubmitting(true);
 
-        const searchRes = await userApi.getUsers({ fullTextSearch: formData.email.trim() });
-        const existingUsers = Array.isArray(searchRes) ? searchRes : (searchRes?.data || []);
-
-        const duplicate = existingUsers.find((u: any) => 
-          u.tmpUserEmail?.toLowerCase() === formData.email.trim().toLowerCase() ||
-          u.userEmail?.toLowerCase() === formData.email.trim().toLowerCase()
-        );
-
-        if (duplicate) {
-          toast.error(`อีเมล ${formData.email} ถูกใช้งานแล้วในระบบ (สถานะ: ${duplicate.userStatus})`);
-          setIsSubmitting(false);
-          return; 
-        }
-
         const payload: InviteUserPayload = {
           userName: formData.username.trim(),
           tmpUserEmail: formData.email.trim(),
@@ -204,7 +190,8 @@ export default function CreateUserPage() {
         const resData = response as any;
 
         if (resData?.status === "OK" && !resData?.registrationUrl) {
-           throw new Error("ระบบตรวจพบข้อมูลซ้ำซ้อน ไม่สามารถสร้างการเชิญใหม่ได้");
+           const msg = (t.toast as any).duplicateData || "Duplicate data detected.";
+           throw new Error(msg);
         }
 
         const newId = resData?.orgUserId || resData?.id || null;
@@ -226,7 +213,10 @@ export default function CreateUserPage() {
 
       } catch (error: any) {
         console.error("Failed to invite user:", error);
-        toast.error(error?.message || t.toast.error);
+        
+        const errorMsg = error?.message || t.toast.error;
+        toast.error(errorMsg);
+        
       } finally {
         setIsSubmitting(false);
       }

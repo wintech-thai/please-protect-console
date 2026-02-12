@@ -99,6 +99,7 @@ export const translations = {
       successTitle: "Password Reset Successful",
       successDesc: "Your password has been successfully updated. You can now log in.",
       passwordMismatch: "Passwords do not match",
+      success: "Password reset successfully",
       backToLogin: "Back to Login"
     },
     TH: {
@@ -110,6 +111,7 @@ export const translations = {
       successTitle: "เปลี่ยนรหัสผ่านสำเร็จ",
       successDesc: "รหัสผ่านของคุณได้รับการอัปเดตเรียบร้อยแล้ว คุณสามารถเข้าสู่ระบบได้ทันที",
       passwordMismatch: "รหัสผ่านไม่ตรงกัน",
+      success: "เปลี่ยนรหัสผ่านสำเร็จ",
       backToLogin: "กลับไปหน้าเข้าสู่ระบบ"
     }
   },
@@ -184,7 +186,7 @@ export const translations = {
       changePassword: "Change Password",
       logout: "Logout",
       logoutSuccess: "Logged out successfully",
-      
+
       overview: "Overview",
       events: "Events",
       layer7: "Layer7 Events",
@@ -195,7 +197,7 @@ export const translations = {
       roles: "Custom Roles",
       apiKeys: "API Keys",
       audit: "Audit Log",
-      
+
       language: "Language"
     },
     TH: {
@@ -214,7 +216,7 @@ export const translations = {
       roles: "สิทธิ์ตามบทบาท",
       apiKeys: "กุญแจ API",
       audit: "ตรวจสอบการใช้งาน",
-      
+
       language: "ภาษา"
     }
   },
@@ -222,33 +224,63 @@ export const translations = {
   overview: {
     EN: {
       title: "System Overview",
-      subtitle: "Real-time monitoring dashboard",
+      subtitle: "Real-time server metrics from Prometheus",
       stats: {
-        traffic: { label: "Total Traffic", sub: "+12% from last hour" },
-        threats: { label: "Threats Blocked", sub: "High Severity" },
-        sensors: { label: "Active Sensors", sub: "All systems operational" },
-        alerts: { label: "Pending Alerts", sub: "Action required" }
+        cpu: { label: "CPU Usage", sub: "Average across all cores" },
+        memory: { label: "Memory Usage", sub: "Used / Total" },
+        network: { label: "Network I/O", sub: "RX + TX combined rate" },
+        disk: { label: "Disk Usage", sub: "Used / Total" }
       },
-      chartTitle: "Traffic Analysis (Layer 7)",
-      recentAlertsTitle: "Recent Alerts",
-      alertMessage: "Suspicious Activity Detected",
-      timeAgo: "2m ago",
-      waitingForData: "Waiting for traffic data..."
+      chartTitle: "CPU Load (1h)",
+      load1: "Load 1m",
+      load5: "Load 5m",
+      load15: "Load 15m",
+      systemInfo: "System Information",
+      cpuCores: "CPU Cores",
+      loadAvg: "Load Average",
+      memBreakdown: "Memory",
+      diskBreakdown: "Disk",
+      total: "Total",
+      used: "Used",
+      available: "Available",
+      mountpoint: "Mount",
+      loading: "Loading metrics...",
+      error: "Failed to load metrics",
+      retry: "Retry",
+      lastUpdated: "Last updated",
+      autoRefresh: "Auto-refresh: 30s",
+      rxRate: "RX",
+      txRate: "TX"
     },
     TH: {
       title: "ภาพรวมระบบ",
-      subtitle: "แดชบอร์ดติดตามสถานะแบบเรียลไทม์",
+      subtitle: "ข้อมูล Metric แบบเรียลไทม์จาก Prometheus",
       stats: {
-        traffic: { label: "ปริมาณ Traffic รวม", sub: "+12% จากชั่วโมงก่อน" },
-        threats: { label: "ภัยคุกคามที่ถูกบล็อก", sub: "ความรุนแรงระดับสูง" },
-        sensors: { label: "เซ็นเซอร์ที่ทำงาน", sub: "ระบบทำงานปกติทั้งหมด" },
-        alerts: { label: "การแจ้งเตือนรอตรวจสอบ", sub: "ต้องดำเนินการทันที" }
+        cpu: { label: "การใช้ CPU", sub: "เฉลี่ยทุก Core" },
+        memory: { label: "การใช้หน่วยความจำ", sub: "ใช้งาน / ทั้งหมด" },
+        network: { label: "เครือข่าย I/O", sub: "อัตรา RX + TX รวม" },
+        disk: { label: "การใช้ดิสก์", sub: "ใช้งาน / ทั้งหมด" }
       },
-      chartTitle: "วิเคราะห์จราจรข้อมูล (Layer 7)",
-      recentAlertsTitle: "การแจ้งเตือนล่าสุด",
-      alertMessage: "ตรวจพบกิจกรรมน่าสงสัย",
-      timeAgo: "2 นาทีที่แล้ว",
-      waitingForData: "กำลังรอข้อมูลจราจร..."
+      chartTitle: "โหลด CPU (1 ชั่วโมง)",
+      load1: "โหลด 1 นาที",
+      load5: "โหลด 5 นาที",
+      load15: "โหลด 15 นาที",
+      systemInfo: "ข้อมูลระบบ",
+      cpuCores: "จำนวน Core",
+      loadAvg: "โหลดเฉลี่ย",
+      memBreakdown: "หน่วยความจำ",
+      diskBreakdown: "ดิสก์",
+      total: "ทั้งหมด",
+      used: "ใช้งาน",
+      available: "คงเหลือ",
+      mountpoint: "จุดเมานท์",
+      loading: "กำลังโหลด Metrics...",
+      error: "โหลด Metrics ไม่สำเร็จ",
+      retry: "ลองอีกครั้ง",
+      lastUpdated: "อัปเดตล่าสุด",
+      autoRefresh: "รีเฟรชอัตโนมัติ: 30 วินาที",
+      rxRate: "รับ",
+      txRate: "ส่ง"
     }
   },
 
@@ -315,7 +347,7 @@ export const translations = {
     EN: {
       title: "Layer 3 Traffic Analysis",
       subtitle: "Network Layer Monitoring (TCP/UDP/ICMP)",
-      placeholder: "Search IP, Port, Protocol...", 
+      placeholder: "Search IP, Port, Protocol...",
       filters: "Filters",
       rowsPerPage: "Rows per page:",
       of: "of",
@@ -344,7 +376,7 @@ export const translations = {
     TH: {
       title: "วิเคราะห์จราจรข้อมูล Layer 3",
       subtitle: "การตรวจสอบ Network Layer (TCP/UDP/ICMP)",
-      placeholder: "ค้นหา IP, Port, Protocol...", 
+      placeholder: "ค้นหา IP, Port, Protocol...",
       filters: "ตัวกรอง",
       rowsPerPage: "แถวต่อหน้า:",
       of: "จาก",
@@ -501,6 +533,7 @@ export const translations = {
       toast: {
         success: "Role created successfully",
         error: "Failed to create role",
+        duplicateRoleName: "Role Name '{name}' is already in use.",
         loadError: "Failed to load permission list"
       },
       validation: {
@@ -541,6 +574,7 @@ export const translations = {
       toast: {
         success: "สร้างบทบาทสำเร็จ",
         error: "สร้างบทบาทไม่สำเร็จ",
+        duplicateRoleName: "ชื่อบทบาท '{name}' ถูกใช้งานแล้วในระบบ",
         loadError: "โหลดรายการสิทธิ์ไม่สำเร็จ"
       },
       validation: {
@@ -633,6 +667,7 @@ export const translations = {
       }
     }
   },
+
   users: {
     EN: {
       title: "Users",
@@ -660,6 +695,8 @@ export const translations = {
         enable: "Enable User",
         cancel: "Cancel",
         resetPassword: "Reset Password Link",
+        copy: "Copy Link",
+        done: "Done",
         ok: "OK"
       },
       modal: {
@@ -667,14 +704,21 @@ export const translations = {
         deleteMessage: "Are you sure you want to delete {count} selected user(s)? This action cannot be undone.",
         enableTitle: "Enable User",
         disableTitle: "Disable User",
-        statusMessage: "Are you sure you want to {action} this user?"
+        statusMessage: "Are you sure you want to {action} this user?",
+        resetPasswordTitle: "Reset Password Link",
+        resetPasswordMessage: "Copy the link below and send it to {name} to reset their password."
       },
       toast: {
         deleteSuccess: "Deleted {count} user(s) successfully",
         deleteError: "Failed to delete users",
         statusSuccess: "Updated status successfully",
         statusError: "Failed to update status",
-        fetchError: "Failed to fetch users"
+        fetchError: "Failed to fetch users",
+        generatingLink: "Generating reset link...",
+        copySuccess: "Link copied to clipboard!",
+        copyError: "Failed to copy link",
+        resetLinkError: "Failed to generate reset link",
+        invalidResponse: "Invalid response from server"
       },
       rowsPerPage: "Rows per page:",
       of: "of",
@@ -707,6 +751,8 @@ export const translations = {
         enable: "เปิดใช้งาน",
         cancel: "ยกเลิก",
         resetPassword: "ลิ้งก์รีเซ็ตรหัสผ่าน",
+        copy: "คัดลอกลิงก์",
+        done: "เสร็จสิ้น",
         ok: "ตกลง"
       },
       modal: {
@@ -714,14 +760,21 @@ export const translations = {
         deleteMessage: "คุณแน่ใจหรือไม่ที่จะลบ {count} ผู้ใช้งานที่เลือก? การกระทำนี้ไม่สามารถย้อนกลับได้",
         enableTitle: "เปิดใช้งานผู้ใช้",
         disableTitle: "ระงับผู้ใช้",
-        statusMessage: "คุณแน่ใจหรือไม่ที่จะ {action} ผู้ใช้งานนี้?"
+        statusMessage: "คุณแน่ใจหรือไม่ที่จะ {action} ผู้ใช้งานนี้?",
+        resetPasswordTitle: "ลิงก์รีเซ็ตรหัสผ่าน",
+        resetPasswordMessage: "คัดลอกลิงก์ด้านล่างและส่งให้คุณ {name} เพื่อรีเซ็ตรหัสผ่าน"
       },
       toast: {
         deleteSuccess: "ลบ {count} ผู้ใช้งานเรียบร้อยแล้ว",
         deleteError: "ลบผู้ใช้งานไม่สำเร็จ",
         statusSuccess: "อัปเดตสถานะสำเร็จ",
         statusError: "อัปเดตสถานะไม่สำเร็จ",
-        fetchError: "โหลดข้อมูลผู้ใช้งานไม่สำเร็จ"
+        fetchError: "โหลดข้อมูลผู้ใช้งานไม่สำเร็จ",
+        generatingLink: "กำลังสร้างลิงก์...",
+        copySuccess: "คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว!",
+        copyError: "คัดลอกลิงก์ไม่สำเร็จ",
+        resetLinkError: "สร้างลิงก์รีเซ็ตไม่สำเร็จ",
+        invalidResponse: "การตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง"
       },
       rowsPerPage: "แถวต่อหน้า:",
       of: "จาก",
@@ -729,6 +782,7 @@ export const translations = {
       noData: "ไม่พบข้อมูลผู้ใช้งาน"
     }
   },
+
   createUser: {
     EN: {
       title: "Create User",
@@ -768,7 +822,10 @@ export const translations = {
         success: "User invited successfully",
         error: "Failed to invite user",
         rolesError: "Failed to load roles configuration",
-        copySuccess: "Link copied to clipboard"
+        copySuccess: "Link copied to clipboard",
+        duplicateEmail: "Email '{email}' is already in use",
+        duplicateUsername: "Username '{username}' is already in use",
+        duplicateData: "Duplicate data detected. Cannot create a new invitation."
       },
       validation: {
         username: "Username is required",
@@ -818,7 +875,10 @@ export const translations = {
         success: "เชิญผู้ใช้งานสำเร็จ",
         error: "เชิญผู้ใช้งานไม่สำเร็จ",
         rolesError: "โหลดข้อมูลบทบาทไม่สำเร็จ",
-        copySuccess: "คัดลอกลิงก์แล้ว"
+        copySuccess: "คัดลอกลิงก์แล้ว",
+        duplicateEmail: "อีเมล '{email}' ถูกใช้งานแล้วในระบบ",
+        duplicateUsername: "ชื่อผู้ใช้งาน '{username}' ถูกใช้งานแล้วในระบบ",
+        duplicateData: "ระบบตรวจพบข้อมูลซ้ำซ้อน ไม่สามารถสร้างการเชิญใหม่ได้"
       },
       validation: {
         username: "กรุณาระบุชื่อผู้ใช้",
@@ -831,6 +891,7 @@ export const translations = {
       noRolesSelected: "ยังไม่ได้เลือกบทบาท"
     }
   },
+
   updateUser: {
     EN: {
       title: "Update User",
@@ -1041,7 +1102,8 @@ export const translations = {
         error: "Failed to create API Key",
         rolesError: "Failed to load roles configuration",
         copySuccess: "Copied to clipboard",
-        tokenError: "API Key created but failed to retrieve the token string."
+        tokenError: "API Key created but failed to retrieve the token string.",
+        duplicateKeyName: "API Key Name '{name}' is already in use"
       },
       validation: {
         keyName: "Key Name is required",
@@ -1088,6 +1150,7 @@ export const translations = {
         error: "สร้างคีย์ API ไม่สำเร็จ",
         rolesError: "โหลดข้อมูลบทบาทไม่สำเร็จ",
         copySuccess: "คัดลอกลงคลิปบอร์ดแล้ว",
+        duplicateKeyName: "ชื่อคีย์ '{name}' ถูกใช้งานแล้วในระบบ",
         tokenError: "สร้างคีย์สำเร็จแต่ไม่สามารถดึงข้อมูลโทเค็นได้"
       },
       validation: {
@@ -1245,5 +1308,5 @@ export const translations = {
       }
     }
   },
-  
+
 };

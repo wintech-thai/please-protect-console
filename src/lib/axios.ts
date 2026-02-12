@@ -77,19 +77,26 @@ client.interceptors.request.use(
 
 client.interceptors.response.use(
   (response: AxiosResponse) => {
-    const { status, description } = response.data || {};
+    const data = response.data;
+    
+    if (!data) return response;
 
-    const statusUpper = status?.toString().toUpperCase();
+    const { status, description, message } = data;
 
-    const isBusinessError = 
-        status && 
-        (typeof status === 'string') &&
-        (statusUpper.startsWith("ERROR") || (statusUpper !== "OK" && statusUpper !== "SUCCESS"));
+    if (status === undefined || status === null) {
+        return response;
+    }
 
-    if (isBusinessError) {
+    const statusUpper = typeof status === 'string' ? status.toUpperCase() : "";
+
+    const isSuccess = statusUpper === "OK" || statusUpper === "SUCCESS";
+
+    if (!isSuccess) {
+      const errorMsg = description || message || `Operation failed with status: ${statusUpper}`;
+
       const customError = new AxiosError(
-        description || status || "Unknown Business Error",
-        status, 
+        errorMsg,       
+        statusUpper,    
         response.config,
         response.request,
         response
