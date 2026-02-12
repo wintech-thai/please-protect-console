@@ -30,9 +30,26 @@ export interface Metrics {
 export interface ChartPoint {
   time: string;
   ts: number;
-  load1: number;
-  load5: number;
-  load15: number;
+  [key: string]: number | string;
+}
+
+export interface CpuChartData extends ChartPoint {
+  cpu: number;
+}
+
+export interface MemoryChartData extends ChartPoint {
+  used: number;
+  total: number;
+}
+
+export interface NetworkChartData extends ChartPoint {
+  rx: number;
+  tx: number;
+}
+
+export interface DiskIoChartData extends ChartPoint {
+  read: number;
+  write: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
