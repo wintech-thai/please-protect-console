@@ -663,6 +663,7 @@ export const translations = {
       }
     }
   },
+  
   users: {
     EN: {
       title: "Users",
@@ -690,6 +691,8 @@ export const translations = {
         enable: "Enable User",
         cancel: "Cancel",
         resetPassword: "Reset Password Link",
+        copy: "Copy Link",
+        done: "Done",
         ok: "OK"
       },
       modal: {
@@ -697,14 +700,21 @@ export const translations = {
         deleteMessage: "Are you sure you want to delete {count} selected user(s)? This action cannot be undone.",
         enableTitle: "Enable User",
         disableTitle: "Disable User",
-        statusMessage: "Are you sure you want to {action} this user?"
+        statusMessage: "Are you sure you want to {action} this user?",
+        resetPasswordTitle: "Reset Password Link",
+        resetPasswordMessage: "Copy the link below and send it to {name} to reset their password."
       },
       toast: {
         deleteSuccess: "Deleted {count} user(s) successfully",
         deleteError: "Failed to delete users",
         statusSuccess: "Updated status successfully",
         statusError: "Failed to update status",
-        fetchError: "Failed to fetch users"
+        fetchError: "Failed to fetch users",
+        generatingLink: "Generating reset link...",
+        copySuccess: "Link copied to clipboard!",
+        copyError: "Failed to copy link",
+        resetLinkError: "Failed to generate reset link",
+        invalidResponse: "Invalid response from server"
       },
       rowsPerPage: "Rows per page:",
       of: "of",
@@ -737,6 +747,8 @@ export const translations = {
         enable: "เปิดใช้งาน",
         cancel: "ยกเลิก",
         resetPassword: "ลิ้งก์รีเซ็ตรหัสผ่าน",
+        copy: "คัดลอกลิงก์",
+        done: "เสร็จสิ้น",
         ok: "ตกลง"
       },
       modal: {
@@ -744,14 +756,21 @@ export const translations = {
         deleteMessage: "คุณแน่ใจหรือไม่ที่จะลบ {count} ผู้ใช้งานที่เลือก? การกระทำนี้ไม่สามารถย้อนกลับได้",
         enableTitle: "เปิดใช้งานผู้ใช้",
         disableTitle: "ระงับผู้ใช้",
-        statusMessage: "คุณแน่ใจหรือไม่ที่จะ {action} ผู้ใช้งานนี้?"
+        statusMessage: "คุณแน่ใจหรือไม่ที่จะ {action} ผู้ใช้งานนี้?",
+        resetPasswordTitle: "ลิงก์รีเซ็ตรหัสผ่าน",
+        resetPasswordMessage: "คัดลอกลิงก์ด้านล่างและส่งให้คุณ {name} เพื่อรีเซ็ตรหัสผ่าน"
       },
       toast: {
         deleteSuccess: "ลบ {count} ผู้ใช้งานเรียบร้อยแล้ว",
         deleteError: "ลบผู้ใช้งานไม่สำเร็จ",
         statusSuccess: "อัปเดตสถานะสำเร็จ",
         statusError: "อัปเดตสถานะไม่สำเร็จ",
-        fetchError: "โหลดข้อมูลผู้ใช้งานไม่สำเร็จ"
+        fetchError: "โหลดข้อมูลผู้ใช้งานไม่สำเร็จ",
+        generatingLink: "กำลังสร้างลิงก์...",
+        copySuccess: "คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว!",
+        copyError: "คัดลอกลิงก์ไม่สำเร็จ",
+        resetLinkError: "สร้างลิงก์รีเซ็ตไม่สำเร็จ",
+        invalidResponse: "การตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง"
       },
       rowsPerPage: "แถวต่อหน้า:",
       of: "จาก",
@@ -759,6 +778,7 @@ export const translations = {
       noData: "ไม่พบข้อมูลผู้ใช้งาน"
     }
   },
+
   createUser: {
     EN: {
       title: "Create User",
