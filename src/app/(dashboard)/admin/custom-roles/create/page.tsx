@@ -206,20 +206,6 @@ export default function CreateCustomRolePage() {
     try {
       setIsSubmitting(true);
 
-      const rolesRes = await roleApi.getCustomRoles();
-      const existingRoles = Array.isArray(rolesRes) ? rolesRes : (rolesRes?.data || []);
-
-      const isDuplicate = existingRoles.some((r: any) => 
-        (r.customRoleName || r.roleName || "").toLowerCase() === formData.roleName.trim().toLowerCase()
-      );
-
-      if (isDuplicate) {
-        const msg = (t.toast as any).duplicateRoleName || "Role Name '{name}' is already in use.";
-        toast.error(msg.replace("{name}", formData.roleName));
-        setIsSubmitting(false);
-        return; 
-      }
-      
       const permissionsPayload = permissionList.map(group => ({
           controllerName: group.category,
           apiPermissions: group.items.map(item => ({
@@ -245,9 +231,11 @@ export default function CreateCustomRolePage() {
       goBack(newId); 
 
     } catch (error: any) {
-      console.error("Create Role Error:", error.response?.data || error.message);
-      const serverMsg = error.response?.data?.description || t.toast.error; 
-      toast.error(serverMsg);
+      console.error("Create Role Error:", error);
+      
+      const errorMsg = error?.message || t.toast.error;
+      toast.error(errorMsg);
+      
     } finally {
       setIsSubmitting(false);
     }
@@ -286,7 +274,7 @@ export default function CreateCustomRolePage() {
       <div className="flex-1 overflow-y-auto pb-8 no-scrollbar">
         <div className="px-4 md:px-8 space-y-6"> 
             
-            {/* 1. Role Information Section */}
+            {/* Role Information Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 border-b border-slate-800 pb-3">
                     {t.infoTitle}
@@ -336,7 +324,7 @@ export default function CreateCustomRolePage() {
                 </div>
             </div>
 
-            {/* 2. Permissions Section */}
+            {/* Permissions Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 border-b border-slate-800 pb-3">
                     {t.permissionsTitle}

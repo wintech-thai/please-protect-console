@@ -178,42 +178,6 @@ export default function CreateUserPage() {
       try {
         setIsSubmitting(true);
 
-        const searchRes = await userApi.getUsers({ offset: 0, limit: 1000 });
-        const existingUsers = Array.isArray(searchRes) ? searchRes : (searchRes?.data || []);
-
-        const dupEmail = existingUsers.find((u: any) => 
-          u.tmpUserEmail?.toLowerCase() === formData.email.trim().toLowerCase() ||
-          u.userEmail?.toLowerCase() === formData.email.trim().toLowerCase()
-        );
-
-        if (dupEmail) {
-          const msg = (t.toast as any).duplicateEmail || "Email '{email}' is already in use (Status: {status})";
-          
-          toast.error(
-            msg
-              .replace("{email}", formData.email)
-              .replace("{status}", dupEmail.userStatus)
-          );
-          setIsSubmitting(false);
-          return; 
-        }
-
-        const dupUser = existingUsers.find((u: any) => 
-          u.userName?.toLowerCase() === formData.username.trim().toLowerCase()
-        );
-
-        if (dupUser) {
-          const msg = (t.toast as any).duplicateUsername || "Username '{username}' is already in use (Status: {status})";
-
-          toast.error(
-            msg
-              .replace("{username}", formData.username)
-              .replace("{status}", dupUser.userStatus)
-          );
-          setIsSubmitting(false);
-          return;
-        }
-
         const payload: InviteUserPayload = {
           userName: formData.username.trim(),
           tmpUserEmail: formData.email.trim(),
@@ -249,7 +213,10 @@ export default function CreateUserPage() {
 
       } catch (error: any) {
         console.error("Failed to invite user:", error);
-        toast.error(error?.message || t.toast.error);
+        
+        const errorMsg = error?.message || t.toast.error;
+        toast.error(errorMsg);
+        
       } finally {
         setIsSubmitting(false);
       }
