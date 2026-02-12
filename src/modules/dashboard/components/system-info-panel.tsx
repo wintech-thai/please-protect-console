@@ -42,7 +42,7 @@ export function SystemInfoPanel({
         </h3>
       </div>
 
-      <div className="space-y-4 overflow-y-auto custom-scrollbar-thin pr-2 -mr-2 flex-1">
+      <div className="space-y-4 overflow-y-auto pr-2 -mr-2 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {/* CPU Cores */}
         <InfoRow label={t.cpuCores} value={m.cpuCores.toString()} />
 
