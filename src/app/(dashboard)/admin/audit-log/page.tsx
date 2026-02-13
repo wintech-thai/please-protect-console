@@ -21,8 +21,7 @@ import { AuditLogDocument } from "@/types/audit-log";
 import { format, subMinutes, subHours, subDays } from "date-fns"; 
 import { 
   AdvancedTimeRangeSelector, 
-  TimeRangeValue, 
-  TimePickerTranslations 
+  TimeRangeValue 
 } from "@/modules/dashboard/components/advanced-time-selector";
 
 export default function AuditLogPage() {
@@ -34,7 +33,6 @@ export default function AuditLogPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,6 +48,28 @@ export default function AuditLogPage() {
   const [selectedLog, setSelectedLog] = useState<AuditLogDocument | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+
+  const highlightJson = (json: object) => {
+    const jsonString = JSON.stringify(json, null, 2);
+    return jsonString.replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      (match) => {
+        let cls = 'text-[#ce9178]'; 
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'text-[#9cdcfe]'; 
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'text-[#569cd6]'; 
+        } else if (/null/.test(match)) {
+          cls = 'text-[#569cd6]'; 
+        } else {
+          cls = 'text-[#b5cea8]'; 
+        }
+        return `<span class="${cls}">${match}</span>`;
+      }
+    );
+  };
 
   const getOrgId = () => {
     if (typeof window !== 'undefined') {
@@ -69,7 +89,13 @@ export default function AuditLogPage() {
       setIsLoading(true);
       const from = (page - 1) * itemsPerPage;
       const queryMust: any[] = [];
+
+      const currentEnv = process.env.NEXT_PUBLIC_ENV_RUN;
+      queryMust.push({
+        match: { "data.Environment": currentEnv }
+      });
       
+      // Search Logic
       if (searchTerm) {
         if (searchField === "Full Text Search") {
              queryMust.push({
@@ -88,13 +114,13 @@ export default function AuditLogPage() {
         }
       }
 
+      // Time Range Logic
       let gte: string | undefined;
       let lte: string | undefined;
 
       if (timeRange.type === "relative") {
         const now = new Date();
         let startTime = subHours(now, 24);
-
         switch (timeRange.value) {
             case "5m": startTime = subMinutes(now, 5); break;
             case "15m": startTime = subMinutes(now, 15); break;
@@ -125,7 +151,11 @@ export default function AuditLogPage() {
         size: itemsPerPage,
         sort: [{ "@timestamp": { order: "desc" } }],
         track_total_hits: true, 
-        query: { bool: { must: queryMust.length > 0 ? queryMust : [{ match_all: {} }] } }
+        query: { 
+            bool: { 
+                must: queryMust 
+            } 
+        }
       };
 
       const response = await esService.getAuditLogs(orgId, payload);
@@ -157,10 +187,7 @@ export default function AuditLogPage() {
     } catch (error: any) {
       console.error("Failed to fetch audit logs:", error);
       setLogs([]);
-      
-      const errorMessage = error.message || "An unexpected error occurred while fetching logs.";
-      alert(errorMessage); 
-
+      alert(error.message || "Failed to fetch logs.");
     } finally {
       setIsLoading(false);
     }
@@ -170,15 +197,8 @@ export default function AuditLogPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleRowClick = (id: string) => {
-    setSelectedRowId(id);
-  };
-
-  const handleSearchTrigger = () => {
-    setPage(1);
-    setSearchTerm(inputValue); 
-  };
-
+  const handleRowClick = (id: string) => setSelectedRowId(id);
+  const handleSearchTrigger = () => { setPage(1); setSearchTerm(inputValue); };
   const handleResetFilters = () => {
     setInputValue("");
     setSearchTerm("");
@@ -186,13 +206,11 @@ export default function AuditLogPage() {
     setTimeRange({ type: "relative", value: "24h", label: t.timeRange.last24h });
     setPage(1);
   };
-
   const openDetailModal = (log: AuditLogDocument) => {
       setSelectedLog(log);
       setIsCopied(false);
       setShowDetailModal(true);
   };
-
   const handleCopyJson = () => {
     if (selectedLog) {
         navigator.clipboard.writeText(JSON.stringify(selectedLog, null, 2));
@@ -200,13 +218,9 @@ export default function AuditLogPage() {
         setTimeout(() => setIsCopied(false), 2000);
     }
   };
-
   const formatDate = (isoString: string) => {
-      try {
-          return format(new Date(isoString), "M/d/yyyy, h:mm:ss a");
-      } catch (e) {
-          return isoString || "-";
-      }
+      try { return format(new Date(isoString), "M/d/yyyy, h:mm:ss a"); }
+      catch (e) { return isoString || "-"; }
   };
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -216,7 +230,7 @@ export default function AuditLogPage() {
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 text-slate-200 relative font-sans">
       
-      {/* --- Header --- */}
+      {/* Header */}
       <div className="flex-none pt-6 mb-2 px-4 md:px-6">
         <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
             {t.title}
@@ -224,10 +238,9 @@ export default function AuditLogPage() {
         <p className="text-slate-400 text-xs md:text-sm">{t.subtitle}</p>
       </div>
 
-      {/* --- Toolbar --- */}
+      {/* Toolbar */}
       <div className="flex-none py-4">
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800 shadow-sm">
-            
             <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-2">
                 <div className="relative w-full sm:w-auto sm:min-w-[160px]">
                     <select 
@@ -254,10 +267,7 @@ export default function AuditLogPage() {
                     />
                 </div>
 
-                <button 
-                  onClick={handleSearchTrigger} 
-                  className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all flex items-center justify-center gap-2"
-                >
+                <button onClick={handleSearchTrigger} className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all flex items-center justify-center gap-2">
                   <Search className="w-4 h-4" />
                 </button>
             </div>
@@ -265,26 +275,18 @@ export default function AuditLogPage() {
             <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center justify-end">
                 <AdvancedTimeRangeSelector 
                     value={timeRange}
-                    onChange={(val) => {
-                        setTimeRange(val);
-                        setPage(1);
-                    }}
+                    onChange={(val) => { setTimeRange(val); setPage(1); }}
                     disabled={isLoading}
                     translations={t.timeRange}
                 />
-
-                <button 
-                    onClick={handleResetFilters}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                    title="Reset Filters"
-                >
+                <button onClick={handleResetFilters} className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2" title="Reset Filters">
                     <RefreshCcw className="w-4 h-4" />
                 </button>
             </div>
         </div>
       </div>
 
-      {/* --- Table --- */}
+      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <div className="flex-1 bg-slate-900 border border-slate-800 rounded-t-xl shadow-2xl overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto no-scrollbar">
@@ -310,56 +312,21 @@ export default function AuditLogPage() {
                             logs.map((log, idx) => {
                                 const isSelected = selectedRowId === log.id;
                                 const isError = log.status_code && log.status_code !== 200;
-
                                 return (
                                     <tr 
                                         key={log.id || idx} 
                                         onClick={() => handleRowClick(log.id)}
-                                        className={`transition-all duration-200 text-sm cursor-pointer border-b border-slate-800/50
-                                            ${isSelected 
-                                                ? "bg-blue-500/10 border-l-4 border-l-blue-500" 
-                                                : isError 
-                                                  ? "bg-red-500/10 text-red-200 hover:bg-red-500/20 border-l-4 border-l-transparent" 
-                                                  : "hover:bg-slate-800/40 border-l-4 border-l-transparent"
-                                            }
-                                        `}
+                                        className={`transition-all duration-200 text-sm cursor-pointer border-b border-slate-800/50 ${isSelected ? "bg-blue-500/10 border-l-4 border-l-blue-500" : isError ? "bg-red-500/10 text-red-200 hover:bg-red-500/20 border-l-4 border-l-transparent" : "hover:bg-slate-800/40 border-l-4 border-l-transparent"}`}
                                     >
-                                        <td className="p-4 whitespace-nowrap text-slate-400 font-mono text-xs">
-                                            {formatDate(log["@timestamp"])}
-                                        </td>
-                                        
-                                        <td className={`p-4 font-medium ${isError ? 'text-red-400' : 'text-blue-400'}`}>
-                                            {log.user_name || "-"}
-                                        </td>
-                                        
-                                        <td className="p-4">
-                                            <span className="text-slate-300">{log.id_type || "JWT"}</span>
-                                        </td>
-                                        
-                                        <td className="p-4 text-slate-300">
-                                            {log.action || "-"}
-                                        </td>
-                                        
-                                        <td className={`p-4 font-mono font-bold ${isError ? 'text-red-500' : 'text-slate-200'}`}>
-                                            {log.status_code || 200}
-                                        </td>
-                                        
-                                        <td className="p-4 text-slate-400">
-                                            {log.role || "-"}
-                                        </td>
-                                        
-                                        <td className="p-4 text-slate-500 font-mono text-xs">
-                                            {log.client_ip || "-"}
-                                        </td>
-                                        
+                                        <td className="p-4 whitespace-nowrap text-slate-400 font-mono text-xs">{formatDate(log["@timestamp"])}</td>
+                                        <td className={`p-4 font-medium ${isError ? 'text-red-400' : 'text-blue-400'}`}>{log.user_name || "-"}</td>
+                                        <td className="p-4"><span className="text-slate-300">{log.id_type || "JWT"}</span></td>
+                                        <td className="p-4 text-slate-300">{log.action || "-"}</td>
+                                        <td className={`p-4 font-mono font-bold ${isError ? 'text-red-500' : 'text-slate-200'}`}>{log.status_code || 200}</td>
+                                        <td className="p-4 text-slate-400">{log.role || "-"}</td>
+                                        <td className="p-4 text-slate-500 font-mono text-xs">{log.client_ip || "-"}</td>
                                         <td className="p-4 text-center">
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openDetailModal(log);
-                                                }}
-                                                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700"
-                                            >
+                                            <button onClick={(e) => { e.stopPropagation(); openDetailModal(log); }} className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
                                                 <Eye className="w-4 h-4" />
                                             </button>
                                         </td>
@@ -371,15 +338,10 @@ export default function AuditLogPage() {
                 </table>
             </div>
             
-            {/* Pagination Footer */}
             <div className="flex-none flex items-center justify-between sm:justify-end px-4 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-4 sm:gap-6">
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                     <span>{t.table.rowsPerPage}</span>
-                    <select 
-                        value={itemsPerPage} 
-                        onChange={(e) => { setItemsPerPage(Number(e.target.value)); setPage(1); }} 
-                        className="bg-transparent border-none text-slate-200 focus:ring-0 cursor-pointer font-medium"
-                    >
+                    <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setPage(1); }} className="bg-transparent border-none text-slate-200 focus:ring-0 cursor-pointer font-medium">
                         <option value={25} className="bg-slate-900">25</option>
                         <option value={50} className="bg-slate-900">50</option>
                         <option value={100} className="bg-slate-900">100</option>
@@ -409,20 +371,17 @@ export default function AuditLogPage() {
                 </div>
                 
                 <div className="flex-1 overflow-auto p-4 bg-[#0d1117] no-scrollbar">
-                    <pre className="text-xs font-mono text-green-400 leading-relaxed whitespace-pre-wrap break-all select-text">
-                        {JSON.stringify(selectedLog, null, 2)}
-                    </pre>
+                    <pre 
+                      className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-all select-text"
+                      dangerouslySetInnerHTML={{ __html: highlightJson(selectedLog) }}
+                    />
                 </div>
 
                 <div className="p-4 border-t border-slate-800 bg-slate-900 flex justify-between items-center flex-none">
-                    <button 
-                        onClick={handleCopyJson}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors"
-                    >
+                    <button onClick={handleCopyJson} className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors">
                         {isCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                         {isCopied ? "Copied!" : "Copy JSON"}
                     </button>
-
                     <button onClick={() => setShowDetailModal(false)} className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition-colors border border-slate-700">{t.modal.close}</button>
                 </div>
             </div>
