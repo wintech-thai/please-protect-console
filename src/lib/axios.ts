@@ -92,11 +92,12 @@ client.interceptors.response.use(
     const isSuccess = statusUpper === "OK" || statusUpper === "SUCCESS";
 
     if (!isSuccess) {
+      // ใช้ description จาก Backend เป็น error message หลัก
       const errorMsg = description || message || `Operation failed with status: ${statusUpper}`;
 
       const customError = new AxiosError(
         errorMsg,       
-        statusUpper,    
+        statusUpper, 
         response.config,
         response.request,
         response
@@ -110,10 +111,26 @@ client.interceptors.response.use(
   
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    const errorData = error.response?.data as any;
-    const status = error.response?.status;
-    
+    const errorResponse = error.response;
+    const errorData = errorResponse?.data as any;
+    const status = errorResponse?.status;
     const businessCode = error.code; 
+
+    if (status === 403) {
+       const apiPath = originalRequest.url || "Unknown API"; 
+       const errorDesc = errorData?.description || "You do not have permission to access this resource.";
+       const finalMessage = `${errorDesc} (Target: ${apiPath})`;
+
+       const forbiddenError = new AxiosError(
+          finalMessage, 
+          "UNAUTHORIZED",
+          originalRequest,
+          error.request,
+          errorResponse
+       );
+       return Promise.reject(forbiddenError);
+    }
+
 
     const isTokenExpired =
       status === 401 ||
@@ -177,15 +194,23 @@ client.interceptors.response.use(
 
       return client(originalRequest);
 
-    } catch (refreshError) {
+    } catch (refreshError: any) {
       processQueue(refreshError, null);
       clearAuthData();
 
       if (typeof window !== "undefined") {
         window.location.href = "/login";
       }
+      
+      const sessionError = new AxiosError(
+          "Session expired. Please login again.",
+          "INVALID_TOKEN",
+          originalRequest,
+          undefined,
+          undefined
+      );
 
-      return Promise.reject(refreshError);
+      return Promise.reject(sessionError);
     } finally {
       isRefreshing = false;
     }
