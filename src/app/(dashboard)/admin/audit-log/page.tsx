@@ -155,7 +155,7 @@ export default function AuditLogPage() {
           return {
               id: h._id, 
               "@timestamp": source["@timestamp"],
-              user_name: userInfo.UserName || "System",
+              user_name: userInfo.UserName || "",
               id_type: userInfo.IdentityType || "-",
               role: userInfo.Role || "-",
               action: api.ApiName || data.Path,
