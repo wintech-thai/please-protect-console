@@ -2,17 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { 
-  Search, 
-  ChevronLeft, 
-  ChevronRight, 
-  Loader2,
-  Eye,
-  FileJson,
-  X,
-  ChevronDown,
-  RefreshCcw,
-  Copy,
-  Check
+  Search, ChevronLeft, ChevronRight, Loader2, Eye, FileJson, X, 
+  ChevronDown, RefreshCcw, Copy, Check 
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext"; 
 import { translations } from "@/locales/dict"; 
@@ -90,11 +81,6 @@ export default function AuditLogPage() {
       const from = (page - 1) * itemsPerPage;
       const queryMust: any[] = [];
 
-      const currentEnv = process.env.NEXT_PUBLIC_ENV_RUN;
-      queryMust.push({
-        match: { "data.Environment": currentEnv }
-      });
-      
       // Search Logic
       if (searchTerm) {
         if (searchField === "Full Text Search") {
@@ -153,7 +139,7 @@ export default function AuditLogPage() {
         track_total_hits: true, 
         query: { 
             bool: { 
-                must: queryMust 
+                must: queryMust.length > 0 ? queryMust : [{ match_all: {} }] 
             } 
         }
       };
@@ -187,7 +173,7 @@ export default function AuditLogPage() {
     } catch (error: any) {
       console.error("Failed to fetch audit logs:", error);
       setLogs([]);
-      alert(error.message || "Failed to fetch logs.");
+      alert(`Error: ${error.response?.data?.error?.reason || error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -197,6 +183,7 @@ export default function AuditLogPage() {
     fetchData();
   }, [fetchData]);
 
+  // --- UI Handlers ---
   const handleRowClick = (id: string) => setSelectedRowId(id);
   const handleSearchTrigger = () => { setPage(1); setSearchTerm(inputValue); };
   const handleResetFilters = () => {
@@ -238,7 +225,6 @@ export default function AuditLogPage() {
         <p className="text-slate-400 text-xs md:text-sm">{t.subtitle}</p>
       </div>
 
-      {/* Toolbar */}
       <div className="flex-none py-4">
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800 shadow-sm">
             <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-2">
@@ -286,7 +272,6 @@ export default function AuditLogPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <div className="flex-1 bg-slate-900 border border-slate-800 rounded-t-xl shadow-2xl overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto no-scrollbar">

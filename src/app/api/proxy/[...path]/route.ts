@@ -9,15 +9,14 @@ async function handleProxy(
 ) {
   try {
     const { path } = await params;
-    
     const queryParams = req.nextUrl.search; 
     const endpoint = path.join("/");
     const targetUrl = `${BACKEND_URL}/${endpoint}${queryParams}`;
 
     console.log(`🚀 Proxying [${req.method}] to: ${targetUrl}`);
 
-    // --- จัดการ Body ---
-    let body = null;
+    // จัดการ Body ---
+    let body: any = null;
     const contentType = req.headers.get("content-type");
 
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -26,23 +25,28 @@ async function handleProxy(
             const textBody = await req.text();
             if (textBody) {
                 body = JSON.parse(textBody);
-                console.log("📤 Sending JSON Body");
+
+                const currentEnv = process.env.ENV_RUN; 
+
+                if (currentEnv && body?.query?.bool) {
+                    console.log(` Proxy: Injecting Environment [${currentEnv}]`);
+                    if (!body.query.bool.must) body.query.bool.must = [];
+                    body.query.bool.must.push({
+                        match: { "data.Environment": currentEnv }
+                    });
+                }
             }
           } catch (e) {
-            console.warn("⚠️ JSON Body parsing failed");
+            console.warn(" JSON Body parsing failed, sending raw body instead");
           }
       } else {
           body = await req.blob(); 
-          console.log("📤 Sending Blob/Form Body");
       }
     }
 
     // --- จัดการ Headers ---
     const headers: Record<string, string> = {};
-    
-    if (contentType) {
-        headers["Content-Type"] = contentType;
-    }
+    if (contentType) headers["Content-Type"] = contentType;
 
     const isLoginPath = endpoint.toLowerCase().includes("login");
     if (!isLoginPath) {
@@ -56,7 +60,7 @@ async function handleProxy(
         method: req.method,
         url: targetUrl,
         headers: headers,
-        data: body,
+        data: body, 
         validateStatus: () => true, 
         responseType: 'arraybuffer' 
     });
@@ -76,25 +80,7 @@ async function handleProxy(
     });
 
   } catch (error: any) {
-    console.error(`🔥 [Proxy Crash] Error:`, error.message);
-
-    const isNetworkError = 
-        error.code === 'ECONNRESET' || 
-        error.code === 'ETIMEDOUT' || 
-        error.message?.includes('aborted') ||
-        error.message?.includes('socket hang up');
-
-    if (isNetworkError) {
-        console.warn("⚠️ Network error detected (Backend dropped connection). Sending 401 to trigger refresh.");
-        return NextResponse.json(
-            { 
-                message: "Backend connection aborted (Token might be invalid or expired)", 
-                code: "PROXY_FORCE_401" 
-            },
-            { status: 401 } 
-        );
-    }
-
+    console.error(`[Proxy Crash] Error:`, error.message);
     return NextResponse.json(
       { message: "Proxy Connection Failed", error: error.message },
       { status: 500 }
