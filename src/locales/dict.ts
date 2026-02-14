@@ -188,6 +188,8 @@ export const translations = {
       logoutSuccess: "Logged out successfully",
 
       overview: "Overview",
+      systemOverview: "System Overview",
+      dataFlowOverview: "Data Flow Overview",
       events: "Events",
       layer7: "Layer7 Events",
       layer3: "Layer3 Events",
@@ -206,7 +208,9 @@ export const translations = {
       logout: "ออกจากระบบ",
       logoutSuccess: "ออกจากระบบเรียบร้อยแล้ว",
 
-      overview: "ภาพรวมระบบ",
+      overview: "ภาพรวม",
+      systemOverview: "ภาพรวมระบบ",
+      dataFlowOverview: "ภาพรวมการไหลของข้อมูล",
       events: "เหตุการณ์",
       layer7: "เหตุการณ์ Layer 7",
       layer3: "เหตุการณ์ Layer 3",
@@ -360,6 +364,63 @@ export const translations = {
         last2d: "2 วันล่าสุด",
         last7d: "7 วันล่าสุด",
         last30d: "30 วันล่าสุด"
+      }
+    }
+  },
+
+  dataFlow: {
+    EN: {
+      title: "Data Flow Overview",
+      subtitle: "Real-time visibility into data pipeline health and throughput",
+      nodes: {
+        interface: "Network Interface",
+        interfaceDesc: "Interface ({tag})",
+        receiver: "Raw Data Receiver",
+        receiverDesc: "Logstash beat receiver",
+        topicRaw: "Raw Data Topic",
+        topicRawDesc: "Kafka topic: {tag}",
+        transformer: "Data Transformer",
+        transformerDesc: "Logstash transformer",
+        topicTransformed: "Transformed Topic",
+        topicTransformedDesc: "Kafka topic: {tag}",
+        dispatcher: "Data Dispatcher",
+        dispatcherDesc: "Logstash dispatcher to ES",
+        storage: "Data Storage",
+        storageDesc: "Elasticsearch data store"
+      },
+      details: {
+        selectNode: "Select a node to view details",
+        noMetrics: "Metrics are not available for this node type.",
+        inputRate: "Input Rate",
+        outputRate: "Output Rate",
+        history: "Throughput History"
+      }
+    },
+    TH: {
+      title: "ภาพรวมการไหลของข้อมูล",
+      subtitle: "แสดงสถานะและปริมาณข้อมูลใน Pipeline แบบเรียลไทม์",
+      nodes: {
+        interface: "Network Interface",
+        interfaceDesc: "Interface ({tag})",
+        receiver: "Raw Data Receiver",
+        receiverDesc: "Logstash beat receiver",
+        topicRaw: "Raw Data Topic",
+        topicRawDesc: "Kafka topic: {tag}",
+        transformer: "Data Transformer",
+        transformerDesc: "Logstash transformer",
+        topicTransformed: "Transformed Topic",
+        topicTransformedDesc: "Kafka topic: {tag}",
+        dispatcher: "Data Dispatcher",
+        dispatcherDesc: "Logstash dispatcher to ES",
+        storage: "Data Storage",
+        storageDesc: "Elasticsearch data store"
+      },
+      details: {
+        selectNode: "เลือกโหนดเพื่อดูรายละเอียด",
+        noMetrics: "ไม่มีข้อมูล Metrics สำหรับโหนดประเภทนี้",
+        inputRate: "อัตราการรับเข้า",
+        outputRate: "อัตราการส่งออก",
+        history: "ประวัติปริมาณข้อมูล"
       }
     }
   },

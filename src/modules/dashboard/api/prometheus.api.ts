@@ -164,4 +164,7 @@ export const prometheusApi = {
         step
       ),
     ]),
+
+  getGenericRate: (query: string) => queryPrometheus(query),
+  getGenericHistory: (query: string, start: number, end: number, step: number) => queryRangePrometheus(query, start, end, step),
 };

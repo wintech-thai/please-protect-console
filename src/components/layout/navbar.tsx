@@ -3,27 +3,27 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  LogOut, 
-  Menu, 
-  ChevronDown, 
-  Activity, 
-  Layers, 
+import {
+  LogOut,
+  Menu,
+  ChevronDown,
+  Activity,
+  Layers,
   AlertTriangle,
   Globe,
   Check,
-  User,       
+  User,
   Lock,
   Users,
   Key,
   FileText,
   ShieldAlert
 } from "lucide-react";
-import { useState, useMemo, useEffect } from "react"; 
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import { useState, useMemo, useEffect } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -33,13 +33,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useLanguage } from "@/context/LanguageContext"; 
-import { authApi } from "@/modules/auth/api/auth.api"; 
+import { useLanguage } from "@/context/LanguageContext";
+import { authApi } from "@/modules/auth/api/auth.api";
 import { toast } from "sonner";
-import { UpdateProfileModal } from "@/components/modals/update-profile-modal"; 
+import { UpdateProfileModal } from "@/components/modals/update-profile-modal";
 import { ChangePasswordModal } from "@/components/modals/change-password-modal";
-import { translations } from "@/locales/dict"; 
-import { AppVersionDisplay } from "@/components/layout/app-version-display"; 
+import { translations } from "@/locales/dict";
+import { AppVersionDisplay } from "@/components/layout/app-version-display";
 
 interface NavItem {
   label: string;
@@ -53,16 +53,16 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  
-  const [userAvatar, setUserAvatar] = useState<string | null>(null); 
+
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
 
-  const { language, setLanguage } = useLanguage(); 
+  const { language, setLanguage } = useLanguage();
   const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedUsername = localStorage.getItem("username"); 
+      const storedUsername = localStorage.getItem("username");
       if (storedUsername) {
         setUsername(storedUsername);
       }
@@ -85,16 +85,22 @@ export function Navbar() {
       document.cookie = "user_name=; path=/; max-age=0; SameSite=Lax";
       document.cookie = "orgId=; path=/; max-age=0; SameSite=Lax";
 
-      toast.success(t.logoutSuccess); 
+      toast.success(t.logoutSuccess);
       setIsMobileMenuOpen(false);
       router.push("/login");
     }
   };
 
   const navItems: NavItem[] = useMemo(() => [
-    { label: t.overview, href: "/overview" },
-    { 
-      label: t.events, 
+    { label: t.overview,
+      href: "/overview",
+      children: [
+        { label: t.systemOverview, href: "/overview", icon: <Layers className="w-4 h-4 mr-2" /> },
+        { label: t.dataFlowOverview, href: "/data-flow", icon: <Activity className="w-4 h-4 mr-2" /> },
+      ]
+    },
+    {
+      label: t.events,
       href: "/events/layer7",
       children: [
         { label: t.layer7, href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
@@ -102,9 +108,9 @@ export function Navbar() {
         { label: t.alerts, href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
       ]
     },
-    { 
-      label: t.administrator, 
-      href: "/admin/users", 
+    {
+      label: t.administrator,
+      href: "/admin/users",
       children: [
         { label: t.roles, href: "/admin/custom-roles", icon: <ShieldAlert className="w-4 h-4 mr-2" /> },
         { label: t.users, href: "/admin/users", icon: <Users className="w-4 h-4 mr-2" /> },
@@ -112,7 +118,7 @@ export function Navbar() {
         { label: t.audit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
       ]
     },
-  ], [t]); 
+  ], [t]);
 
   const isActive = (path: string) => {
     if (path === "/overview") return pathname === path;
@@ -132,19 +138,19 @@ export function Navbar() {
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-[#0B1120]/90 backdrop-blur-md border-b border-blue-900/30 shadow-lg shadow-black/40 text-blue-100">
         <div className="container mx-auto px-4 h-full flex items-center justify-between">
-          
+
           {/* Logo Section */}
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10 flex items-center justify-center">
-              <Image 
-                src="/img/rtarf.png" 
-                alt="RTARF Logo" 
-                fill 
-                className="object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" 
+              <Image
+                src="/img/rtarf.png"
+                alt="RTARF Logo"
+                fill
+                className="object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]"
                 priority
               />
             </div>
-            
+
             <span className="text-2xl font-bold tracking-tight text-white hidden sm:block">
               RTARF <span className="text-cyan-400">SENSOR</span>
             </span>
@@ -157,29 +163,29 @@ export function Navbar() {
                 return (
                   <DropdownMenu key={item.href} modal={false}>
                     <DropdownMenuTrigger asChild>
-                      <button 
+                      <button
                         className={`
                           flex items-center gap-1 px-4 py-2 text-base font-medium transition-all duration-200 rounded-md outline-none
-                          ${isParentActive(item) 
-                            ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]" 
-                            : "text-slate-400 hover:text-blue-200 hover:bg-blue-900/20" 
+                          ${isParentActive(item)
+                            ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]"
+                            : "text-slate-400 hover:text-blue-200 hover:bg-blue-900/20"
                           }
-                        `} 
+                        `}
                       >
                         {item.label}
                         <ChevronDown className="w-4 h-4 mt-0.5 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
-                    
+
                     <DropdownMenuContent align="start" className="bg-[#0B1120] border border-blue-900/30 shadow-xl shadow-black/50 rounded-lg mt-2 min-w-[220px] p-1 text-blue-100">
                       {item.children.map((subItem) => (
                         <DropdownMenuItem key={subItem.href} asChild>
-                          <Link 
+                          <Link
                             href={subItem.href}
                             className={cn(
-                              "flex items-center px-3 py-3 text-base rounded-md cursor-pointer outline-none transition-colors w-full", 
-                              pathname === subItem.href 
-                                ? "bg-blue-500/20 text-cyan-400 font-medium" 
+                              "flex items-center px-3 py-3 text-base rounded-md cursor-pointer outline-none transition-colors w-full",
+                              pathname === subItem.href
+                                ? "bg-blue-500/20 text-cyan-400 font-medium"
                                 : "text-slate-400 hover:bg-blue-900/30 hover:text-blue-200 focus:bg-blue-900/30"
                             )}
                           >
@@ -194,13 +200,13 @@ export function Navbar() {
               }
 
               return (
-                <Link 
-                  key={item.href} 
+                <Link
+                  key={item.href}
                   href={item.href}
                   className={cn(
                     "flex items-center gap-1 px-4 py-2 text-base font-medium transition-all duration-200 rounded-md",
-                    isActive(item.href) 
-                      ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]" 
+                    isActive(item.href)
+                      ? "text-cyan-400 bg-blue-500/10 shadow-[0_0_10px_rgba(6,182,212,0.1)]"
                       : "text-slate-400 hover:text-blue-200 hover:bg-blue-900/20"
                   )}
                 >
@@ -212,7 +218,7 @@ export function Navbar() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-3">
-            
+
             <div className="hidden lg:block mr-2 border-r border-blue-900/30 pr-4 h-8 flex items-center">
                 <AppVersionDisplay className="items-end" />
             </div>
@@ -226,9 +232,9 @@ export function Navbar() {
                   <ChevronDown className="w-3 h-3 opacity-50" />
                 </button>
               </DropdownMenuTrigger>
-              
+
               <DropdownMenuContent align="end" className="w-[150px] p-1 bg-[#0B1120] border border-blue-900/30 shadow-xl rounded-lg text-blue-100">
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setLanguage("EN")}
                   className={cn(
                     "flex items-center justify-between cursor-pointer px-3 py-2 rounded-md transition-colors outline-none text-sm",
@@ -241,8 +247,8 @@ export function Navbar() {
                   </div>
                   {language === "EN" && <Check className="w-3.5 h-3.5" />}
                 </DropdownMenuItem>
-                
-                <DropdownMenuItem 
+
+                <DropdownMenuItem
                   onClick={() => setLanguage("TH")}
                   className={cn(
                     "flex items-center justify-between cursor-pointer px-3 py-2 rounded-md transition-colors outline-none text-sm",
@@ -280,9 +286,9 @@ export function Navbar() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              
+
               <DropdownMenuContent align="end" className="w-[200px] p-1 bg-[#0B1120] border border-blue-900/30 shadow-2xl shadow-black rounded-lg text-blue-100 mt-2">
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
                       setShowProfileModal(true);
@@ -293,7 +299,7 @@ export function Navbar() {
                       <span>{t.profile}</span>
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
                       setShowPasswordModal(true);
@@ -304,7 +310,7 @@ export function Navbar() {
                       <span>{t.changePassword}</span>
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
                       handleLogout();
@@ -317,7 +323,7 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <button 
+            <button
               className="md:hidden text-slate-300 hover:text-white p-1"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
@@ -344,7 +350,7 @@ export function Navbar() {
                       <Link
                         key={subItem.href}
                         href={subItem.href}
-                        className="flex items-center gap-2 px-4 py-3 text-base text-slate-400 hover:text-cyan-400" 
+                        className="flex items-center gap-2 px-4 py-3 text-base text-slate-400 hover:text-cyan-400"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         {subItem.icon}
@@ -357,7 +363,7 @@ export function Navbar() {
             ))}
 
             <div className="border-b border-blue-900/30">
-              <button 
+              <button
                 onClick={() => {
                   setShowProfileModal(true);
                   setIsMobileMenuOpen(false);
@@ -366,7 +372,7 @@ export function Navbar() {
               >
                   <User className="w-5 h-5" /> {t.profile}
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setShowPasswordModal(true);
                   setIsMobileMenuOpen(false);
@@ -376,7 +382,7 @@ export function Navbar() {
                   <Lock className="w-5 h-5" /> {t.changePassword}
               </button>
 
-              <button 
+              <button
                 onClick={handleLogout}
                 className="flex w-full items-center gap-3 px-4 py-4 text-base text-red-400 hover:text-red-300 hover:bg-red-900/10 outline-none"
               >
@@ -387,7 +393,7 @@ export function Navbar() {
             <div className="p-4 bg-[#020617]/50">
               <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">{t.language}</p>
               <div className="grid grid-cols-2 gap-2">
-                  <button 
+                  <button
                     onClick={() => setLanguage("EN")}
                     className={cn(
                         "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
@@ -396,7 +402,7 @@ export function Navbar() {
                   >
                     🇬🇧 English
                   </button>
-                  <button 
+                  <button
                     onClick={() => setLanguage("TH")}
                     className={cn(
                         "flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-md border transition-all",
@@ -416,14 +422,14 @@ export function Navbar() {
         )}
       </nav>
 
-      <ChangePasswordModal 
-        isOpen={showPasswordModal} 
-        onClose={() => setShowPasswordModal(false)} 
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
       />
 
-      <UpdateProfileModal 
-        isOpen={showProfileModal} 
-        onClose={() => setShowProfileModal(false)} 
+      <UpdateProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
       />
     </>
   );
