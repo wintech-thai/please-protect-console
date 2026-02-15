@@ -372,6 +372,9 @@ export const translations = {
     EN: {
       title: "Data Flow Overview",
       subtitle: "Real-time visibility into data pipeline health and throughput",
+      loading: "Loading data flow metrics...",
+      error: "Failed to load data flow metrics",
+      retry: "Retry",
       nodes: {
         interface: "Network Interface",
         interfaceDesc: "Interface ({tag})",
@@ -399,6 +402,9 @@ export const translations = {
     TH: {
       title: "ภาพรวมการไหลของข้อมูล",
       subtitle: "แสดงสถานะและปริมาณข้อมูลใน Pipeline แบบเรียลไทม์",
+      loading: "กำลังโหลดข้อมูล Data Flow...",
+      error: "โหลดข้อมูล Data Flow ไม่สำเร็จ",
+      retry: "ลองอีกครั้ง",
       nodes: {
         interface: "Network Interface",
         interfaceDesc: "Interface ({tag})",
