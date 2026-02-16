@@ -11,11 +11,11 @@ interface TimeParams {
 }
 
 const STEP_THRESHOLDS = [
-  { maxSeconds: 3_600, step: 15 },       // ≤ 1h  → 15s
-  { maxSeconds: 6 * 3_600, step: 30 },   // ≤ 6h  → 30s
-  { maxSeconds: 24 * 3_600, step: 60 },  // ≤ 24h → 1m
-  { maxSeconds: 7 * 86_400, step: 300 }, // ≤ 7d  → 5m
-  { maxSeconds: Infinity, step: 3_600 }, // > 7d  → 1h
+  { maxSeconds: 3_600, step: 15 },        // ≤ 1h  → 15s
+  { maxSeconds: 6 * 3_600, step: 180 },    // ≤ 6h  → 3m
+  { maxSeconds: 24 * 3_600, step: 600 },   // ≤ 24h → 10m
+  { maxSeconds: 7 * 86_400, step: 1200 },   // ≤ 7d  → 20m
+  { maxSeconds: Infinity, step: 3_600 },   // > 7d  → 1h
 ] as const;
 
 function stepForDuration(seconds: number): number {
