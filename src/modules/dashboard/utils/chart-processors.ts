@@ -10,10 +10,24 @@ import type {
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-function createTimeFormatter(values: [number, string][] | undefined) {
+/**
+ * Creates a time formatter that automatically picks the right label granularity
+ * based on the total span of the data.
+ *  - ≤ 24 h  → "HH:mm"
+ *  - > 24 h  → "Jan 1, HH:mm"
+ *
+ * Can also be called with an explicit `spanSeconds` number when the raw
+ * Prometheus values array is not available.
+ */
+export function createTimeFormatter(
+  valuesOrSpan?: [number, string][] | number,
+) {
   let spanSeconds = 0;
-  if (values && values.length >= 2) {
-    spanSeconds = values[values.length - 1][0] - values[0][0];
+
+  if (typeof valuesOrSpan === "number") {
+    spanSeconds = valuesOrSpan;
+  } else if (Array.isArray(valuesOrSpan) && valuesOrSpan.length >= 2) {
+    spanSeconds = valuesOrSpan[valuesOrSpan.length - 1][0] - valuesOrSpan[0][0];
   }
 
   return (ts: number): string => {

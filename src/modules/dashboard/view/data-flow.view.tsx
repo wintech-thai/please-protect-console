@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, Suspense } from "react";
 import {
   LineChart,
   Line,
@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
 import { useNodes, useNodeRates, useNodeHistory } from "../hooks/use-data-flow";
@@ -20,6 +20,9 @@ import type {
   NodeRates,
   HistoryPoint,
 } from "../types/data-flow.types";
+import { useTimeRange } from "@/modules/dashboard/hooks/use-time-range";
+import { OverviewHeader } from "@/modules/dashboard/components/overview-header";
+import { AdvancedTimeRangeSelector } from "@/modules/dashboard/components/advanced-time-selector";
 
 const CHART_COLORS = { input: "#34d399", output: "#60a5fa" } as const;
 const CHART_AXIS_STYLE = {
@@ -165,7 +168,7 @@ const RateCard = ({
       {label}
     </div>
     <div className={`text-lg md:text-2xl font-mono ${color}`}>
-      {value.toFixed(1)}{" "}
+      {value.toFixed(2)}{" "}
       <span className="text-xs md:text-sm text-slate-500">evt/s</span>
     </div>
   </div>
@@ -205,7 +208,10 @@ const HistoryChart = ({
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis dataKey="time" {...CHART_AXIS_STYLE} />
             <YAxis {...CHART_AXIS_STYLE} />
-            <Tooltip {...TOOLTIP_STYLE} />
+            <Tooltip
+              {...TOOLTIP_STYLE}
+              formatter={(value) => typeof value === "number" ? value.toFixed(2) : value}
+            />
             <Legend
               wrapperStyle={{ fontSize: "12px", cursor: "pointer" }}
               onClick={(e) => e?.dataKey && toggleSeries(e.dataKey as string)}
@@ -255,15 +261,25 @@ const HistoryChart = ({
 const DetailsPanel = ({
   node,
   nodeRates,
+  timeRange,
+  refreshInterval,
+  timeRangeKey,
 }: {
   node: NodeData | null;
   nodeRates: NodeRates;
+  timeRange?: import("@/modules/dashboard/components/advanced-time-selector").TimeRangeValue;
+  refreshInterval?: number;
+  timeRangeKey?: string;
 }) => {
   const { language } = useLanguage();
   const t =
     translations.dataFlow[language as keyof typeof translations.dataFlow] ||
     translations.dataFlow.EN;
-  const historyData = useNodeHistory(node);
+  const historyData = useNodeHistory(node, {
+    timeRange,
+    refreshInterval,
+    timeRangeKey,
+  });
 
   if (!node) {
     return (
@@ -327,14 +343,42 @@ const DetailsPanel = ({
 };
 
 const DataFlowViewPage = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-full flex items-center justify-center">
+          <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
+        </div>
+      }
+    >
+      <DataFlowContent />
+    </Suspense>
+  );
+};
+
+const DataFlowContent = () => {
   const { language } = useLanguage();
   const t =
     translations.dataFlow[language as keyof typeof translations.dataFlow] ||
     translations.dataFlow.EN;
 
+  const { timeRange, setTimeRange, timeRangeKey, isRelative } = useTimeRange();
+
+  const [mounted, setMounted] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState(20_000);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const nodes = useNodes(t);
   const [selectedNodeId, setSelectedNodeId] = useState("receiver1");
-  const { nodeRates, getConnectionHasData, error, retry } = useNodeRates(nodes);
+  const { nodeRates, getConnectionHasData, loading, error, retry, lastUpdated } =
+    useNodeRates(nodes, {
+      timeRange,
+      refreshInterval: isRelative ? refreshInterval : 0,
+      timeRangeKey,
+    });
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId) ?? null,
@@ -360,12 +404,30 @@ const DataFlowViewPage = () => {
 
   return (
     <div className="flex flex-col h-full w-full text-slate-200 overflow-hidden">
-      {/* Header */}
-      <div className="p-4 md:p-6 shrink-0">
-        <h1 className="text-3xl font-bold text-slate-100 tracking-wide drop-shadow-md">
-          {t.title}
-        </h1>
-        <p className="text-slate-400 text-sm mt-1">{t.subtitle}</p>
+      {/* Header + Time Selector */}
+      <div className="p-4 md:p-6 shrink-0 flex flex-col gap-4">
+        <OverviewHeader
+          title={t.title}
+          subtitle={t.subtitle}
+          lastUpdatedLabel={t.lastUpdated}
+          lastUpdated={lastUpdated}
+          loading={loading}
+          refreshInterval={refreshInterval}
+          language={language}
+          mounted={mounted}
+          refreshLabel={t.refresh}
+          refreshOff={t.refreshOff}
+          onRefresh={retry}
+          onIntervalChange={setRefreshInterval}
+        />
+        <div className="flex justify-end">
+          <AdvancedTimeRangeSelector
+            value={timeRange}
+            onChange={setTimeRange}
+            disabled={loading}
+            translations={t.timePicker}
+          />
+        </div>
       </div>
 
       {/* Diagram */}
@@ -398,7 +460,13 @@ const DataFlowViewPage = () => {
 
       {/* Details */}
       <div className="shrink-0 z-10 bg-slate-950">
-        <DetailsPanel node={selectedNode} nodeRates={nodeRates} />
+        <DetailsPanel
+          node={selectedNode}
+          nodeRates={nodeRates}
+          timeRange={timeRange}
+          refreshInterval={isRelative ? refreshInterval : 0}
+          timeRangeKey={timeRangeKey}
+        />
       </div>
 
       <style jsx global>{`

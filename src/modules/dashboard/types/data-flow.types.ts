@@ -44,6 +44,26 @@ export interface DataFlowDetailsTranslations {
   history: string;
 }
 
+export interface DataFlowTimePickerTranslations {
+  absoluteTitle: string;
+  from: string;
+  to: string;
+  apply: string;
+  searchPlaceholder: string;
+  customRange: string;
+  last5m: string;
+  last15m: string;
+  last30m: string;
+  last1h: string;
+  last3h: string;
+  last6h: string;
+  last12h: string;
+  last24h: string;
+  last2d: string;
+  last7d: string;
+  last30d: string;
+}
+
 export interface DataFlowTranslations {
   title: string;
   subtitle: string;
@@ -52,4 +72,8 @@ export interface DataFlowTranslations {
   retry: string;
   nodes: DataFlowNodesTranslations;
   details: DataFlowDetailsTranslations;
+  lastUpdated: string;
+  refresh: string;
+  refreshOff: string;
+  timePicker: DataFlowTimePickerTranslations;
 }

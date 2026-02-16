@@ -11,10 +11,12 @@ import type {
   HistoryPoint,
   DataFlowTranslations,
 } from "../types/data-flow.types";
+import type { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
+import { getTimeParams } from "@/modules/dashboard/utils/time-params";
+import { createTimeFormatter } from "@/modules/dashboard/utils/chart-processors";
 
-const POLL_INTERVAL_MS = 20_000;
-const HISTORY_MINUTES = 30;
-const HISTORY_STEP_SEC = 60;
+const DEFAULT_POLL_MS = 20_000;
+const DEFAULT_STEP_SEC = 60;
 
 const getOrgId = () =>
   typeof window !== "undefined"
@@ -43,16 +45,19 @@ function buildPrometheusQueries(node: NodeData) {
 /** Merge input/output range-query results into a sorted timeline */
 function mergeHistoryResults(
   inHist: { values: [number, string][] }[],
-  outHist: { values: [number, string][] }[]
+  outHist: { values: [number, string][] }[],
+  spanSeconds: number,
 ): HistoryPoint[] {
-  const map = new Map<number, HistoryPoint>();
+  const formatTime = createTimeFormatter(spanSeconds);
+  const map = new Map<number, HistoryPoint & { _ts: number }>();
 
   for (const res of inHist) {
     for (const [ts, val] of res.values) {
       map.set(ts, {
-        time: dayjs.unix(ts).format("HH:mm"),
-        input: parseFloat(val),
+        time: formatTime(ts),
+        input: parseFloat(parseFloat(val).toFixed(2)),
         output: 0,
+        _ts: ts,
       });
     }
   }
@@ -61,18 +66,21 @@ function mergeHistoryResults(
     for (const [ts, val] of res.values) {
       const existing = map.get(ts);
       if (existing) {
-        existing.output = parseFloat(val);
+        existing.output = parseFloat(parseFloat(val).toFixed(2));
       } else {
         map.set(ts, {
-          time: dayjs.unix(ts).format("HH:mm"),
+          time: formatTime(ts),
           input: 0,
-          output: parseFloat(val),
+          output: parseFloat(parseFloat(val).toFixed(2)),
+          _ts: ts,
         });
       }
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => a.time.localeCompare(b.time));
+  return Array.from(map.values())
+    .sort((a, b) => a._ts - b._ts)
+    .map(({ time, input, output }) => ({ time, input, output }));
 }
 
 export const useNodes = (t: DataFlowTranslations) =>
@@ -146,17 +154,31 @@ export const useNodes = (t: DataFlowTranslations) =>
 
 // Polls current rates for ALL metric nodes (Processor/Topic/DataStore).
 // Returns the rates map and a helper to check if a connection has data.
-export function useNodeRates(nodes: NodeData[]) {
+export function useNodeRates(
+  nodes: NodeData[],
+  options?: {
+    timeRange?: TimeRangeValue;
+    refreshInterval?: number;
+    timeRangeKey?: string;
+  }
+) {
   const [nodeRates, setNodeRates] = useState<NodeRates>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const pollMs = options?.refreshInterval ?? DEFAULT_POLL_MS;
+  const timeRangeKey = options?.timeRangeKey ?? "default";
 
   useEffect(() => {
     const prometheusNodes = nodes.filter(
       (n) => n.type === "Processor" || n.type === "Topic"
     );
     const esNodes = nodes.filter((n) => n.type === "DataStore");
+
+    // Check if we're using the current time window (relative) or a custom range
+    const isRelative = !options?.timeRange || options.timeRange.type === "relative";
 
     const fetchAll = async () => {
       try {
@@ -188,14 +210,37 @@ export function useNodeRates(nodes: NodeData[]) {
           }
         }
 
-        const results = await Promise.all(
-          queries.map((q) => prometheusApi.getGenericRate(q.query))
-        );
+        if (isRelative) {
+          // Use instant query for current/relative ranges
+          const results = await Promise.all(
+            queries.map((q) => prometheusApi.getGenericRate(q.query))
+          );
 
-        for (let i = 0; i < queries.length; i++) {
-          const { nodeId, field } = queries[i];
-          if (!rates[nodeId]) rates[nodeId] = { inputRate: 0, outputRate: 0 };
-          rates[nodeId][field] = parseRate(results[i]);
+          for (let i = 0; i < queries.length; i++) {
+            const { nodeId, field } = queries[i];
+            if (!rates[nodeId]) rates[nodeId] = { inputRate: 0, outputRate: 0 };
+            rates[nodeId][field] = parseRate(results[i]);
+          }
+        } else {
+          // Use range query and take the last (most recent) data point
+          const { start, end, step } = getTimeParams(options!.timeRange!);
+          const results = await Promise.all(
+            queries.map((q) =>
+              prometheusApi.getGenericHistory(q.query, start, end, step)
+            )
+          );
+
+          for (let i = 0; i < queries.length; i++) {
+            const { nodeId, field } = queries[i];
+            if (!rates[nodeId]) rates[nodeId] = { inputRate: 0, outputRate: 0 };
+            const series = results[i];
+            if (series?.length > 0 && series[0].values?.length > 0) {
+              const lastVal = series[0].values[series[0].values.length - 1];
+              rates[nodeId][field] = parseFloat(lastVal[1]);
+            } else {
+              rates[nodeId][field] = 0;
+            }
+          }
         }
 
         // For Topic nodes (same query for in/out), copy input → output
@@ -206,15 +251,24 @@ export function useNodeRates(nodes: NodeData[]) {
 
         // 2) ES DataStore nodes
         const orgId = getOrgId();
-        const now = dayjs().unix();
-        const oneMinAgo = dayjs().subtract(1, "minute").unix();
+        let esStart: number;
+        let esEnd: number;
+
+        if (isRelative) {
+          esEnd = dayjs().unix();
+          esStart = dayjs().subtract(1, "minute").unix();
+        } else {
+          const tp = getTimeParams(options!.timeRange!);
+          esStart = tp.end - 60; // last minute of the selected range
+          esEnd = tp.end;
+        }
 
         for (const node of esNodes) {
           try {
             const esRate = await esService.getCensorEventsRate(
               orgId,
-              oneMinAgo,
-              now
+              esStart,
+              esEnd
             );
             rates[node.id] = { inputRate: esRate, outputRate: 0 };
           } catch {
@@ -223,6 +277,7 @@ export function useNodeRates(nodes: NodeData[]) {
         }
 
         setNodeRates(rates);
+        setLastUpdated(new Date());
       } catch (e) {
         console.error("Failed to fetch node rates", e);
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -232,9 +287,10 @@ export function useNodeRates(nodes: NodeData[]) {
     };
 
     fetchAll();
-    const id = setInterval(fetchAll, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [nodes, retryKey]);
+    const id = pollMs > 0 ? setInterval(fetchAll, pollMs) : null;
+    return () => { if (id) clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, retryKey, pollMs, timeRangeKey]);
 
   /** Check if the connection between nodes[index] → nodes[index+1] carries data */
   const getConnectionHasData = useCallback(
@@ -255,30 +311,61 @@ export function useNodeRates(nodes: NodeData[]) {
     setRetryKey((k) => k + 1);
   }, []);
 
-  return { nodeRates, getConnectionHasData, loading, error, retry };
+  return { nodeRates, getConnectionHasData, loading, error, retry, lastUpdated };
 }
 
-// Fetches 30-min history for the currently selected node.
-export function useNodeHistory(node: NodeData | null) {
+// Fetches history for the currently selected node using the time range.
+export function useNodeHistory(
+  node: NodeData | null,
+  options?: {
+    timeRange?: TimeRangeValue;
+    refreshInterval?: number;
+    timeRangeKey?: string;
+  }
+) {
   const [historyData, setHistoryData] = useState<HistoryPoint[]>([]);
+
+  const pollMs = options?.refreshInterval ?? DEFAULT_POLL_MS;
+  const timeRangeKey = options?.timeRangeKey ?? "default";
 
   useEffect(() => {
     if (!node) return;
 
     const fetchHistory = async () => {
-      const end = dayjs().unix();
-      const start = dayjs().subtract(HISTORY_MINUTES, "minute").unix();
+      // Determine start/end/step from time range or fall back to defaults
+      let start: number;
+      let end: number;
+      let step: number;
+
+      if (options?.timeRange) {
+        const tp = getTimeParams(options.timeRange);
+        start = tp.start;
+        end = tp.end;
+        step = tp.step;
+      } else {
+        end = dayjs().unix();
+        start = dayjs().subtract(30, "minute").unix();
+        step = DEFAULT_STEP_SEC;
+      }
 
       try {
         // DataStore → ES date_histogram
         if (node.type === "DataStore") {
-          const data = await esService.getCensorEventsHistory(
+          const raw = await esService.getCensorEventsHistory(
             getOrgId(),
             start,
             end,
-            HISTORY_STEP_SEC
+            step
           );
-          setHistoryData(data);
+          // Re-format time labels dynamically based on span
+          const spanSeconds = end - start;
+          const formatTime = createTimeFormatter(spanSeconds);
+          setHistoryData(
+            raw.map((d) => ({
+              time: formatTime(d.ts),
+              input: parseFloat(d.input.toFixed(2)),
+            }))
+          );
           return;
         }
 
@@ -294,17 +381,17 @@ export function useNodeHistory(node: NodeData | null) {
             pq.input,
             start,
             end,
-            HISTORY_STEP_SEC
+            step
           ),
           prometheusApi.getGenericHistory(
             pq.output,
             start,
             end,
-            HISTORY_STEP_SEC
+            step
           ),
         ]);
 
-        setHistoryData(mergeHistoryResults(inHist, outHist));
+        setHistoryData(mergeHistoryResults(inHist, outHist, end - start));
       } catch (e) {
         console.error("Failed to fetch history", e);
         setHistoryData([]);
@@ -312,9 +399,10 @@ export function useNodeHistory(node: NodeData | null) {
     };
 
     fetchHistory();
-    const id = setInterval(fetchHistory, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [node]);
+    const id = pollMs > 0 ? setInterval(fetchHistory, pollMs) : null;
+    return () => { if (id) clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node, pollMs, timeRangeKey]);
 
   return historyData;
 }

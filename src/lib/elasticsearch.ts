@@ -13,10 +13,10 @@ export interface Layer7EventDocument {
   "destination.port": number;
   "destination.network_zone": string;
   "destination.geoip"?: { country_name: string };
-  [key: string]: any; 
+  [key: string]: any;
 }
 
-// Interface สำหรับ Audit Log 
+// Interface สำหรับ Audit Log
 export interface AuditLogDocument {
   "@timestamp": string;
   "event.action": string;
@@ -58,9 +58,9 @@ export interface EsSearchPayload {
 const flattenMapping = (mapping: any, prefix = ""): string[] => {
   let fields: string[] = [];
   if (!mapping) return [];
-  
+
   for (const [key, value] of Object.entries(mapping)) {
-    if (key.startsWith("_")) continue; 
+    if (key.startsWith("_")) continue;
 
     const fullKey = prefix ? `${prefix}.${key}` : key;
     if (value && typeof value === 'object' && 'properties' in value) {
@@ -90,7 +90,7 @@ export const esService = {
     try {
       const response = await client.get(endpoint);
       const indices = Object.values(response.data) as any[];
-      
+
       let properties = null;
       for (const indexData of indices) {
         if (indexData?.mappings?.properties) {
@@ -115,7 +115,7 @@ export const esService = {
       if (fieldName === "@timestamp") return { buckets: [], total: 0 };
 
       const createPayload = (targetField: string): EsSearchPayload => ({
-        size: 0, 
+        size: 0,
         query: query,
         aggs: {
           field_values: {
@@ -127,7 +127,7 @@ export const esService = {
       try {
           let res = await esService.search(endpoint, createPayload(fieldName));
           let buckets = res.aggregations?.field_values?.buckets || [];
-          
+
           if (buckets.length === 0 && !fieldName.includes(".ip") && !fieldName.toLowerCase().includes("port")) {
               try {
                 const keywordRes = await esService.search(endpoint, createPayload(`${fieldName}.keyword`));
@@ -147,7 +147,7 @@ export const esService = {
   // ดึงข้อมูลสำหรับกราฟ Histogram Layer 7
   getLayer7ChartData: async (orgId: string, start: number, end: number, step: string = "1m", luceneQuery?: string) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
-    
+
     const mustQueries: any[] = [
       { range: { "@timestamp": { gte: new Date(start * 1000).toISOString(), lte: new Date(end * 1000).toISOString() } } }
     ];
@@ -163,7 +163,7 @@ export const esService = {
         events_over_time: {
           date_histogram: {
             field: "@timestamp",
-            fixed_interval: step, 
+            fixed_interval: step,
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(start * 1000).toISOString(),
@@ -185,7 +185,7 @@ export const esService = {
     }
   },
 
-  
+
 
   getAuditLogs: async <T = AuditLogDocument>(orgId: string, payload: EsSearchPayload) => {
     if (!orgId) throw new Error("Organization ID is required for Audit Log search.");
@@ -219,7 +219,7 @@ export const esService = {
     start: number,
     end: number,
     step: number = 60,
-  ): Promise<{ time: string; input: number }[]> => {
+  ): Promise<{ time: string; input: number; ts: number }[]> => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
 
     const payload: EsSearchPayload = {
@@ -251,6 +251,7 @@ export const esService = {
       const mm = String(d.getMinutes()).padStart(2, "0");
       return {
         time: `${hh}:${mm}`,
+        ts: Math.floor(b.key / 1000),
         input: step > 0 ? b.doc_count / step : 0, // convert count -> docs/sec
       };
     });
