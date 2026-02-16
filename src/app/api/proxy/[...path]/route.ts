@@ -25,22 +25,25 @@ async function handleProxy(
             const textBody = await req.text();
             if (textBody) {
                 body = JSON.parse(textBody);
-
                 const currentEnv = process.env.ENV_RUN; 
+                const isLayer7Query = endpoint.includes("censor-events");
 
-                if (currentEnv && body?.query?.bool) {
+                if (currentEnv && body?.query?.bool && !isLayer7Query) {
                     console.log(` Proxy: Injecting Environment [${currentEnv}]`);
                     if (!body.query.bool.must) body.query.bool.must = [];
                     body.query.bool.must.push({
                         match: { "data.Environment": currentEnv }
                     });
+                } 
+                else if (isLayer7Query) {
+                    console.log(` Proxy: Skipping Environment Injection for Layer 7 query`);
                 }
             }
           } catch (e) {
             console.warn(" JSON Body parsing failed, sending raw body instead");
           }
       } else {
-          body = await req.blob(); 
+         body = await req.blob(); 
       }
     }
 

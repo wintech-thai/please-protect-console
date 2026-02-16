@@ -10,13 +10,37 @@
     animation: slide-up 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
+  .no-scrollbar {
+    -ms-overflow-style: none;  
+    scrollbar-width: none;     
+  }
   .no-scrollbar::-webkit-scrollbar {
-    display: none;
+    display: none;             
   }
 
-  .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #343741 #101217; 
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;  /* ความกว้างแนวตั้ง */
+    height: 6px; /* ความสูงแนวนอน */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #101217; /* สีพื้นหลังราง */
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #343741; /* สีของตัวเลื่อน */
+    border-radius: 10px;
+    border: 1px solid #101217; /* เพิ่มขอบเล็กน้อยให้ดูมีมิติ */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #404452; /* สีตอน Hover ให้สว่างขึ้นเล็กน้อย */
   }
 }
 
