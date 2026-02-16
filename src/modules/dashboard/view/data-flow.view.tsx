@@ -405,7 +405,7 @@ const DataFlowContent = () => {
   return (
     <div className="flex flex-col h-full w-full text-slate-200 overflow-hidden">
       {/* Header + Time Selector */}
-      <div className="p-4 md:p-6 shrink-0 flex flex-col gap-4">
+      <div className="shrink-0 flex flex-col gap-4 pt-6 px-4 md:px-12 pb-10">
         <OverviewHeader
           title={t.title}
           subtitle={t.subtitle}
