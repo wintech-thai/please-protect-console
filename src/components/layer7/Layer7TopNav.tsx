@@ -1,12 +1,13 @@
 "use client";
 
-import { PanelLeft, PanelLeftClose, Search, Clock } from "lucide-react";
+import { PanelLeft, PanelLeftClose, RefreshCw } from "lucide-react";
 import { 
   AdvancedTimeRangeSelector, 
   TimeRangeValue, 
   TimePickerTranslations 
 } from "@/modules/dashboard/components/advanced-time-selector";
 import { cn } from "@/lib/utils";
+import { KqlSearchInput } from "./KqlSearchInput"; 
 
 const DEFAULT_TRANSLATIONS: TimePickerTranslations = {
   absoluteTitle: "Absolute Range",
@@ -37,6 +38,8 @@ interface TopNavProps {
   timeRange: TimeRangeValue;
   onTimeRangeChange: (val: TimeRangeValue) => void;
   onRefresh: () => void;
+  isLoading?: boolean;
+  availableFields?: string[]; 
 }
 
 export function Layer7TopNav({
@@ -48,9 +51,11 @@ export function Layer7TopNav({
   timeRange,
   onTimeRangeChange,
   onRefresh,
+  isLoading = false,
+  availableFields = [], 
 }: TopNavProps) {
   return (
-    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md">
+    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md z-30 relative">
       {/* Sidebar Toggle Button */}
       <button 
         onClick={toggleSidebar} 
@@ -60,34 +65,37 @@ export function Layer7TopNav({
       </button>
 
       <div className="flex-1 flex items-stretch gap-2">
-        {/* Search Input Wrapper */}
-        <div className="flex-1 relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
-          <input
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent font-mono text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
-            placeholder="Filter your data using KQL syntax"
+        <div className="flex-1">
+          <KqlSearchInput 
             value={luceneQuery}
-            onChange={(e) => onQueryChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onQuerySubmit()}
+            onChange={onQueryChange}
+            onSubmit={onQuerySubmit}
+            fields={availableFields}
+            placeholder="Filter your data using KQL syntax"
           />
         </div>
 
         {/* Time Selector */}
-        <div className="flex-none">
+        <div className="flex-none hidden sm:block">
           <AdvancedTimeRangeSelector 
             value={timeRange} 
             onChange={onTimeRangeChange} 
             translations={DEFAULT_TRANSLATIONS}
+            disabled={isLoading}
           />
         </div>
 
         {/* Refresh Button */}
         <button 
           onClick={onRefresh} 
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-95 border border-blue-500/50"
+          disabled={isLoading}
+          className={cn(
+            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50",
+            isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95 hover:shadow-blue-500/20"
+          )}
         >
-          <Clock className="w-4 h-4" /> 
-          <span className="hidden sm:inline">Refresh</span>
+          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
+          <span className="hidden sm:inline">{isLoading ? "Refreshing..." : "Refresh"}</span>
         </button>
       </div>
     </div>

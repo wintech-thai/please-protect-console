@@ -1,22 +1,17 @@
 import { client } from "@/lib/axios";
 
-// --- Interfaces ---
+// --- 1. Interfaces ---
 export interface Layer7EventDocument {
   "@timestamp": string;
   community_id: string;
   "event.dataset": string;
   "source.ip": string;
   "source.port": number;
-  "source.network_zone": string;
-  "source.geoip"?: { country_name: string };
   "destination.ip": string;
   "destination.port": number;
-  "destination.network_zone": string;
-  "destination.geoip"?: { country_name: string };
   [key: string]: any;
 }
 
-// Interface สำหรับ Audit Log
 export interface AuditLogDocument {
   "@timestamp": string;
   "event.action": string;
@@ -52,27 +47,33 @@ export interface EsSearchPayload {
   sort?: any[];
   _source?: string[] | boolean;
   aggs?: any;
+  track_total_hits?: boolean | number;
   [key: string]: any;
 }
 
+// --- 2. Helper Functions ---
 const flattenMapping = (mapping: any, prefix = ""): string[] => {
   let fields: string[] = [];
   if (!mapping) return [];
-
   for (const [key, value] of Object.entries(mapping)) {
     if (key.startsWith("_")) continue;
-
     const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (value && typeof value === 'object' && 'properties' in value) {
-      fields = [...fields, ...flattenMapping((value as any).properties, fullKey)];
+    const propValue = value as any;
+    if (propValue.properties) {
+      fields = [...fields, ...flattenMapping(propValue.properties, fullKey)];
     } else {
       fields.push(fullKey);
+      if (propValue.fields) {
+        for (const subKey of Object.keys(propValue.fields)) {
+          fields.push(`${fullKey}.${subKey}`);
+        }
+      }
     }
   }
   return fields;
 };
 
-// --- Service Logic ---
+// --- 3. Service Logic ---
 export const esService = {
   search: async <T>(endpoint: string, payload: EsSearchPayload): Promise<EsResponse<T>> => {
     const response = await client.post(endpoint, payload);
@@ -82,7 +83,10 @@ export const esService = {
   getLayer7Events: async <T = Layer7EventDocument>(orgId: string, payload: EsSearchPayload) => {
     if (!orgId) throw new Error("Organization ID is required.");
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
-    return esService.search<T>(endpoint, payload);
+    return esService.search<T>(endpoint, {
+      ...payload,
+      track_total_hits: true 
+    });
   },
 
   getMapping: async (orgId: string): Promise<string[]> => {
@@ -90,7 +94,6 @@ export const esService = {
     try {
       const response = await client.get(endpoint);
       const indices = Object.values(response.data) as any[];
-
       let properties = null;
       for (const indexData of indices) {
         if (indexData?.mappings?.properties) {
@@ -98,58 +101,81 @@ export const esService = {
           break;
         }
       }
-
       if (properties) {
         const fields = flattenMapping(properties);
         return Array.from(new Set(fields)).sort();
       }
       return [];
     } catch (error) {
-      console.error("Failed to fetch mapping:", error);
       return [];
     }
   },
 
-  getFieldStats: async (orgId: string, fieldName: string, query: any) => {
-      const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
-      if (fieldName === "@timestamp") return { buckets: [], total: 0 };
+    getFieldStats: async (orgId: string, fieldName: string, query: any) => {
+  const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
+  
+  if (fieldName === "@timestamp") return { buckets: [], total: 0 };
 
-      const createPayload = (targetField: string): EsSearchPayload => ({
-        size: 0,
-        query: query,
-        aggs: {
-          field_values: {
-            terms: { field: targetField, size: 5, shard_size: 10 }
+  // ฟังก์ชันช่วยยิง Aggregation
+  const runAgg = async (field: string) => {
+    return esService.search(endpoint, {
+      size: 0,
+      query: query,
+      track_total_hits: true,
+      aggs: {
+        top_values: {
+          terms: { 
+            field: field, 
+            size: 5, 
+            shard_size: 10 
           }
         }
-      });
-
-      try {
-          let res = await esService.search(endpoint, createPayload(fieldName));
-          let buckets = res.aggregations?.field_values?.buckets || [];
-
-          if (buckets.length === 0 && !fieldName.includes(".ip") && !fieldName.toLowerCase().includes("port")) {
-              try {
-                const keywordRes = await esService.search(endpoint, createPayload(`${fieldName}.keyword`));
-                if (keywordRes.aggregations?.field_values?.buckets?.length > 0) {
-                    buckets = keywordRes.aggregations.field_values.buckets;
-                    res = keywordRes;
-                }
-              } catch (e) { /* ignore */ }
-          }
-
-          return { buckets: buckets, total: res.hits.total.value };
-      } catch (error) {
-          return { buckets: [], total: 0 };
       }
-  },
+    });
+  };
 
-  // ดึงข้อมูลสำหรับกราฟ Histogram Layer 7
+  try {
+    const res = await runAgg(fieldName);
+    return { 
+      buckets: res.aggregations?.top_values?.buckets || [], 
+      total: res.hits.total.value 
+    };
+
+  } catch (error: any) {
+    if (error.response?.status === 400 && !fieldName.endsWith('.keyword')) {
+      try {
+        console.log(`Field ${fieldName} is text type, retrying with .keyword...`);
+        
+        const fallbackRes = await runAgg(`${fieldName}.keyword`);
+        
+        return { 
+          buckets: fallbackRes.aggregations?.top_values?.buckets || [], 
+          total: fallbackRes.hits.total.value 
+        };
+      } catch (innerError) {
+        return { buckets: [], total: 0 };
+      }
+    }
+
+    // กรณี Error อื่นๆ
+    console.error(`Stats error for ${fieldName}:`, error);
+    return { buckets: [], total: 0 };
+  }
+},
+
   getLayer7ChartData: async (orgId: string, start: number, end: number, step: string = "1m", luceneQuery?: string) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
 
     const mustQueries: any[] = [
-      { range: { "@timestamp": { gte: new Date(start * 1000).toISOString(), lte: new Date(end * 1000).toISOString() } } }
+      { 
+        range: { 
+          "@timestamp": { 
+            gte: new Date(start * 1000).toISOString(), 
+            lte: new Date(end * 1000).toISOString() 
+          } 
+        } 
+      },
+      { wildcard: { "event.dataset": "zeek.*" } } // บังคับ Zeek
     ];
 
     if (luceneQuery && luceneQuery.trim() !== "") {
@@ -158,6 +184,7 @@ export const esService = {
 
     const payload: EsSearchPayload = {
       size: 0,
+      track_total_hits: true,
       query: { bool: { must: mustQueries } },
       aggs: {
         events_over_time: {
@@ -171,34 +198,38 @@ export const esService = {
             }
           },
           aggs: {
-            by_dataset: { terms: { field: "event.dataset.keyword" } }
+            by_dataset: { 
+              terms: { 
+                field: "event.dataset.keyword", // ต้องมี .keyword กราฟถึงจะขึ้น
+                size: 10 
+              } 
+            }
           }
         }
       }
     };
 
     try {
-        const res = await esService.search(endpoint, payload);
-        return res.aggregations?.events_over_time?.buckets || [];
+      const res = await esService.search(endpoint, payload);
+      return res.aggregations?.events_over_time?.buckets || [];
     } catch (e) {
-        return [];
+      console.error("Chart data error:", e);
+      return [];
     }
   },
 
-
-
   getAuditLogs: async <T = AuditLogDocument>(orgId: string, payload: EsSearchPayload) => {
-    if (!orgId) throw new Error("Organization ID is required for Audit Log search.");
+    if (!orgId) throw new Error("Organization ID is required.");
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/pp-*/_search`;
-    return esService.search<T>(endpoint, payload);
+    return esService.search<T>(endpoint, { ...payload, track_total_hits: true });
   },
 
   getCensorEventsRate: async (orgId: string, start: number, end: number): Promise<number> => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
     const durationSec = end - start;
-
     const payload: EsSearchPayload = {
       size: 0,
+      track_total_hits: true,
       query: {
         range: {
           "@timestamp": {
@@ -208,52 +239,8 @@ export const esService = {
         },
       },
     };
-
     const res = await esService.search(endpoint, payload);
     const count = res.hits?.total?.value ?? 0;
     return durationSec > 0 ? count / durationSec : 0;
-  },
-
-  getCensorEventsHistory: async (
-    orgId: string,
-    start: number,
-    end: number,
-    step: number = 60,
-  ): Promise<{ time: string; input: number; ts: number }[]> => {
-    const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
-
-    const payload: EsSearchPayload = {
-      size: 0,
-      query: {
-        range: {
-          "@timestamp": {
-            gte: new Date(start * 1000).toISOString(),
-            lte: new Date(end * 1000).toISOString(),
-          },
-        },
-      },
-      aggs: {
-        per_interval: {
-          date_histogram: {
-            field: "@timestamp",
-            fixed_interval: `${step}s`,
-          },
-        },
-      },
-    };
-
-    const res = await esService.search(endpoint, payload);
-    const buckets: any[] = res.aggregations?.per_interval?.buckets ?? [];
-
-    return buckets.map((b) => {
-      const d = new Date(b.key);
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      return {
-        time: `${hh}:${mm}`,
-        ts: Math.floor(b.key / 1000),
-        input: step > 0 ? b.doc_count / step : 0, // convert count -> docs/sec
-      };
-    });
-  },
+  }
 };

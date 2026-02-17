@@ -19,29 +19,41 @@ interface FlyoutProps {
 export function Layer7Flyout({ event, onClose, onAddFilter, onToggleFieldSelection, selectedFields }: FlyoutProps) {
   const [drawerTab, setDrawerTab] = useState<"table" | "json">("table");
   
-  // State สำหรับ Search แบบ Manual
+  // State สำหรับ Search
   const [searchInput, setSearchInput] = useState("");
   const [filterText, setFilterText] = useState("");
-  
   const [isCopied, setIsCopied] = useState(false);
 
   if (!event) return null;
 
-  // Search Trigger
   const handleSearchSubmit = () => {
     setFilterText(searchInput);
   };
 
-  // Copy JSON
   const handleCopyJson = () => {
-    if (event) {
-      navigator.clipboard.writeText(JSON.stringify(event, null, 2));
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
+    navigator.clipboard.writeText(JSON.stringify(event, null, 2));
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
-  // Highlight JSON Style
+  const isDeepMatch = (key: string, value: any, term: string): boolean => {
+    if (!term) return true;
+    const lowerTerm = term.toLowerCase();
+
+    if (key.toLowerCase().includes(lowerTerm)) return true;
+
+    if (value === null || value === undefined) return false;
+
+    if (typeof value === "object") {
+      return Object.keys(value).some((subKey) => 
+        isDeepMatch(subKey, value[subKey], term)
+      );
+    }
+
+    return String(value).toLowerCase().includes(lowerTerm);
+  };
+
+  // Logic การ Highlight JSON
   const highlightJson = (json: any) => {
     const jsonString = JSON.stringify(json, null, 2);
     return jsonString.replace(
@@ -129,7 +141,7 @@ export function Layer7Flyout({ event, onClose, onAddFilter, onToggleFieldSelecti
                     />
                     <input 
                       className="w-full bg-slate-900 border border-slate-700 rounded-md py-1.5 pl-9 pr-3 text-xs focus:outline-none focus:border-blue-500 text-slate-200 placeholder:text-slate-500" 
-                      placeholder="Filter fields (Press Enter)" 
+                      placeholder="Search nested field names or values (Enter)" 
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
@@ -144,7 +156,7 @@ export function Layer7Flyout({ event, onClose, onAddFilter, onToggleFieldSelecti
 
             <div className="flex-1 overflow-auto custom-scrollbar">
                 {sortedKeys
-                .filter(k => k.toLowerCase().includes(filterText.toLowerCase()))
+                .filter(k => isDeepMatch(k, event[k], filterText))
                 .map((k) => {
                     const v = event[k];
                     const isSelected = selectedFields.includes(k);

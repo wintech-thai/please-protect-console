@@ -25,10 +25,8 @@ const POPULAR_FIELD_KEYS = [
   "event.dataset",
   "source.ip",
   "source.port",
-  "source.network_zone",
   "destination.ip",
   "destination.port",
-  "destination.network_zone",
   "network.protocol",
   "http.request.method",
   "http.response.status_code",
@@ -39,7 +37,7 @@ const extractKeysFromObject = (obj: any, prefix = ""): string[] => {
   if (!obj || typeof obj !== "object") return [];
 
   Object.keys(obj).forEach((key) => {
-    if (key === "id") return;
+    if (key === "id") return; 
     const fullKey = prefix ? `${prefix}.${key}` : key;
 
     if (obj[key] && typeof obj[key] === "object" && !Array.isArray(obj[key])) {
@@ -62,6 +60,7 @@ export default function Layer7Page() {
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [luceneQuery, setLuceneQuery] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [timeRange, setTimeRange] = useState<TimeRangeValue>({
     type: "relative",
@@ -92,12 +91,8 @@ export default function Layer7Page() {
     "event.dataset",
     "source.ip",
     "source.port",
-    "source.network_zone",
-    "source.geoip.country_name",
     "destination.ip",
     "destination.port",
-    "destination.network_zone",
-    "destination.geoip.country_name",
     "actions",
   ]);
 
@@ -124,6 +119,7 @@ export default function Layer7Page() {
   }, [sidebarSearch, allFieldsSource]);
 
   // --- 3. Logic & Methods ---
+  
   const getTimeBounds = useCallback(() => {
     const now = dayjs();
     let start = now.subtract(15, "minute");
@@ -145,7 +141,8 @@ export default function Layer7Page() {
     setIsLoading(true);
     try {
       const { start, end } = getTimeBounds();
-      const queryPayload = {
+      
+      const queryPayload: any = {
         bool: {
           must: [
             {
@@ -156,12 +153,17 @@ export default function Layer7Page() {
                 },
               },
             },
+            {
+              wildcard: {
+                "event.dataset": "zeek.*"
+              }
+            }
           ],
         },
       };
 
       if (luceneQuery) {
-        (queryPayload.bool.must as any).push({
+        queryPayload.bool.must.push({
           query_string: { query: luceneQuery },
         });
       }
@@ -174,7 +176,15 @@ export default function Layer7Page() {
       });
 
       const durationSec = end.diff(start, "second");
-      const step = durationSec > 86400 * 7 ? "12h" : durationSec > 86400 ? "1h" : "1m";
+      let step = "1m";
+      if (durationSec <= 900) step = "30s";         // 15m
+      else if (durationSec <= 3600) step = "1m";     // 1h
+      else if (durationSec <= 14400) step = "5m";    // 4h
+      else if (durationSec <= 43200) step = "10m";   // 12h (ลดจำนวนแท่งลง เพื่อให้เรนเดอร์ติด)
+      else if (durationSec <= 86400) step = "30m";   // 24h
+      else if (durationSec <= 604800) step = "3h";   // 7d
+      else step = "12h";
+
       setCurrentInterval(step);
 
       const chartBuckets = await esService.getLayer7ChartData(
@@ -182,12 +192,12 @@ export default function Layer7Page() {
         start.unix(),
         end.unix(),
         step,
-        luceneQuery
+        luceneQuery ? `(event.dataset:zeek.*) AND (${luceneQuery})` : "event.dataset:zeek.*"
       );
 
       const hits = eventsRes.hits.hits.map((h: any) => ({
         ...h._source,
-        id: h._id, // Elasticsearch Technical ID
+        id: h._id,
       }));
 
       setEvents(hits);
@@ -195,22 +205,23 @@ export default function Layer7Page() {
       setChartData(chartBuckets);
 
       if (hits.length > 0) {
-        const extractedFields = new Set<string>();
-        hits.slice(0, 20).forEach((row: any) => {
-          const keys = extractKeysFromObject(row);
-          keys.forEach((k) => extractedFields.add(k));
-        });
         setAllIndexFields((prev) => {
-          const combined = new Set([...prev, ...Array.from(extractedFields)]);
-          return Array.from(combined).sort();
+           const extractedFields = new Set<string>(prev); 
+           const scanLimit = Math.min(hits.length, 50); 
+           hits.slice(0, scanLimit).forEach((row: any) => {
+             const keys = extractKeysFromObject(row);
+             keys.forEach((k) => extractedFields.add(k));
+           });
+           return Array.from(extractedFields).sort();
         });
       }
+      
     } catch (err) {
       console.error("Data Sync Error:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [luceneQuery, getTimeBounds, page, itemsPerPage]);
+  }, [luceneQuery, getTimeBounds, page, itemsPerPage, refreshKey]);
 
   useEffect(() => {
     fetchData();
@@ -219,6 +230,10 @@ export default function Layer7Page() {
   const handleSearchSubmit = () => {
     setLuceneQuery(searchInput);
     setPage(1);
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleToggleFieldStats = async (field: string) => {
@@ -235,14 +250,8 @@ export default function Layer7Page() {
       const query = {
         bool: {
           must: [
-            {
-              range: {
-                "@timestamp": {
-                  gte: start.toISOString(),
-                  lte: end.toISOString(),
-                },
-              },
-            },
+            { range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { wildcard: { "event.dataset": "zeek.*" } }
           ],
         },
       };
@@ -305,7 +314,9 @@ export default function Layer7Page() {
           onQuerySubmit={handleSearchSubmit}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
-          onRefresh={handleSearchSubmit}
+          onRefresh={handleRefresh}
+          isLoading={isLoading} 
+          availableFields={allIndexFields} 
         />
 
         <Layer7Histogram
