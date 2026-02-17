@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { Activity, Network } from "lucide-react"; // ✅ เพิ่มไอคอนสำหรับ Title
 
 import { esService } from "@/lib/elasticsearch";
 import { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
@@ -15,10 +16,12 @@ import { Layer7Histogram } from "@/components/layer7/Layer7Histogram";
 import { Layer7Table } from "@/components/layer7/Layer7Table";
 import { Layer7Flyout } from "@/components/layer7/Layer7Flyout";
 import { COLUMN_DEFS } from "@/components/layer7/constants";
+import { cn } from "@/lib/utils";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+// ... (POPULAR_FIELD_KEYS และ extractKeysFromObject คงเดิม)
 const POPULAR_FIELD_KEYS = [
   "@timestamp",
   "event.id",
@@ -35,11 +38,9 @@ const POPULAR_FIELD_KEYS = [
 const extractKeysFromObject = (obj: any, prefix = ""): string[] => {
   let keys: string[] = [];
   if (!obj || typeof obj !== "object") return [];
-
   Object.keys(obj).forEach((key) => {
     if (key === "id") return; 
     const fullKey = prefix ? `${prefix}.${key}` : key;
-
     if (obj[key] && typeof obj[key] === "object" && !Array.isArray(obj[key])) {
       keys = [...keys, ...extractKeysFromObject(obj[key], fullKey)];
     } else {
@@ -119,7 +120,6 @@ export default function Layer7Page() {
   }, [sidebarSearch, allFieldsSource]);
 
   // --- 3. Logic & Methods ---
-  
   const getTimeBounds = useCallback(() => {
     const now = dayjs();
     let start = now.subtract(15, "minute");
@@ -141,31 +141,17 @@ export default function Layer7Page() {
     setIsLoading(true);
     try {
       const { start, end } = getTimeBounds();
-      
       const queryPayload: any = {
         bool: {
           must: [
-            {
-              range: {
-                "@timestamp": {
-                  gte: start.toISOString(),
-                  lte: end.toISOString(),
-                },
-              },
-            },
-            {
-              wildcard: {
-                "event.dataset": "zeek.*"
-              }
-            }
+            { range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { wildcard: { "event.dataset": "zeek.*" } }
           ],
         },
       };
 
       if (luceneQuery) {
-        queryPayload.bool.must.push({
-          query_string: { query: luceneQuery },
-        });
+        queryPayload.bool.must.push({ query_string: { query: luceneQuery } });
       }
 
       const eventsRes = await esService.getLayer7Events(orgId, {
@@ -177,12 +163,12 @@ export default function Layer7Page() {
 
       const durationSec = end.diff(start, "second");
       let step = "1m";
-      if (durationSec <= 900) step = "30s";         // 15m
-      else if (durationSec <= 3600) step = "1m";     // 1h
-      else if (durationSec <= 14400) step = "5m";    // 4h
-      else if (durationSec <= 43200) step = "10m";   // 12h (ลดจำนวนแท่งลง เพื่อให้เรนเดอร์ติด)
-      else if (durationSec <= 86400) step = "30m";   // 24h
-      else if (durationSec <= 604800) step = "3h";   // 7d
+      if (durationSec <= 900) step = "30s"; 
+      else if (durationSec <= 3600) step = "1m"; 
+      else if (durationSec <= 14400) step = "5m"; 
+      else if (durationSec <= 43200) step = "10m"; 
+      else if (durationSec <= 86400) step = "30m"; 
+      else if (durationSec <= 604800) step = "3h"; 
       else step = "12h";
 
       setCurrentInterval(step);
@@ -215,7 +201,6 @@ export default function Layer7Page() {
            return Array.from(extractedFields).sort();
         });
       }
-      
     } catch (err) {
       console.error("Data Sync Error:", err);
     } finally {
@@ -271,10 +256,8 @@ export default function Layer7Page() {
     let newValue = typeof value === "string" ? `"${value}"` : value;
     if (typeof value === "object") newValue = `"${JSON.stringify(value).replace(/"/g, '\\"')}"`;
     const newCondition = operator === "must" ? `${key}: ${newValue}` : `NOT ${key}: ${newValue}`;
-
     const currentSearch = searchInput.trim();
     const updatedQuery = currentSearch ? `${currentSearch} AND ${newCondition}` : newCondition;
-
     setSearchInput(updatedQuery);
     setLuceneQuery(updatedQuery);
     setPage(1);
@@ -319,12 +302,14 @@ export default function Layer7Page() {
           availableFields={allIndexFields} 
         />
 
-        <Layer7Histogram
-          data={chartData}
-          totalHits={totalHits}
-          interval={currentInterval}
-          maxDocCount={maxDocCount}
-        />
+        <div className="relative flex-none">
+          <Layer7Histogram
+            data={chartData}
+            totalHits={totalHits}
+            interval={currentInterval}
+            maxDocCount={maxDocCount}
+          />
+        </div>
 
         <Layer7Table
           events={events}

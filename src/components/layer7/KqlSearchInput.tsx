@@ -1,82 +1,39 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Search, X } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Search, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const getFieldBadge = (fieldName: string) => {
+  if (fieldName.startsWith("_")) return { label: "m", color: "bg-slate-700 text-slate-300" }; // Metadata
+  if (fieldName.endsWith(".keyword")) return { label: "t", color: "bg-amber-900/40 text-amber-500" }; // Text/Keyword
+  if (fieldName.includes("port") || fieldName.includes("count")) return { label: "#", color: "bg-emerald-900/40 text-emerald-500" }; // Number
+  return { label: "t", color: "bg-amber-900/40 text-amber-500" }; // Default Text
+};
 
 interface KqlSearchInputProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (val: string) => void;
   onSubmit: () => void;
-  fields: string[]; 
+  fields: string[];
   placeholder?: string;
 }
 
-export function KqlSearchInput({
-  value,
-  onChange,
-  onSubmit,
-  fields,
-  placeholder = "Filter your data using KQL syntax",
-}: KqlSearchInputProps) {
+export function KqlSearchInput({ value, onChange, onSubmit, fields, placeholder }: KqlSearchInputProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const getLastToken = (text: string) => {
-    const tokens = text.split(/\s+/);
-    return tokens[tokens.length - 1] || "";
-  };
+  const filteredFields = useMemo(() => {
+    const lastWord = value.split(/\s+/).pop()?.toLowerCase() || "";
+    return fields
+      .filter(f => f.toLowerCase().includes(lastWord))
+      .slice(0, 15); 
+  }, [fields, value]);
 
   useEffect(() => {
-    const lastToken = getLastToken(value);
-    if (lastToken && lastToken.length > 0) {
-      const matched = fields
-        .filter((f) => f.toLowerCase().includes(lastToken.toLowerCase()))
-        .slice(0, 10); 
-      setSuggestions(matched);
-      setIsOpen(matched.length > 0);
-      setActiveIndex(0);
-    } else {
-      setIsOpen(false);
-    }
-  }, [value, fields]);
-
-  const handleSelectSuggestion = (suggestion: string) => {
-    const tokens = value.split(/\s+/);
-    tokens.pop(); 
-    const newValue = [...tokens, `${suggestion}: `].join(" "); // ใส่ Field + :
-    onChange(newValue);
-    setIsOpen(false);
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      if (isOpen && suggestions.length > 0) {
-        e.preventDefault();
-        handleSelectSuggestion(suggestions[activeIndex]);
-      } else {
-        onSubmit();
-        setIsOpen(false);
-      }
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIndex((prev) => (prev + 1) % suggestions.length);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
-    } else if (e.key === "Escape") {
-      setIsOpen(false);
-    }
-  };
-
-  // Click outside to close
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -84,61 +41,68 @@ export function KqlSearchInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleSelect = (fieldName: string) => {
+    const parts = value.split(/\s+/);
+    parts.pop(); 
+    const newValue = [...parts, fieldName].join(" ").trim();
+    onChange(newValue + ": "); 
+    setIsOpen(false);
+  };
+
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div ref={containerRef} className="relative w-full group custom-scrollbar">
       <div className="relative">
-        <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
+        <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
         <input
-          ref={inputRef}
-          className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-11 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent font-mono text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
+          type="text"
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-slate-200 placeholder:text-slate-600 transition-all font-mono"
           placeholder={placeholder}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-             // Show suggestions immediately if there's text
-             const lastToken = getLastToken(value);
-             if (lastToken) setIsOpen(true);
+          onChange={(e) => {
+            onChange(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              if (isOpen && filteredFields[highlightedIndex]) {
+                handleSelect(filteredFields[highlightedIndex]);
+              } else {
+                onSubmit();
+                setIsOpen(false);
+              }
+            }
+            if (e.key === "ArrowDown") setHighlightedIndex(prev => (prev + 1) % filteredFields.length);
+            if (e.key === "ArrowUp") setHighlightedIndex(prev => (prev - 1 + filteredFields.length) % filteredFields.length);
+            if (e.key === "Escape") setIsOpen(false);
           }}
         />
-        {value && (
-            <button 
-                onClick={() => { onChange(""); setIsOpen(false); inputRef.current?.focus(); }}
-                className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
-            >
-                <X className="w-4 h-4" />
-            </button>
-        )}
       </div>
 
-      {/* Autocomplete Dropdown */}
-      {isOpen && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-            <div className="px-3 py-2 text-[10px] font-semibold text-slate-500 bg-slate-950/50 border-b border-slate-800 uppercase tracking-wider">
-                Suggested Fields
-            </div>
-            <ul className="max-h-60 overflow-y-auto custom-scrollbar">
-                {suggestions.map((field, index) => (
-                <li
-                    key={field}
-                    onClick={() => handleSelectSuggestion(field)}
-                    className={cn(
-                    "px-4 py-2 text-xs font-mono cursor-pointer flex items-center justify-between group transition-colors",
-                    index === activeIndex ? "bg-blue-600/20 text-blue-100" : "text-slate-300 hover:bg-slate-800"
-                    )}
-                >
-                    <span className="flex items-center gap-2">
-                        {/* Icon based on type (Simulated) */}
-                        <span className="w-4 h-4 rounded bg-slate-800 border border-slate-600 flex items-center justify-center text-[9px] font-bold text-slate-400 group-hover:border-blue-500 group-hover:text-blue-400">
-                           {field.includes("ip") ? "ip" : field.includes("geo") ? "geo" : "t"}
-                        </span>
-                        {/* Highlight matching part logic could go here */}
-                        {field}
-                    </span>
-                    <span className="text-[10px] text-slate-600 group-hover:text-slate-400">Field</span>
-                </li>
-                ))}
-            </ul>
+      {isOpen && filteredFields.length > 0 && (
+        <div className="absolute top-full left-0 w-full mt-1 bg-[#1d1e24] border border-slate-700 rounded-lg shadow-2xl z-[100] max-h-80 overflow-y-auto py-1 animate-in fade-in zoom-in-95 duration-100">
+          <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800 mb-1">
+            Fields
+          </div>
+          {filteredFields.map((field, index) => {
+            const badge = getFieldBadge(field);
+            return (
+              <div
+                key={field}
+                className={cn(
+                  "px-3 py-1.5 flex items-center gap-3 cursor-pointer transition-colors text-xs font-mono",
+                  index === highlightedIndex ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800"
+                )}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                onClick={() => handleSelect(field)}
+              >
+                <span className={cn("w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold flex-none", badge.color)}>
+                  {badge.label}
+                </span>
+                <span className="truncate">{field}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

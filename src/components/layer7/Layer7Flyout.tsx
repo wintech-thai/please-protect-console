@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { 
-  X, FileJson, Table as TableIcon, Search, Plus, FilterX, 
-  ChevronLeft, ChevronRight, Columns, Copy, Check 
+  X, FileJson, Table as TableIcon, Search, 
+  ChevronLeft, ChevronRight, Copy, Check 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getFieldIcon } from "./constants"; 
@@ -19,15 +19,23 @@ interface FlyoutProps {
 export function Layer7Flyout({ event, onClose, onAddFilter, onToggleFieldSelection, selectedFields }: FlyoutProps) {
   const [drawerTab, setDrawerTab] = useState<"table" | "json">("table");
   
-  // State สำหรับ Search
   const [searchInput, setSearchInput] = useState("");
   const [filterText, setFilterText] = useState("");
   const [isCopied, setIsCopied] = useState(false);
+  
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   if (!event) return null;
 
   const handleSearchSubmit = () => {
     setFilterText(searchInput);
+  };
+
+  const handleCopyValue = (key: string, value: any) => {
+    const textToCopy = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedField(key);
+    setTimeout(() => setCopiedField(null), 2000); 
   };
 
   const handleCopyJson = () => {
@@ -39,21 +47,16 @@ export function Layer7Flyout({ event, onClose, onAddFilter, onToggleFieldSelecti
   const isDeepMatch = (key: string, value: any, term: string): boolean => {
     if (!term) return true;
     const lowerTerm = term.toLowerCase();
-
     if (key.toLowerCase().includes(lowerTerm)) return true;
-
     if (value === null || value === undefined) return false;
-
     if (typeof value === "object") {
       return Object.keys(value).some((subKey) => 
         isDeepMatch(subKey, value[subKey], term)
       );
     }
-
     return String(value).toLowerCase().includes(lowerTerm);
   };
 
-  // Logic การ Highlight JSON
   const highlightJson = (json: any) => {
     const jsonString = JSON.stringify(json, null, 2);
     return jsonString.replace(
@@ -159,17 +162,10 @@ export function Layer7Flyout({ event, onClose, onAddFilter, onToggleFieldSelecti
                 .filter(k => isDeepMatch(k, event[k], filterText))
                 .map((k) => {
                     const v = event[k];
-                    const isSelected = selectedFields.includes(k);
-
+                    
                     return (
                     <div key={k} className="group flex border-b border-slate-800/50 hover:bg-slate-900/40 transition-colors text-sm">
                         <div className="w-[40%] px-4 py-2 border-r border-slate-800/50 flex flex-col justify-center relative min-w-0">
-                            <div className="flex items-center gap-1 mb-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 bg-slate-950 shadow-sm border border-slate-700 rounded p-0.5 z-10">
-                                <button onClick={() => onAddFilter(k, v, "must")} className="p-1 hover:bg-slate-800 rounded text-emerald-500"><Plus className="w-3 h-3" /></button>
-                                <button onClick={() => onAddFilter(k, v, "must_not")} className="p-1 hover:bg-slate-800 rounded text-rose-500"><FilterX className="w-3 h-3" /></button>
-                                <button onClick={() => onToggleFieldSelection(k)} className={cn("p-1 hover:bg-slate-800 rounded", isSelected ? "text-blue-500" : "text-slate-400")}><Columns className="w-3 h-3" /></button>
-                            </div>
-
                             <div className="flex items-center gap-2 min-w-0">
                                 <span className="text-slate-500 flex-none">{getFieldIcon(k)}</span>
                                 <span className="font-medium text-blue-400 truncate" title={k}>
@@ -178,17 +174,34 @@ export function Layer7Flyout({ event, onClose, onAddFilter, onToggleFieldSelecti
                             </div>
                         </div>
 
-                        <div className="w-[60%] px-4 py-2 flex items-center min-w-0 break-all">
-                            {typeof v === "object" ? (
-                                <pre 
-                                  className="text-[10px] font-mono whitespace-pre-wrap leading-relaxed"
-                                  dangerouslySetInnerHTML={{ __html: highlightJson(v) }}
-                                />
-                            ) : (
-                                <span className={`font-mono text-xs ${getValueColorClass(v)}`}>
-                                    {String(v)}
-                                </span>
-                            )}
+                        <div className="w-[60%] px-4 py-2 flex items-center justify-between min-w-0 break-all group/val relative">
+                            <div className="flex-1 min-w-0 mr-6">
+                                {typeof v === "object" ? (
+                                    <pre 
+                                      className="text-[10px] font-mono whitespace-pre-wrap leading-relaxed"
+                                      dangerouslySetInnerHTML={{ __html: highlightJson(v) }}
+                                    />
+                                ) : (
+                                    <span className={`font-mono text-xs ${getValueColorClass(v)}`}>
+                                        {String(v)}
+                                    </span>
+                                )}
+                            </div>
+                            
+                            <button
+                                onClick={() => handleCopyValue(k, v)}
+                                className={cn(
+                                    "p-1.5 rounded bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition-all opacity-0 group-hover/val:opacity-100 flex-none",
+                                    copiedField === k && "opacity-100 text-green-500 border-green-500/50"
+                                )}
+                                title="Copy value"
+                            >
+                                {copiedField === k ? (
+                                    <Check size={14} className="animate-in zoom-in duration-200" />
+                                ) : (
+                                    <Copy size={14} />
+                                )}
+                            </button>
                         </div>
                     </div>
                     );

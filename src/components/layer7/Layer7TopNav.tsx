@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeft, PanelLeftClose, RefreshCw } from "lucide-react";
+import { PanelLeft, PanelLeftClose, RefreshCw, Activity, Network, } from "lucide-react";
 import { 
   AdvancedTimeRangeSelector, 
   TimeRangeValue, 
@@ -63,6 +63,16 @@ export function Layer7TopNav({
       >
         {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
       </button>
+
+      <div className="flex items-center gap-3 px-3 border-r border-slate-800 mr-2 h-9 hidden lg:flex">
+        <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center">
+          <Activity className="w-4 h-4 text-blue-500" />
+        </div>
+        <div className="flex flex-col">
+          <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">Layer 7 Traffic Analysis</h1>
+          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Application Layer Monitoring</span>
+        </div>
+      </div>
 
       <div className="flex-1 flex items-stretch gap-2">
         <div className="flex-1">
