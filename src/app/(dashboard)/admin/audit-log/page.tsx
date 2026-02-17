@@ -323,6 +323,7 @@ export default function AuditLogPage() {
                 </table>
             </div>
             
+            {/* Paging Footer */}
             <div className="flex-none flex items-center justify-between sm:justify-end px-4 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-4 sm:gap-6">
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                     <span>{t.table.rowsPerPage}</span>
