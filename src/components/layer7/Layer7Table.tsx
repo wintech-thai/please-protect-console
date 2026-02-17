@@ -41,7 +41,7 @@ export function Layer7Table({
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto no-scrollbar bg-slate-900/30">
+      <div className="flex-1 overflow-auto custom-scrollbar bg-slate-900/30">
         {isLoading ? (
           <div className="flex h-full items-center justify-center flex-col gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
