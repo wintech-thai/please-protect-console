@@ -6,6 +6,7 @@ import {
   TimeRangeValue, 
   TimePickerTranslations 
 } from "@/modules/dashboard/components/advanced-time-selector";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_TRANSLATIONS: TimePickerTranslations = {
   absoluteTitle: "Absolute Range",
@@ -49,37 +50,44 @@ export function Layer7TopNav({
   onRefresh,
 }: TopNavProps) {
   return (
-    <div className="flex-none px-4 py-3 bg-[#1b1d21] border-b border-[#343741] flex items-center gap-3">
+    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md">
+      {/* Sidebar Toggle Button */}
       <button 
         onClick={toggleSidebar} 
-        className="p-2 hover:bg-[#343741] rounded text-[#98a2b3] hover:text-white transition-colors"
+        className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all duration-200"
       >
         {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
       </button>
 
       <div className="flex-1 flex items-stretch gap-2">
+        {/* Search Input Wrapper */}
         <div className="flex-1 relative">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-[#535966]" />
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
           <input
-            className="w-full bg-[#101217] border border-[#343741] rounded-md py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#0077cc] focus:border-transparent font-mono text-[#dfe5ef]"
-            placeholder="Search... (e.g. status:200)"
+            className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent font-mono text-slate-200 placeholder:text-slate-600 transition-all shadow-inner"
+            placeholder="Filter your data using KQL syntax"
             value={luceneQuery}
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onQuerySubmit()}
           />
         </div>
 
-        <AdvancedTimeRangeSelector 
-          value={timeRange} 
-          onChange={onTimeRangeChange} 
-          translations={DEFAULT_TRANSLATIONS}
-        />
+        {/* Time Selector */}
+        <div className="flex-none">
+          <AdvancedTimeRangeSelector 
+            value={timeRange} 
+            onChange={onTimeRangeChange} 
+            translations={DEFAULT_TRANSLATIONS}
+          />
+        </div>
 
+        {/* Refresh Button */}
         <button 
           onClick={onRefresh} 
-          className="px-4 py-2 bg-[#0077cc] hover:bg-[#006bb8] text-white rounded-md text-sm font-medium flex items-center gap-2 transition-colors shadow-sm active:scale-95"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-95 border border-blue-500/50"
         >
-          <Clock className="w-4 h-4" /> Refresh
+          <Clock className="w-4 h-4" /> 
+          <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
     </div>

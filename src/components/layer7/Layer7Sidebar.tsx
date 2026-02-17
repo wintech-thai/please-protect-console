@@ -1,17 +1,22 @@
-import { Search, X, Plus, Loader2 } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { Search, X, Plus, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { getFieldIcon } from "./constants";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   isOpen: boolean;
   search: string;
   onSearchChange: (val: string) => void;
   selectedFields: string[];
+  popularFields: string[];
   availableFields: string[];
   expandedField: string | null;
   fieldStats: Record<string, any>;
   isLoadingStats: boolean;
-  onToggleField: (field: string) => void; // สำหรับ Expand ดู Stats
-  onSelectField: (field: string) => void; // สำหรับเลือกเข้า/ออก ตาราง
+  onToggleField: (field: string) => void;
+  onSelectField: (field: string) => void;
 }
 
 export function Layer7Sidebar({
@@ -19,6 +24,7 @@ export function Layer7Sidebar({
   search,
   onSearchChange,
   selectedFields,
+  popularFields,
   availableFields,
   expandedField,
   fieldStats,
@@ -27,13 +33,17 @@ export function Layer7Sidebar({
   onSelectField,
 }: SidebarProps) {
   return (
-    <div className={`${isOpen ? "w-[280px]" : "w-0"} transition-all duration-200 border-r border-[#343741] bg-[#1b1d21] flex flex-col overflow-hidden`}>
-      <div className="p-4 border-b border-[#343741]">
+    <div className={cn(
+      "transition-all duration-200 border-r border-slate-800 bg-slate-950 flex flex-col overflow-hidden",
+      isOpen ? "w-[280px]" : "w-0"
+    )}>
+      {/* Search Header - ปรับพื้นหลังเป็น Slate 900/50 */}
+      <div className="p-4 border-b border-slate-800 bg-slate-900/30">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#535966]" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
           <input
             type="text"
-            className="w-full bg-[#16171c] border border-[#343741] rounded-md py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0077cc] focus:border-transparent text-[#dfe5ef]"
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-slate-200 placeholder:text-slate-600 transition-all"
             placeholder="Search field names"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -42,12 +52,11 @@ export function Layer7Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar">
-        {/* Selected Fields */}
         <FieldSection
-          title="Selected fields"
-          count={selectedFields.filter((f) => f !== "actions").length}
-          fields={selectedFields.filter((f) => f !== "actions")}
-          icon={<X className="w-3.5 h-3.5 text-[#98a2b3] hover:text-white" />}
+          title="Popular fields"
+          fields={popularFields}
+          count={popularFields.length}
+          selectedFields={selectedFields}
           expandedField={expandedField}
           fieldStats={fieldStats}
           isLoadingStats={isLoadingStats}
@@ -55,12 +64,11 @@ export function Layer7Sidebar({
           onSelectField={onSelectField}
         />
 
-        {/* Available Fields */}
         <FieldSection
           title="Available fields"
-          count={availableFields.length}
           fields={availableFields}
-          icon={<Plus className="w-3.5 h-3.5 text-[#0077cc]" />}
+          count={availableFields.length}
+          selectedFields={selectedFields}
           expandedField={expandedField}
           fieldStats={fieldStats}
           isLoadingStats={isLoadingStats}
@@ -72,66 +80,119 @@ export function Layer7Sidebar({
   );
 }
 
-// Sub-component 
-function FieldSection({ title, count, fields, icon, expandedField, fieldStats, isLoadingStats, onToggleField, onSelectField }: any) {
+function FieldSection({ 
+  title, 
+  fields, 
+  count,
+  selectedFields, 
+  expandedField, 
+  fieldStats, 
+  isLoadingStats, 
+  onToggleField, 
+  onSelectField 
+}: any) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  if (fields.length === 0) return null;
+
   return (
-    <div>
-      <div className="px-4 py-3 flex items-center justify-between bg-[#1b1d21] sticky top-0 z-10 border-b border-[#343741]">
-        <span className="text-sm font-semibold text-[#98a2b3] flex items-center gap-2">
+    <div className="mb-0 border-b border-slate-800/50">
+      <div 
+        className="px-4 py-3 flex items-center justify-between bg-slate-900/80 sticky top-0 z-10 border-b border-slate-800 cursor-pointer hover:bg-slate-800 transition-colors"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+          {isCollapsed ? <ChevronRight className="w-3 h-3 text-slate-500" /> : <ChevronDown className="w-3 h-3 text-slate-500" />}
           {title}
-          <span className="text-xs bg-[#0077cc] text-white px-2 py-0.5 rounded-full font-medium">{count}</span>
+          <span className="text-[10px] text-slate-500 font-mono">
+            ({count})
+          </span>
         </span>
       </div>
-      <div className="py-1">
-        {fields.map((field: string) => (
-          <div key={field} className="group">
-            <div
-              className={`flex items-center gap-2.5 px-4 py-2 hover:bg-[#25282f] cursor-pointer transition-colors ${expandedField === field ? "bg-[#25282f]" : ""}`}
-              onClick={() => onToggleField(field)}
-            >
-              <div className="text-[#69707d]">{getFieldIcon(field)}</div>
-              <span className="text-sm truncate flex-1 text-[#dfe5ef] font-medium">{field}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectField(field);
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[#343741] rounded"
-              >
-                {icon}
-              </button>
-            </div>
-            {expandedField === field && (
-              <div className="px-4 pb-3 pt-1 bg-[#14151b] border-t border-[#343741]">
-                {isLoadingStats ? (
-                  <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-[#0077cc]" /></div>
-                ) : (
-                  <div className="space-y-2 mt-2">
-                    {field === "@timestamp" ? (
-                      <div className="text-xs text-[#98a2b3] italic">Date field</div>
+
+      {!isCollapsed && (
+        <div className="py-1 bg-slate-950">
+          {fields.map((field: string) => {
+            const isSelected = selectedFields.includes(field);
+            
+            return (
+              <div key={field} className="group">
+                <div
+                  className={cn(
+                    "flex items-center gap-2.5 px-4 py-1.5 hover:bg-slate-800/40 cursor-pointer transition-colors",
+                    expandedField === field ? "bg-slate-800/60" : "bg-transparent"
+                  )}
+                  onClick={() => onToggleField(field)}
+                >
+                  <div className="text-slate-500">
+                    {getFieldIcon(field)}
+                  </div>
+
+                  <span className={cn(
+                    "text-sm truncate flex-1 transition-colors font-medium text-slate-400",
+                    isSelected && "text-slate-200" 
+                  )}>
+                    {field}
+                  </span>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectField(field);
+                    }}
+                    className={cn(
+                      "transition-opacity p-1 hover:bg-slate-700 rounded-md",
+                      isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}
+                  >
+                    {isSelected ? (
+                      <X className="w-3.5 h-3.5 text-orange-500" />
                     ) : (
-                      fieldStats[field]?.buckets?.slice(0, 5).map((bucket: any, idx: number) => {
-                        const percentage = Math.round((bucket.doc_count / (fieldStats[field].total || 1)) * 100);
-                        return (
-                          <div key={idx} className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="text-[#dfe5ef] truncate max-w-[160px] font-medium">{bucket.key}</span>
-                              <span className="text-[#98a2b3]">{percentage}%</span>
-                            </div>
-                            <div className="h-1 w-full bg-[#343741] rounded-sm overflow-hidden">
-                              <div className="h-full bg-[#54b399]" style={{ width: `${percentage}%` }}></div>
-                            </div>
-                          </div>
-                        );
-                      })
+                      <Plus className="w-3.5 h-3.5 text-blue-500" />
+                    )}
+                  </button>
+                </div>
+
+                {expandedField === field && (
+                  <div className="px-4 pb-4 pt-1 bg-slate-900/30 border-t border-slate-800/50">
+                    {isLoadingStats ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 mt-2">
+                        {field === "@timestamp" ? (
+                          <div className="text-[10px] text-slate-500 italic font-light px-1 uppercase tracking-tighter">Time series field</div>
+                        ) : (
+                          fieldStats[field]?.buckets?.slice(0, 5).map((bucket: any, idx: number) => {
+                            const percentage = Math.round((bucket.doc_count / (fieldStats[field].total || 1)) * 100);
+                            return (
+                              <div key={idx} className="space-y-1.5 px-1">
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-slate-300 truncate max-w-[150px] font-mono">
+                                    {bucket.key}
+                                  </span>
+                                  <span className="text-slate-500 font-mono">{percentage}%</span>
+                                </div>
+                                <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-blue-500 transition-all duration-700 shadow-[0_0_8px_rgba(59,130,246,0.4)]" 
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

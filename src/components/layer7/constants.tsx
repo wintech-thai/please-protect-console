@@ -29,10 +29,16 @@ export const COLUMN_DEFS: Record<
     label: "@timestamp",
     render: (val) => <span className="text-[#e8eaed] font-normal whitespace-nowrap text-xs">{dayjs(val).format("MMM D, YYYY @ HH:mm:ss.SSS")}</span>,
   },
-  community_id: {
-    label: "community_id",
-    render: (val) => <span className="text-[#36a64f] font-mono text-xs truncate block max-w-[120px]" title={val}>{val || "-"}</span>,
+
+  "event.id": {
+    label: "event.id",
+    render: (val) => (
+      <span className="text-[#36a64f] font-mono text-xs truncate block max-w-[120px]" title={val}>
+        {val || "-"}
+      </span>
+    ),
   },
+  
   "event.dataset": {
     label: "event.dataset",
     render: (val) => {
