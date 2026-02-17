@@ -1,3 +1,5 @@
+"use client";
+
 import { ChevronRight, ChevronLeft, Loader2, ChevronRight as ChevronRightSmall } from "lucide-react";
 import { COLUMN_DEFS, getNestedValue } from "./constants";
 import { cn } from "@/lib/utils";
@@ -12,7 +14,8 @@ interface TableProps {
   selectedEventId: string | null;
   onPageChange: (newPage: number) => void;
   onItemsPerPageChange: (val: number) => void;
-  onRowClick: (event: any) => void;
+  onRowClick: (event: any) => void; 
+  onSelect: (id: string) => void;    
 }
 
 export function Layer7Table({
@@ -26,6 +29,7 @@ export function Layer7Table({
   onPageChange,
   onItemsPerPageChange,
   onRowClick,
+  onSelect,
 }: TableProps) {
   
   const totalPages = Math.ceil(totalHits / itemsPerPage);
@@ -34,7 +38,6 @@ export function Layer7Table({
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-slate-950 text-slate-200">
-      {/* Table Header Section */}
       <div className="flex-none px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
         <div className="text-sm font-bold text-white tracking-tight">
           Documents <span className="text-slate-500 font-normal text-xs ml-1">({totalHits.toLocaleString()})</span>
@@ -65,22 +68,31 @@ export function Layer7Table({
                 return (
                   <tr
                     key={event.id}
+                    onClick={() => onSelect(event.id)}
                     className={cn(
-                      "transition-all duration-200 text-sm cursor-pointer border-l-4",
+                      "transition-all duration-200 text-sm border-l-4 cursor-pointer",
                       isSelected 
                         ? "bg-blue-500/10 border-l-blue-500" 
-                        : "hover:bg-slate-800/40 border-l-transparent text-slate-300"
+                        : "hover:bg-slate-800/20 border-l-transparent text-slate-300"
                     )}
-                    onClick={() => onRowClick(event)}
                   >
                     <td className="p-4 text-center">
-                      <ChevronRightSmall className={cn(
-                        "w-4 h-4 transition-colors",
-                        isSelected ? "text-blue-500" : "text-slate-600"
-                      )} />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRowClick(event);
+                        }}
+                        className="p-1 hover:bg-slate-800 rounded transition-colors group/btn"
+                        title="View details"
+                      >
+                        <ChevronRightSmall className={cn(
+                          "w-4 h-4 transition-colors",
+                          isSelected ? "text-blue-500" : "text-slate-600 group-hover/btn:text-blue-400"
+                        )} />
+                      </button>
                     </td>
                     {selectedFields.map((f) => (
-                      <td key={f} className="p-4 whitespace-nowrap">
+                      <td key={f} className="p-4 whitespace-nowrap select-text">
                         <div className={cn(
                           "truncate max-w-[250px]",
                           isSelected ? "text-white" : "text-slate-300"
@@ -100,10 +112,7 @@ export function Layer7Table({
         )}
       </div>
       
-      {/* Paging Footer */}
       <div className="flex-none flex items-center justify-between sm:justify-end px-4 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-4 sm:gap-6">
-        
-        {/* Rows per page selector */}
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <span>Rows per page:</span>
           <select 
@@ -117,7 +126,6 @@ export function Layer7Table({
           </select>
         </div>
 
-        {/* Range and Navigation */}
         <div className="flex items-center gap-4">
           <div className="text-xs text-slate-400">
             {totalHits === 0 ? '0-0' : `${startRow}-${endRow}`} of {totalHits.toLocaleString()}

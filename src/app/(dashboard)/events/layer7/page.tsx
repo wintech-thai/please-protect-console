@@ -19,7 +19,6 @@ import { COLUMN_DEFS } from "@/components/layer7/constants";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// ฟิลด์ยอดนิยมสำหรับแสดงผลใน Sidebar
 const POPULAR_FIELD_KEYS = [
   "@timestamp",
   "event.id",
@@ -35,7 +34,6 @@ const POPULAR_FIELD_KEYS = [
   "http.response.status_code",
 ];
 
-// Helper 
 const extractKeysFromObject = (obj: any, prefix = ""): string[] => {
   let keys: string[] = [];
   if (!obj || typeof obj !== "object") return [];
@@ -55,18 +53,13 @@ const extractKeysFromObject = (obj: any, prefix = ""): string[] => {
 
 const getOrgId = () => {
   if (typeof window === "undefined") return null;
-  return (
-    localStorage.getItem("orgId") ||
-    localStorage.getItem("currentOrgId") ||
-    null
-  );
+  return localStorage.getItem("orgId") || localStorage.getItem("currentOrgId") || null;
 };
 
 export default function Layer7Page() {
   // --- 1. State Management ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarSearch, setSidebarSearch] = useState("");
-
   const [searchInput, setSearchInput] = useState("");
   const [luceneQuery, setLuceneQuery] = useState("");
 
@@ -83,12 +76,12 @@ export default function Layer7Page() {
   const [currentInterval, setCurrentInterval] = useState("1m");
 
   const [expandedField, setExpandedField] = useState<string | null>(null);
-  const [fieldStats, setFieldStats] = useState<
-    Record<string, { buckets: any[]; total: number }>
-  >({});
+  const [fieldStats, setFieldStats] = useState<Record<string, { buckets: any[]; total: number }>>({});
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [allIndexFields, setAllIndexFields] = useState<string[]>([]);
@@ -109,32 +102,24 @@ export default function Layer7Page() {
   ]);
 
   // --- 2. Derived State ---
-
   const maxDocCount = useMemo(() => {
     if (!chartData || chartData.length === 0) return 1;
     return Math.max(...chartData.map((b) => b.doc_count || 0), 1);
   }, [chartData]);
 
   const allFieldsSource = useMemo(() => {
-    return allIndexFields.length > 0
-      ? allIndexFields
-      : Object.keys(COLUMN_DEFS);
+    return allIndexFields.length > 0 ? allIndexFields : Object.keys(COLUMN_DEFS);
   }, [allIndexFields]);
 
   const popularFieldsList = useMemo(() => {
     return allFieldsSource.filter(
-      (f) =>
-        POPULAR_FIELD_KEYS.includes(f) &&
-        f.toLowerCase().includes(sidebarSearch.toLowerCase()),
+      (f) => POPULAR_FIELD_KEYS.includes(f) && f.toLowerCase().includes(sidebarSearch.toLowerCase())
     );
   }, [sidebarSearch, allFieldsSource]);
 
   const availableFieldsList = useMemo(() => {
     return allFieldsSource.filter(
-      (f) =>
-        !POPULAR_FIELD_KEYS.includes(f) &&
-        f !== "actions" &&
-        f.toLowerCase().includes(sidebarSearch.toLowerCase()),
+      (f) => !POPULAR_FIELD_KEYS.includes(f) && f !== "actions" && f.toLowerCase().includes(sidebarSearch.toLowerCase())
     );
   }, [sidebarSearch, allFieldsSource]);
 
@@ -146,11 +131,8 @@ export default function Layer7Page() {
     if (timeRange.type === "relative") {
       const num = parseInt(timeRange.value.replace(/\D/g, ""));
       const unit = timeRange.value.replace(/\d/g, "");
-      start = now.subtract(
-        num,
-        unit === "m" ? "minute" : unit === "h" ? "hour" : "day",
-      );
-    } else if (timeRange.start && timeRange.end) {
+      start = now.subtract(num, unit === "m" ? "minute" : unit === "h" ? "hour" : "day");
+    } else if (timeRange.type === "absolute" && timeRange.start && timeRange.end) {
       start = dayjs.unix(timeRange.start);
       end = dayjs.unix(timeRange.end);
     }
@@ -178,10 +160,11 @@ export default function Layer7Page() {
         },
       };
 
-      if (luceneQuery)
+      if (luceneQuery) {
         (queryPayload.bool.must as any).push({
           query_string: { query: luceneQuery },
         });
+      }
 
       const eventsRes = await esService.getLayer7Events(orgId, {
         from: (page - 1) * itemsPerPage,
@@ -191,8 +174,7 @@ export default function Layer7Page() {
       });
 
       const durationSec = end.diff(start, "second");
-      const step =
-        durationSec > 86400 * 7 ? "12h" : durationSec > 86400 ? "1h" : "1m";
+      const step = durationSec > 86400 * 7 ? "12h" : durationSec > 86400 ? "1h" : "1m";
       setCurrentInterval(step);
 
       const chartBuckets = await esService.getLayer7ChartData(
@@ -200,13 +182,14 @@ export default function Layer7Page() {
         start.unix(),
         end.unix(),
         step,
-        luceneQuery,
+        luceneQuery
       );
 
       const hits = eventsRes.hits.hits.map((h: any) => ({
         ...h._source,
-        id: h._id,
+        id: h._id, // Elasticsearch Technical ID
       }));
+
       setEvents(hits);
       setTotalHits(eventsRes.hits.total.value);
       setChartData(chartBuckets);
@@ -263,13 +246,10 @@ export default function Layer7Page() {
           ],
         },
       };
-      if (luceneQuery)
-        (query.bool.must as any).push({ query_string: { query: luceneQuery } });
+      if (luceneQuery) (query.bool.must as any).push({ query_string: { query: luceneQuery } });
       const result = await esService.getFieldStats(orgId, field, query);
       const buckets = Array.isArray(result) ? result : result.buckets;
-      const total = Array.isArray(result)
-        ? buckets.reduce((acc: any, b: any) => acc + b.doc_count, 0)
-        : result.total;
+      const total = Array.isArray(result) ? buckets.reduce((acc: any, b: any) => acc + b.doc_count, 0) : result.total;
       setFieldStats((prev) => ({ ...prev, [field]: { buckets, total } }));
     } catch (e) {
       console.error(e);
@@ -278,21 +258,13 @@ export default function Layer7Page() {
     }
   };
 
-  const handleAddFilter = (
-    key: string,
-    value: any,
-    operator: "must" | "must_not",
-  ) => {
+  const handleAddFilter = (key: string, value: any, operator: "must" | "must_not") => {
     let newValue = typeof value === "string" ? `"${value}"` : value;
-    if (typeof value === "object")
-      newValue = `"${JSON.stringify(value).replace(/"/g, '\\"')}"`;
-    const newCondition =
-      operator === "must" ? `${key}: ${newValue}` : `NOT ${key}: ${newValue}`;
+    if (typeof value === "object") newValue = `"${JSON.stringify(value).replace(/"/g, '\\"')}"`;
+    const newCondition = operator === "must" ? `${key}: ${newValue}` : `NOT ${key}: ${newValue}`;
 
     const currentSearch = searchInput.trim();
-    const updatedQuery = currentSearch
-      ? `${currentSearch} AND ${newCondition}`
-      : newCondition;
+    const updatedQuery = currentSearch ? `${currentSearch} AND ${newCondition}` : newCondition;
 
     setSearchInput(updatedQuery);
     setLuceneQuery(updatedQuery);
@@ -308,10 +280,8 @@ export default function Layer7Page() {
     });
   };
 
-  // --- 4. Render Layout ---
   return (
-    <div className="flex h-full bg-[#101217] text-[#dfe5ef] font-sans overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex h-full bg-slate-950 text-slate-200 font-sans overflow-hidden">
       <Layer7Sidebar
         isOpen={isSidebarOpen}
         search={sidebarSearch}
@@ -327,7 +297,6 @@ export default function Layer7Page() {
       />
 
       <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* แถบนำทางด้านบนและช่องค้นหา */}
         <Layer7TopNav
           isSidebarOpen={isSidebarOpen}
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -339,7 +308,6 @@ export default function Layer7Page() {
           onRefresh={handleSearchSubmit}
         />
 
-        {/* กราฟ Histogram  */}
         <Layer7Histogram
           data={chartData}
           totalHits={totalHits}
@@ -347,7 +315,6 @@ export default function Layer7Page() {
           maxDocCount={maxDocCount}
         />
 
-        {/* ตารางแสดงรายการข้อมูล Log */}
         <Layer7Table
           events={events}
           selectedFields={selectedFields}
@@ -355,13 +322,16 @@ export default function Layer7Page() {
           isLoading={isLoading}
           page={page}
           itemsPerPage={itemsPerPage}
-          selectedEventId={selectedEvent?.id}
+          selectedEventId={selectedEventId}
           onPageChange={setPage}
           onItemsPerPageChange={setItemsPerPage}
-          onRowClick={setSelectedEvent}
+          onRowClick={(event) => {
+            setSelectedEvent(event);
+            setSelectedEventId(event.id);
+          }}
+          onSelect={(id) => setSelectedEventId(id)}
         />
 
-        {/* หน้าต่างแสดงรายละเอียดข้อมูลแถวที่เลือก */}
         <Layer7Flyout
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
