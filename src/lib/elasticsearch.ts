@@ -52,6 +52,33 @@ export interface EsSearchPayload {
 }
 
 // --- 2. Helper Functions ---
+const sanitizeQuery = (query: any): any => {
+  if (!query || typeof query !== "object") return query;
+
+  if (Array.isArray(query)) {
+    return query.map(sanitizeQuery);
+  }
+
+  const sanitized: Record<string, any> = {}; 
+
+  for (const [key, value] of Object.entries(query)) {
+    if (key === "term" && typeof value === "object" && value !== null) {
+      const entries = Object.entries(value);
+      if (entries.length > 0) {
+        const [fieldName, fieldValue] = entries[0];
+
+        if (typeof fieldValue === "object" && fieldValue !== null) {
+          sanitized["match"] = { [fieldName]: JSON.stringify(fieldValue) };
+          continue;
+        }
+      }
+    }
+
+    sanitized[key] = sanitizeQuery(value);
+  }
+  return sanitized;
+};
+
 const flattenMapping = (mapping: any, prefix = ""): string[] => {
   let fields: string[] = [];
   if (!mapping) return [];
@@ -76,7 +103,11 @@ const flattenMapping = (mapping: any, prefix = ""): string[] => {
 // --- 3. Service Logic ---
 export const esService = {
   search: async <T>(endpoint: string, payload: EsSearchPayload): Promise<EsResponse<T>> => {
-    const response = await client.post(endpoint, payload);
+    const cleanPayload = {
+      ...payload,
+      query: sanitizeQuery(payload.query)
+    };
+    const response = await client.post(endpoint, cleanPayload);
     return response.data;
   },
 
@@ -111,26 +142,41 @@ export const esService = {
     }
   },
 
-  getFieldStats: async (orgId: string, fieldName: string, query: any) => {
+    getFieldStats: async (orgId: string, fieldName: string, query: any) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
-    if (fieldName === "@timestamp") return { buckets: [], total: 0 };
+    
+    const isTimeField = fieldName === "@timestamp";
+
     const runAgg = async (field: string) => {
       return esService.search(endpoint, {
         size: 0,
         query: query,
         track_total_hits: true,
         aggs: {
-          top_values: {
-            terms: { field: field, size: 5, shard_size: 10 }
-          }
+          top_values: isTimeField 
+            ? {
+                date_histogram: { 
+                  field: field, 
+                  fixed_interval: "30s",
+                  min_doc_count: 0,
+                  format: "HH:mm:ss" 
+                }
+              }
+            : {
+                terms: { field: field, size: 5, shard_size: 10 }
+              }
         }
       });
     };
+
     try {
       const res = await runAgg(fieldName);
-      return { buckets: res.aggregations?.top_values?.buckets || [], total: res.hits.total.value };
+      return { 
+        buckets: res.aggregations?.top_values?.buckets || [], 
+        total: res.hits.total.value 
+      };
     } catch (error: any) {
-      if (error.response?.status === 400 && !fieldName.endsWith('.keyword')) {
+      if (error.response?.status === 400 && !fieldName.endsWith('.keyword') && !isTimeField) {
         try {
           const fallbackRes = await runAgg(`${fieldName}.keyword`);
           return { buckets: fallbackRes.aggregations?.top_values?.buckets || [], total: fallbackRes.hits.total.value };
@@ -140,19 +186,37 @@ export const esService = {
     }
   },
 
-  getLayer7ChartData: async (orgId: string, start: number, end: number, step: string = "1m", luceneQuery?: string) => {
+  getLayer7ChartData: async (orgId: string, start: number, end: number, step: string = "1m", query?: any) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
-    const mustQueries: any[] = [
-      { range: { "@timestamp": { gte: new Date(start * 1000).toISOString(), lte: new Date(end * 1000).toISOString() } } },
-      { wildcard: { "event.dataset": "zeek.*" } }
-    ];
-    if (luceneQuery && luceneQuery.trim() !== "") {
-      mustQueries.push({ query_string: { query: luceneQuery } });
+    
+    let finalQuery: any;
+
+    if (query && typeof query === 'object') {
+      finalQuery = query;
+    } else {
+      const mustQueries: any[] = [
+        { 
+          range: { 
+            "@timestamp": { 
+              gte: new Date(start * 1000).toISOString(), 
+              lte: new Date(end * 1000).toISOString() 
+            } 
+          } 
+        },
+        { wildcard: { "event.dataset": "zeek.*" } }
+      ];
+
+      if (typeof query === "string" && query.trim() !== "") {
+        mustQueries.push({ query_string: { query: query } });
+      }
+
+      finalQuery = { bool: { must: mustQueries } };
     }
+
     const payload: EsSearchPayload = {
       size: 0,
       track_total_hits: true,
-      query: { bool: { must: mustQueries } },
+      query: finalQuery,
       aggs: {
         events_over_time: {
           date_histogram: {
@@ -168,10 +232,14 @@ export const esService = {
         }
       }
     };
+
     try {
       const res = await esService.search(endpoint, payload);
       return res.aggregations?.events_over_time?.buckets || [];
-    } catch (e) { return []; }
+    } catch (e) { 
+      console.error("Chart Data Error:", e);
+      return []; 
+    }
   },
 
   getAuditLogs: async <T = AuditLogDocument>(orgId: string, payload: EsSearchPayload) => {

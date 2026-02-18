@@ -4,43 +4,40 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { Activity, Network } from "lucide-react"; // ✅ เพิ่มไอคอนสำหรับ Title
+import { X, Filter, Trash2 } from "lucide-react";
 
 import { esService } from "@/lib/elasticsearch";
 import { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
 
-// Import Components
+// Import Components & Constants
 import { Layer7Sidebar } from "@/components/layer7/Layer7Sidebar";
 import { Layer7TopNav } from "@/components/layer7/Layer7TopNav";
 import { Layer7Histogram } from "@/components/layer7/Layer7Histogram";
 import { Layer7Table } from "@/components/layer7/Layer7Table";
 import { Layer7Flyout } from "@/components/layer7/Layer7Flyout";
 import { COLUMN_DEFS } from "@/components/layer7/constants";
+import { L7_DICT, L7DictType } from "@/locales/layer7dict";
+import { useLanguage } from "@/context/LanguageContext"; 
 import { cn } from "@/lib/utils";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// ... (POPULAR_FIELD_KEYS และ extractKeysFromObject คงเดิม)
-const POPULAR_FIELD_KEYS = [
-  "@timestamp",
-  "event.id",
-  "event.dataset",
-  "source.ip",
-  "source.port",
-  "destination.ip",
-  "destination.port",
-  "network.protocol",
-  "http.request.method",
-  "http.response.status_code",
-];
+interface FilterItem {
+  id: string;
+  key: string;
+  value: any;
+  operator: "must" | "must_not";
+}
 
 const extractKeysFromObject = (obj: any, prefix = ""): string[] => {
   let keys: string[] = [];
   if (!obj || typeof obj !== "object") return [];
+  
   Object.keys(obj).forEach((key) => {
-    if (key === "id") return; 
+    if (key === "id" || key === "_id") return; 
     const fullKey = prefix ? `${prefix}.${key}` : key;
+    
     if (obj[key] && typeof obj[key] === "object" && !Array.isArray(obj[key])) {
       keys = [...keys, ...extractKeysFromObject(obj[key], fullKey)];
     } else {
@@ -56,12 +53,23 @@ const getOrgId = () => {
 };
 
 export default function Layer7Page() {
-  // --- 1. State Management ---
+  // --- 1. Global Language Management ---
+  const { language, setLanguage } = useLanguage();
+  const langKey = (language?.toLowerCase() || "en") as "en" | "th";
+  const dict: L7DictType = L7_DICT[langKey];
+
+  const toggleLanguage = () => {
+    const nextLang = language === "EN" ? "TH" : "EN";
+    setLanguage(nextLang);
+  };
+
+  // --- 2. State Management ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [luceneQuery, setLuceneQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeFilters, setActiveFilters] = useState<FilterItem[]>([]);
 
   const [timeRange, setTimeRange] = useState<TimeRangeValue>({
     type: "relative",
@@ -81,23 +89,16 @@ export default function Layer7Page() {
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-  
+
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [allIndexFields, setAllIndexFields] = useState<string[]>([]);
 
   const [selectedFields, setSelectedFields] = useState<string[]>([
-    "@timestamp",
-    "event.id",
-    "event.dataset",
-    "source.ip",
-    "source.port",
-    "destination.ip",
-    "destination.port",
-    "actions",
+    "@timestamp", "event.id", "event.dataset", "source.ip", "source.port", "destination.ip", "destination.port", "actions",
   ]);
 
-  // --- 2. Derived State ---
+  // --- 3. Derived State ---
   const maxDocCount = useMemo(() => {
     if (!chartData || chartData.length === 0) return 1;
     return Math.max(...chartData.map((b) => b.doc_count || 0), 1);
@@ -108,29 +109,30 @@ export default function Layer7Page() {
   }, [allIndexFields]);
 
   const popularFieldsList = useMemo(() => {
-    return allFieldsSource.filter(
-      (f) => POPULAR_FIELD_KEYS.includes(f) && f.toLowerCase().includes(sidebarSearch.toLowerCase())
-    );
+    const popularKeys = ["@timestamp", "event.id", "event.dataset", "source.ip", "source.port", "destination.ip", "destination.port", "network.protocol", "http.request.method", "http.response.status_code"];
+    return allFieldsSource.filter(f => popularKeys.includes(f) && f.toLowerCase().includes(sidebarSearch.toLowerCase()));
   }, [sidebarSearch, allFieldsSource]);
 
   const availableFieldsList = useMemo(() => {
-    return allFieldsSource.filter(
-      (f) => !POPULAR_FIELD_KEYS.includes(f) && f !== "actions" && f.toLowerCase().includes(sidebarSearch.toLowerCase())
-    );
+    const popularKeys = ["@timestamp", "event.id", "event.dataset", "source.ip", "source.port", "destination.ip", "destination.port", "network.protocol", "http.request.method", "http.response.status_code"];
+    return allFieldsSource.filter(f => !popularKeys.includes(f) && f !== "actions" && f.toLowerCase().includes(sidebarSearch.toLowerCase()));
   }, [sidebarSearch, allFieldsSource]);
 
-  // --- 3. Logic & Methods ---
+  const selectedEventIndex = useMemo(() => {
+    if (!selectedEventId || events.length === 0) return -1;
+    return events.findIndex((e) => e.id === selectedEventId);
+  }, [selectedEventId, events]);
+
+  // --- 4. Logic Methods ---
   const getTimeBounds = useCallback(() => {
     const now = dayjs();
-    let start = now.subtract(15, "minute");
-    let end = now;
+    let start = now.subtract(15, "minute"), end = now;
     if (timeRange.type === "relative") {
       const num = parseInt(timeRange.value.replace(/\D/g, ""));
       const unit = timeRange.value.replace(/\d/g, "");
       start = now.subtract(num, unit === "m" ? "minute" : unit === "h" ? "hour" : "day");
     } else if (timeRange.type === "absolute" && timeRange.start && timeRange.end) {
-      start = dayjs.unix(timeRange.start);
-      end = dayjs.unix(timeRange.end);
+      start = dayjs.unix(timeRange.start); end = dayjs.unix(timeRange.end);
     }
     return { start, end };
   }, [timeRange]);
@@ -143,48 +145,25 @@ export default function Layer7Page() {
       const { start, end } = getTimeBounds();
       const queryPayload: any = {
         bool: {
-          must: [
-            { range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
-            { wildcard: { "event.dataset": "zeek.*" } }
-          ],
+          must: [{ range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } }, { wildcard: { "event.dataset": "zeek.*" } }],
+          must_not: [],
         },
       };
 
-      if (luceneQuery) {
-        queryPayload.bool.must.push({ query_string: { query: luceneQuery } });
-      }
-
-      const eventsRes = await esService.getLayer7Events(orgId, {
-        from: (page - 1) * itemsPerPage,
-        size: itemsPerPage,
-        query: queryPayload,
-        sort: [{ "@timestamp": "desc" }],
+      if (luceneQuery) queryPayload.bool.must.push({ query_string: { query: luceneQuery } });
+      activeFilters.forEach((f) => {
+        const condition = { match_phrase: { [f.key]: f.value } };
+        if (f.operator === "must") queryPayload.bool.must.push(condition);
+        else queryPayload.bool.must_not.push(condition);
       });
 
+      const eventsRes = await esService.getLayer7Events(orgId, { from: (page - 1) * itemsPerPage, size: itemsPerPage, query: queryPayload, sort: [{ "@timestamp": "desc" }] });
+      const hits = eventsRes.hits.hits.map((h: any) => ({ ...h._source, id: h._id }));
       const durationSec = end.diff(start, "second");
-      let step = "1m";
-      if (durationSec <= 900) step = "30s"; 
-      else if (durationSec <= 3600) step = "1m"; 
-      else if (durationSec <= 14400) step = "5m"; 
-      else if (durationSec <= 43200) step = "10m"; 
-      else if (durationSec <= 86400) step = "30m"; 
-      else if (durationSec <= 604800) step = "3h"; 
-      else step = "12h";
-
+      let step = durationSec <= 900 ? "30s" : durationSec <= 3600 ? "1m" : "5m";
       setCurrentInterval(step);
 
-      const chartBuckets = await esService.getLayer7ChartData(
-        orgId,
-        start.unix(),
-        end.unix(),
-        step,
-        luceneQuery ? `(event.dataset:zeek.*) AND (${luceneQuery})` : "event.dataset:zeek.*"
-      );
-
-      const hits = eventsRes.hits.hits.map((h: any) => ({
-        ...h._source,
-        id: h._id,
-      }));
+      const chartBuckets = await esService.getLayer7ChartData(orgId, start.unix(), end.unix(), step, queryPayload);
 
       setEvents(hits);
       setTotalHits(eventsRes.hits.total.value);
@@ -192,84 +171,50 @@ export default function Layer7Page() {
 
       if (hits.length > 0) {
         setAllIndexFields((prev) => {
-           const extractedFields = new Set<string>(prev); 
-           const scanLimit = Math.min(hits.length, 50); 
-           hits.slice(0, scanLimit).forEach((row: any) => {
-             const keys = extractKeysFromObject(row);
-             keys.forEach((k) => extractedFields.add(k));
-           });
-           return Array.from(extractedFields).sort();
+          const extractedFields = new Set<string>(prev);
+          hits.slice(0, 500).forEach((row: any) => {
+            extractKeysFromObject(row).forEach(k => extractedFields.add(k)); // เจาะลึก JSON
+          });
+          return Array.from(extractedFields).sort();
         });
       }
-    } catch (err) {
-      console.error("Data Sync Error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [luceneQuery, getTimeBounds, page, itemsPerPage, refreshKey]);
+    } catch (err) { console.error(err); } finally { setIsLoading(false); }
+  }, [luceneQuery, activeFilters, getTimeBounds, page, itemsPerPage, refreshKey]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSearchSubmit = () => {
-    setLuceneQuery(searchInput);
-    setPage(1);
-  };
-
-  const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1);
+    const trimmedInput = searchInput.trim();
+    setLuceneQuery(trimmedInput); setSearchInput(trimmedInput); setPage(1);
   };
 
   const handleToggleFieldStats = async (field: string) => {
-    if (expandedField === field) {
-      setExpandedField(null);
-      return;
-    }
+    if (expandedField === field) { setExpandedField(null); return; }
     setExpandedField(field);
     const orgId = getOrgId();
     if (!orgId) return;
     setIsLoadingStats(true);
     try {
       const { start, end } = getTimeBounds();
-      const query = {
-        bool: {
-          must: [
-            { range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
-            { wildcard: { "event.dataset": "zeek.*" } }
-          ],
-        },
-      };
+      const query = { bool: { must: [{ range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } }, { wildcard: { "event.dataset": "zeek.*" } }] } };
       if (luceneQuery) (query.bool.must as any).push({ query_string: { query: luceneQuery } });
       const result = await esService.getFieldStats(orgId, field, query);
-      const buckets = Array.isArray(result) ? result : result.buckets;
-      const total = Array.isArray(result) ? buckets.reduce((acc: any, b: any) => acc + b.doc_count, 0) : result.total;
-      setFieldStats((prev) => ({ ...prev, [field]: { buckets, total } }));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoadingStats(false);
-    }
+      setFieldStats(prev => ({ ...prev, [field]: { buckets: result.buckets, total: result.total } }));
+    } catch (e) { console.error(e); } finally { setIsLoadingStats(false); }
   };
 
   const handleAddFilter = (key: string, value: any, operator: "must" | "must_not") => {
-    let newValue = typeof value === "string" ? `"${value}"` : value;
-    if (typeof value === "object") newValue = `"${JSON.stringify(value).replace(/"/g, '\\"')}"`;
-    const newCondition = operator === "must" ? `${key}: ${newValue}` : `NOT ${key}: ${newValue}`;
-    const currentSearch = searchInput.trim();
-    const updatedQuery = currentSearch ? `${currentSearch} AND ${newCondition}` : newCondition;
-    setSearchInput(updatedQuery);
-    setLuceneQuery(updatedQuery);
+    if (typeof value === "object" && value !== null) return;
+    setActiveFilters(prev => {
+      const filtered = prev.filter(f => !(f.key === key && f.value === value));
+      return [...filtered, { id: `${key}-${value}-${Date.now()}`, key, value, operator }];
+    });
     setPage(1);
   };
 
   const toggleFieldSelection = (field: string) => {
     if (field === "actions") return;
-    setSelectedFields((prev) => {
-      if (prev.includes(field)) return prev.filter((f) => f !== field);
-      const withoutActions = prev.filter((f) => f !== "actions");
-      return [...withoutActions, field, "actions"];
-    });
+    setSelectedFields(prev => prev.includes(field) ? prev.filter(f => f !== field) : [...prev.filter(f => f !== "actions"), field, "actions"]);
   };
 
   return (
@@ -286,6 +231,7 @@ export default function Layer7Page() {
         isLoadingStats={isLoadingStats}
         onToggleField={handleToggleFieldStats}
         onSelectField={toggleFieldSelection}
+        dict={dict.sidebar}
       />
 
       <div className="flex-1 flex flex-col min-w-0 relative">
@@ -297,18 +243,37 @@ export default function Layer7Page() {
           onQuerySubmit={handleSearchSubmit}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
-          onRefresh={handleRefresh}
-          isLoading={isLoading} 
-          availableFields={allIndexFields} 
+          onRefresh={() => setRefreshKey(k => k + 1)}
+          isLoading={isLoading}
+          availableFields={allIndexFields}
+          currentLang={langKey}
+          onLangToggle={toggleLanguage}
+          dict={dict.topNav}
+          timeDict={dict.timePicker}
         />
 
+        {/* Filter Bar */}
+        {activeFilters.length > 0 && (
+          <div className="flex-none px-4 py-2 bg-slate-900/40 border-b border-slate-800 flex flex-wrap gap-2 items-center">
+            <div className="flex items-center gap-1.5 mr-1 text-slate-500">
+              <Filter className="w-3 h-3" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">{dict.filterBar?.label || "Filters"}</span>
+            </div>
+            {activeFilters.map((f) => (
+              <div key={f.id} className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] border transition-all", f.operator === "must" ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-rose-500/10 border-rose-500/30 text-rose-400")}>
+                <span className="font-bold opacity-70">{f.key}:</span>
+                <span className="font-mono">{String(f.value)}</span>
+                <button onClick={() => setActiveFilters(prev => prev.filter(i => i.id !== f.id))} className="ml-1 hover:bg-white/10 rounded-full p-0.5"><X className="w-3 h-3" /></button>
+              </div>
+            ))}
+            <button onClick={() => { setActiveFilters([]); setSearchInput(""); setLuceneQuery(""); }} className="text-[10px] text-slate-500 hover:text-white flex items-center gap-1 ml-2 transition-colors">
+              <Trash2 className="w-3 h-3" /> {dict.filterBar?.clearAll || "Clear all"}
+            </button>
+          </div>
+        )}
+
         <div className="relative flex-none">
-          <Layer7Histogram
-            data={chartData}
-            totalHits={totalHits}
-            interval={currentInterval}
-            maxDocCount={maxDocCount}
-          />
+          <Layer7Histogram data={chartData} totalHits={totalHits} interval={currentInterval} maxDocCount={maxDocCount} />
         </div>
 
         <Layer7Table
@@ -321,19 +286,21 @@ export default function Layer7Page() {
           selectedEventId={selectedEventId}
           onPageChange={setPage}
           onItemsPerPageChange={setItemsPerPage}
-          onRowClick={(event) => {
-            setSelectedEvent(event);
-            setSelectedEventId(event.id);
-          }}
-          onSelect={(id) => setSelectedEventId(id)}
+          onRowClick={setSelectedEvent}
+          onSelect={setSelectedEventId}
+          dict={dict.table}
         />
 
         <Layer7Flyout
           event={selectedEvent}
+          events={events}
+          currentIndex={selectedEventIndex}
+          onNavigate={(idx) => { setSelectedEvent(events[idx]); setSelectedEventId(events[idx].id); }}
           onClose={() => setSelectedEvent(null)}
           onAddFilter={handleAddFilter}
           onToggleFieldSelection={toggleFieldSelection}
           selectedFields={selectedFields}
+          dict={dict.flyout}
         />
       </div>
     </div>
