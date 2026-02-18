@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeft, PanelLeftClose, RefreshCw, Activity, Network, } from "lucide-react";
+import { PanelLeft, PanelLeftClose, RefreshCw, Activity } from "lucide-react";
 import { 
   AdvancedTimeRangeSelector, 
   TimeRangeValue, 
@@ -8,26 +8,7 @@ import {
 } from "@/modules/dashboard/components/advanced-time-selector";
 import { cn } from "@/lib/utils";
 import { KqlSearchInput } from "./KqlSearchInput"; 
-
-const DEFAULT_TRANSLATIONS: TimePickerTranslations = {
-  absoluteTitle: "Absolute Range",
-  from: "From",
-  to: "To",
-  apply: "Apply Range",
-  searchPlaceholder: "Search quick ranges...",
-  customRange: "Custom Range",
-  last5m: "Last 5 minutes",
-  last15m: "Last 15 minutes",
-  last30m: "Last 30 minutes",
-  last1h: "Last 1 hour",
-  last3h: "Last 3 hours",
-  last6h: "Last 6 hours",
-  last12h: "Last 12 hours",
-  last24h: "Last 24 hours",
-  last2d: "Last 2 days",
-  last7d: "Last 7 days",
-  last30d: "Last 30 days",
-};
+import { L7DictType } from "@/locales/layer7dict";
 
 interface TopNavProps {
   isSidebarOpen: boolean;
@@ -40,6 +21,10 @@ interface TopNavProps {
   onRefresh: () => void;
   isLoading?: boolean;
   availableFields?: string[]; 
+  currentLang: "en" | "th"; 
+  onLangToggle: () => void; 
+  dict: L7DictType['topNav']; 
+  timeDict: TimePickerTranslations; 
 }
 
 export function Layer7TopNav({
@@ -52,8 +37,13 @@ export function Layer7TopNav({
   onTimeRangeChange,
   onRefresh,
   isLoading = false,
-  availableFields = [], 
+  availableFields = [],
+  dict,      
+  timeDict, 
 }: TopNavProps) {
+
+  if (!dict) return null;
+
   return (
     <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md z-30 relative">
       {/* Sidebar Toggle Button */}
@@ -64,24 +54,30 @@ export function Layer7TopNav({
         {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
       </button>
 
+      {/* Title & Logo Section */}
       <div className="flex items-center gap-3 px-3 border-r border-slate-800 mr-2 h-9 hidden lg:flex">
         <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center">
           <Activity className="w-4 h-4 text-blue-500" />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">Layer 7 Traffic Analysis</h1>
-          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">Application Layer Monitoring</span>
+          <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">
+            {dict.title} 
+          </h1>
+          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">
+            {dict.subtitle} 
+          </span>
         </div>
       </div>
 
       <div className="flex-1 flex items-stretch gap-2">
+        {/* Search Input */}
         <div className="flex-1">
           <KqlSearchInput 
             value={luceneQuery}
             onChange={onQueryChange}
             onSubmit={onQuerySubmit}
             fields={availableFields}
-            placeholder="Filter your data using KQL syntax"
+            placeholder={dict.searchPlaceholder} 
           />
         </div>
 
@@ -90,7 +86,7 @@ export function Layer7TopNav({
           <AdvancedTimeRangeSelector 
             value={timeRange} 
             onChange={onTimeRangeChange} 
-            translations={DEFAULT_TRANSLATIONS}
+            translations={timeDict} 
             disabled={isLoading}
           />
         </div>
@@ -105,7 +101,9 @@ export function Layer7TopNav({
           )}
         >
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
-          <span className="hidden sm:inline">{isLoading ? "Refreshing..." : "Refresh"}</span>
+          <span className="hidden sm:inline">
+            {isLoading ? dict.refreshing : dict.refresh} 
+          </span>
         </button>
       </div>
     </div>
