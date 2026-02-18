@@ -17,7 +17,8 @@ import {
   Users,
   Key,
   FileText,
-  ShieldAlert
+  ShieldAlert,
+  PanelLeft,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -47,7 +48,12 @@ interface NavItem {
   children?: { label: string; href: string; icon?: React.ReactNode }[];
 }
 
-export function Navbar() {
+interface NavbarProps {
+  hasSidebar?: boolean;
+  onToggleSidebar?: () => void;
+}
+
+export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -118,11 +124,16 @@ export function Navbar() {
         { label: t.audit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
       ]
     },
+    {
+      label: t.system,
+      href: "/system/organization",
+    },
   ], [t]);
 
   const isActive = (path: string) => {
     if (path === "/overview") return pathname === path;
     if (path === "/admin/users") return pathname.startsWith("/admin");
+    if (path === "/system/organization") return pathname.startsWith("/system");
     return pathname.startsWith(path);
   };
 
@@ -141,6 +152,15 @@ export function Navbar() {
 
           {/* Logo Section */}
           <div className="flex items-center gap-3">
+            {hasSidebar && onToggleSidebar && (
+              <button
+                onClick={onToggleSidebar}
+                className="flex md:hidden items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
+                title="Toggle sidebar"
+              >
+                <PanelLeft className="w-5 h-5" />
+              </button>
+            )}
             <div className="relative w-10 h-10 flex items-center justify-center">
               <Image
                 src="/img/rtarf.png"

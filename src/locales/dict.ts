@@ -199,6 +199,7 @@ export const translations = {
       roles: "Custom Roles",
       apiKeys: "API Keys",
       audit: "Audit Log",
+      system: "System",
 
       language: "Language"
     },
@@ -220,9 +221,45 @@ export const translations = {
       roles: "สิทธิ์ตามบทบาท",
       apiKeys: "กุญแจ API",
       audit: "ตรวจสอบการใช้งาน",
+      system: "ระบบ",
 
       language: "ภาษา"
     }
+  },
+
+  sidebar: {
+    EN: {
+      system: "System",
+      organization: "Organization",
+      operations: "Operations",
+      systemLogs: "System Logs",
+      workloads: "Workloads",
+      domainCertificate: "Domain & Certificate",
+      notifications: "Notifications",
+      alertsChannels: "Alerts Channels",
+      alertsFired: "Alerts Fired",
+      alertsRules: "Alerts Rules",
+      backupRestore: "Backup / Restore",
+      indices: "Indices",
+      backupHistory: "Backup History",
+      restoreHistory: "Restore History",
+    },
+    TH: {
+      system: "ระบบ",
+      organization: "องค์กร",
+      operations: "ปฏิบัติการ",
+      systemLogs: "บันทึกระบบ",
+      workloads: "ภาระงาน",
+      domainCertificate: "โดเมนและใบรับรอง",
+      notifications: "การแจ้งเตือน",
+      alertsChannels: "ช่องทางแจ้งเตือน",
+      alertsFired: "การแจ้งเตือนที่เกิดขึ้น",
+      alertsRules: "กฎการแจ้งเตือน",
+      backupRestore: "สำรอง / กู้คืน",
+      indices: "ดัชนี",
+      backupHistory: "ประวัติการสำรอง",
+      restoreHistory: "ประวัติการกู้คืน",
+    },
   },
 
   overview: {
