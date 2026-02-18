@@ -52,6 +52,35 @@ export interface EsSearchPayload {
 }
 
 // --- 2. Helper Functions ---
+
+const calculateDynamicInterval = (query: any): string => {
+  try {
+    let range: any = null;
+    
+    if (query?.bool?.must) {
+      const rangeObj = query.bool.must.find((m: any) => m.range?.["@timestamp"]);
+      range = rangeObj?.range?.["@timestamp"];
+    } else if (query?.range?.["@timestamp"]) {
+      range = query.range["@timestamp"];
+    }
+
+    if (!range || !range.gte || !range.lte) return "1m";
+
+    const start = new Date(range.gte).getTime();
+    const end = new Date(range.lte).getTime();
+    const diffMinutes = (end - start) / (1000 * 60);
+
+    if (diffMinutes <= 15) return "30s";   
+    if (diffMinutes <= 60) return "1m";    
+    if (diffMinutes <= 180) return "5m";   
+    if (diffMinutes <= 720) return "15m";  
+    if (diffMinutes <= 1440) return "30m";
+    return "1h";                           
+  } catch (e) {
+    return "1m";
+  }
+};
+
 const sanitizeQuery = (query: any): any => {
   if (!query || typeof query !== "object") return query;
 
@@ -142,9 +171,8 @@ export const esService = {
     }
   },
 
-    getFieldStats: async (orgId: string, fieldName: string, query: any) => {
+  getFieldStats: async (orgId: string, fieldName: string, query: any) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
-    
     const isTimeField = fieldName === "@timestamp";
 
     const runAgg = async (field: string) => {
@@ -157,7 +185,7 @@ export const esService = {
             ? {
                 date_histogram: { 
                   field: field, 
-                  fixed_interval: "30s",
+                  fixed_interval: calculateDynamicInterval(query), 
                   min_doc_count: 0,
                   format: "HH:mm:ss" 
                 }
