@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useQueryState, parseAsString, parseAsJson } from "nuqs";
 import { Database } from "lucide-react";
 import { toast } from "sonner";
@@ -79,6 +79,10 @@ export default function LokiView() {
   const [queryDuration, setQueryDuration] = useState<number | null>(null);
   const [limitReached, setLimitReached] = useState(false);
 
+  // Track whether initial mount auto-query has fired
+  const isInitialMount = useRef(true);
+  const prevTimeRange = useRef(timeRange);
+
   const handleRunQuery = useCallback(async () => {
     if (!query.trim()) return;
     setIsLoading(true);
@@ -118,6 +122,24 @@ export default function LokiView() {
       setIsLoading(false);
     }
   }, [query, timeRange, t]);
+
+  // Auto-run query on page load (if query exists in URL) and when timeRange changes
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      // On mount: auto-run if query exists in URL
+      if (query.trim()) {
+        handleRunQuery();
+      }
+      return;
+    }
+
+    // After mount: re-run when timeRange changes (only if we have a query)
+    if (query.trim() && prevTimeRange.current !== timeRange) {
+      prevTimeRange.current = timeRange;
+      handleRunQuery();
+    }
+  }, [timeRange, query, handleRunQuery]);
 
   /** Load older logs using the oldest entry's timestamp as cursor */
   const handleLoadMore = useCallback(async () => {
