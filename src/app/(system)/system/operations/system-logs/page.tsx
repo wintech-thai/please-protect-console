@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/ui/coming-soon";
+import LokiView from "@/modules/loki/view/loki.view";
 
 export default function SystemLogsPage() {
-  return <ComingSoon title="System Logs" />;
+  return <LokiView />
 }
