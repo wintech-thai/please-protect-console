@@ -56,7 +56,6 @@ export interface EsSearchPayload {
 const calculateDynamicInterval = (query: any): string => {
   try {
     let range: any = null;
-    
     if (query?.bool?.must) {
       const rangeObj = query.bool.must.find((m: any) => m.range?.["@timestamp"]);
       range = rangeObj?.range?.["@timestamp"];
@@ -81,28 +80,33 @@ const calculateDynamicInterval = (query: any): string => {
   }
 };
 
+
+const calculateMainChartInterval = (start: number, end: number): string => {
+  const diffHours = (end - start) / 3600;
+
+  if (diffHours <= 1) return "1m";      
+  if (diffHours <= 6) return "5m";      
+  if (diffHours <= 24) return "30m";    
+  if (diffHours <= 168) return "3h";    
+  if (diffHours <= 720) return "12h";   
+  return "1d";                          
+};
+
 const sanitizeQuery = (query: any): any => {
   if (!query || typeof query !== "object") return query;
-
-  if (Array.isArray(query)) {
-    return query.map(sanitizeQuery);
-  }
-
+  if (Array.isArray(query)) return query.map(sanitizeQuery);
   const sanitized: Record<string, any> = {}; 
-
   for (const [key, value] of Object.entries(query)) {
     if (key === "term" && typeof value === "object" && value !== null) {
       const entries = Object.entries(value);
       if (entries.length > 0) {
         const [fieldName, fieldValue] = entries[0];
-
         if (typeof fieldValue === "object" && fieldValue !== null) {
           sanitized["match"] = { [fieldName]: JSON.stringify(fieldValue) };
           continue;
         }
       }
     }
-
     sanitized[key] = sanitizeQuery(value);
   }
   return sanitized;
@@ -214,30 +218,27 @@ export const esService = {
     }
   },
 
-  getLayer7ChartData: async (orgId: string, start: number, end: number, step: string = "1m", query?: any) => {
+    getLayer7ChartData: async (orgId: string, start: number, end: number, step?: string, query?: any) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
     
-    let finalQuery: any;
+    const diffHours = (end - start) / 3600;
+    
+    let dynamicStep = step;
+    if (!step || step === "1m" || diffHours > 24) {
+      dynamicStep = calculateMainChartInterval(start, end);
+    }
 
+    let finalQuery: any;
     if (query && typeof query === 'object') {
       finalQuery = query;
     } else {
       const mustQueries: any[] = [
-        { 
-          range: { 
-            "@timestamp": { 
-              gte: new Date(start * 1000).toISOString(), 
-              lte: new Date(end * 1000).toISOString() 
-            } 
-          } 
-        },
+        { range: { "@timestamp": { gte: new Date(start * 1000).toISOString(), lte: new Date(end * 1000).toISOString() } } },
         { wildcard: { "event.dataset": "zeek.*" } }
       ];
-
       if (typeof query === "string" && query.trim() !== "") {
         mustQueries.push({ query_string: { query: query } });
       }
-
       finalQuery = { bool: { must: mustQueries } };
     }
 
@@ -249,7 +250,7 @@ export const esService = {
         events_over_time: {
           date_histogram: {
             field: "@timestamp",
-            fixed_interval: step,
+            fixed_interval: dynamicStep, 
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(start * 1000).toISOString(),
@@ -265,7 +266,6 @@ export const esService = {
       const res = await esService.search(endpoint, payload);
       return res.aggregations?.events_over_time?.buckets || [];
     } catch (e) { 
-      console.error("Chart Data Error:", e);
       return []; 
     }
   },
