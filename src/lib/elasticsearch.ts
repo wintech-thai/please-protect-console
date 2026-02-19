@@ -1,6 +1,40 @@
+"use client";
+
 import { client } from "@/lib/axios";
 
 // --- 1. Interfaces ---
+
+export interface ArkimeSession {
+  id: string;
+  firstPacket: number;
+  lastPacket: number;
+  protocol: string;
+  srcIp: string;
+  srcPort: number;
+  dstIp: string;
+  dstPort: number;
+  totPackets: number;
+  totBytes: number;
+  communityId?: string;
+  tags?: string[];
+  [key: string]: any;
+}
+
+export interface ArkimeResponse<T> {
+  data: T[];
+  recordsTotal: number;
+  recordsFiltered: number;
+  [key: string]: any;
+}
+
+export interface ArkimeQuery {
+  expression?: string;
+  startTime: number; // Unix timestamp
+  stopTime: number;  // Unix timestamp
+  length?: number;   // limit
+  start?: number;    // offset
+}
+
 export interface Layer7EventDocument {
   "@timestamp": string;
   community_id: string;
@@ -133,7 +167,39 @@ const flattenMapping = (mapping: any, prefix = ""): string[] => {
   return fields;
 };
 
-// --- 3. Service Logic ---
+// --- 3. Arkime Service Logic ---
+
+export const arkimeService = {
+  getSessions: async (orgId: string, query: ArkimeQuery): Promise<ArkimeResponse<ArkimeSession>> => {
+    if (!orgId) throw new Error("Organization ID is required.");
+
+    const params = new URLSearchParams({
+      date: "1", // custom time
+      startTime: query.startTime.toString(),
+      stopTime: query.stopTime.toString(),
+      length: (query.length || 50).toString(),
+      start: (query.start || 0).toString(),
+    });
+
+    if (query.expression) {
+      params.append("expression", query.expression);
+    }
+
+    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/sessions?${params.toString()}`;
+    const response = await client.get(endpoint);
+    return response.data;
+  },
+
+  getFields: async (orgId: string) => {
+    if (!orgId) throw new Error("Organization ID is required.");
+    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/fields`;
+    const response = await client.get(endpoint);
+    return response.data;
+  }
+};
+
+// --- 4. ElasticSearch Service Logic ---
+
 export const esService = {
   search: async <T>(endpoint: string, payload: EsSearchPayload): Promise<EsResponse<T>> => {
     const cleanPayload = {
@@ -218,7 +284,7 @@ export const esService = {
     }
   },
 
-    getLayer7ChartData: async (orgId: string, start: number, end: number, step?: string, query?: any) => {
+  getLayer7ChartData: async (orgId: string, start: number, end: number, step?: string, query?: any) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
     
     const diffHours = (end - start) / 3600;
