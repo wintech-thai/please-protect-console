@@ -130,7 +130,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
     },
     {
       label: t.system,
-      href: "/system/organization",
+      href: "/system/organization/domain-certificate",
     },
   ], [t]);
 

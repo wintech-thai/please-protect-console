@@ -24,24 +24,27 @@ export default function SystemLayout({
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
-    const items = getSystemMenu(translations.sidebar.EN);
     const initial: Record<string, boolean> = {};
-    for (const entry of items) {
+    for (const entry of menuItems) {
       if ("children" in entry && entry.children.some((c) => pathname.startsWith(c.href))) {
         initial[entry.label] = true;
+        break;
       }
     }
     return initial;
   });
 
   const handleToggleGroup = (label: string) => {
-    setExpandedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+    setExpandedGroups((prev) => {
+      const isCurrentlyOpen = !!prev[label];
+      return isCurrentlyOpen ? {} : { [label]: true };
+    });
   };
 
   const handleExpandFromIcon = (entry: SidebarEntry) => {
     setCollapsed(false);
     if ("children" in entry) {
-      setExpandedGroups((prev) => ({ ...prev, [entry.label]: true }));
+      setExpandedGroups({ [entry.label]: true });
     }
   };
 
