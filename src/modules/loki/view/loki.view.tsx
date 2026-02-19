@@ -81,7 +81,6 @@ export default function LokiView() {
 
   // Track whether initial mount auto-query has fired
   const isInitialMount = useRef(true);
-  const prevTimeRange = useRef(timeRange);
 
   const handleRunQuery = useCallback(async () => {
     if (!query.trim()) return;
@@ -124,22 +123,26 @@ export default function LokiView() {
   }, [query, timeRange, t]);
 
   // Auto-run query on page load (if query exists in URL) and when timeRange changes
+  // NOTE: we use a ref for query so typing doesn't trigger the effect
+  const queryRef = useRef(query);
+  queryRef.current = query;
+
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       // On mount: auto-run if query exists in URL
-      if (query.trim()) {
+      if (queryRef.current.trim()) {
         handleRunQuery();
       }
       return;
     }
 
     // After mount: re-run when timeRange changes (only if we have a query)
-    if (query.trim() && prevTimeRange.current !== timeRange) {
-      prevTimeRange.current = timeRange;
+    if (queryRef.current.trim()) {
       handleRunQuery();
     }
-  }, [timeRange, query, handleRunQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange]);
 
   /** Load older logs using the oldest entry's timestamp as cursor */
   const handleLoadMore = useCallback(async () => {
