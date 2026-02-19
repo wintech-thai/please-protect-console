@@ -1,25 +1,173 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Play, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Play, Tag, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const NAMESPACE_SUGGESTIONS = [
-  "pp-development",
-  "pp-production",
-  "pp-staging",
-  "kube-system",
-  "monitoring",
-  "logging",
-  "ingress-nginx",
-  "cert-manager",
-];
+import { lokiService } from "@/lib/loki";
 
 interface LokiQueryBarProps {
   query: string;
   onChange: (val: string) => void;
   onSubmit: () => void;
   isLoading?: boolean;
+  lineLimit?: number;
+}
+
+interface SuggestionItem {
+  value: string;
+  type: "label" | "label-value";
+  label?: string;
+}
+
+// --- LogQL Syntax Highlighter ---
+
+function highlightLogQL(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < text.length) {
+    // Braces { }
+    if (text[i] === "{" || text[i] === "}") {
+      nodes.push(
+        <span key={i} className="text-yellow-300">
+          {text[i]}
+        </span>,
+      );
+      i++;
+      continue;
+    }
+
+    // Quoted strings "..."
+    if (text[i] === '"') {
+      let j = i + 1;
+      while (j < text.length && text[j] !== '"') {
+        if (text[j] === "\\") j++; // skip escaped chars
+        j++;
+      }
+      if (j < text.length) j++; // include closing quote
+      nodes.push(
+        <span key={i} className="text-emerald-400">
+          {text.slice(i, j)}
+        </span>,
+      );
+      i = j;
+      continue;
+    }
+
+    // Backtick strings `...`
+    if (text[i] === "`") {
+      let j = i + 1;
+      while (j < text.length && text[j] !== "`") j++;
+      if (j < text.length) j++;
+      nodes.push(
+        <span key={i} className="text-emerald-400">
+          {text.slice(i, j)}
+        </span>,
+      );
+      i = j;
+      continue;
+    }
+
+    // Operators: =~, !=, !~, =, |=, |~, |, !=
+    if (
+      i < text.length - 1 &&
+      (text.slice(i, i + 2) === "=~" ||
+        text.slice(i, i + 2) === "!=" ||
+        text.slice(i, i + 2) === "!~" ||
+        text.slice(i, i + 2) === "|=" ||
+        text.slice(i, i + 2) === "|~")
+    ) {
+      nodes.push(
+        <span key={i} className="text-sky-400 font-bold">
+          {text.slice(i, i + 2)}
+        </span>,
+      );
+      i += 2;
+      continue;
+    }
+    if (text[i] === "=" || text[i] === "|") {
+      nodes.push(
+        <span key={i} className="text-sky-400 font-bold">
+          {text[i]}
+        </span>,
+      );
+      i++;
+      continue;
+    }
+
+    // Comma
+    if (text[i] === ",") {
+      nodes.push(
+        <span key={i} className="text-slate-500">
+          {text[i]}
+        </span>,
+      );
+      i++;
+      continue;
+    }
+
+    // Label names (word characters before =, inside braces context)
+    // Match a run of word characters
+    const wordMatch = text.slice(i).match(/^[\w.]+/);
+    if (wordMatch) {
+      const word = wordMatch[0];
+      // Check if this word is followed by an operator (label key)
+      const afterWord = text.slice(i + word.length).trimStart();
+      const isLabelKey =
+        afterWord.startsWith("=") ||
+        afterWord.startsWith("!") ||
+        afterWord.startsWith("~");
+
+      // Check if it's a pipe keyword
+      const PIPE_KEYWORDS = [
+        "json",
+        "logfmt",
+        "regexp",
+        "pattern",
+        "unpack",
+        "line_format",
+        "label_format",
+        "unwrap",
+        "decolorize",
+        "drop",
+        "keep",
+      ];
+      const isPipeKeyword = PIPE_KEYWORDS.includes(word.toLowerCase());
+
+      if (isPipeKeyword) {
+        nodes.push(
+          <span key={i} className="text-purple-400 font-medium">
+            {word}
+          </span>,
+        );
+      } else if (isLabelKey) {
+        nodes.push(
+          <span key={i} className="text-cyan-300">
+            {word}
+          </span>,
+        );
+      } else {
+        // Could be a filter expression or other text
+        nodes.push(
+          <span key={i} className="text-orange-300">
+            {word}
+          </span>,
+        );
+      }
+      i += word.length;
+      continue;
+    }
+
+    // Whitespace and other characters
+    nodes.push(
+      <span key={i} className="text-slate-300">
+        {text[i]}
+      </span>,
+    );
+    i++;
+  }
+
+  return nodes;
 }
 
 export function LokiQueryBar({
@@ -27,12 +175,41 @@ export function LokiQueryBar({
   onChange,
   onSubmit,
   isLoading = false,
+  lineLimit = 1000,
 }: LokiQueryBarProps) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIdx, setHighlightedIdx] = useState(-1);
+  const [cachedLabels, setCachedLabels] = useState<string[]>([]);
+  const [labelValuesCache, setLabelValuesCache] = useState<
+    Record<string, string[]>
+  >({});
+  const [cursorPos, setCursorPos] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch labels on mount
+  useEffect(() => {
+    lokiService
+      .getLabels()
+      .then((labels) => {
+        setCachedLabels(labels.filter((l) => l !== "__name__"));
+      })
+      .catch(() => {
+        setCachedLabels([
+          "namespace",
+          "app",
+          "container",
+          "pod",
+          "stream",
+          "node_name",
+          "job",
+          "filename",
+        ]);
+      });
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -42,22 +219,18 @@ export function LokiQueryBar({
     ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
   }, [query]);
 
-  // Detect namespace suggestion trigger
+  // Sync scroll between textarea and highlight
   useEffect(() => {
-    const match = query.match(/\{[^}]*namespace="?([^",}]*)$/i);
-    if (match) {
-      const partial = match[1].toLowerCase();
-      const filtered = NAMESPACE_SUGGESTIONS.filter((ns) =>
-        ns.toLowerCase().includes(partial),
-      );
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSuggestions(filtered);
-      setShowSuggestions(filtered.length > 0);
-    } else {
-      setShowSuggestions(false);
-    }
-    setHighlightedIdx(-1);
-  }, [query]);
+    const ta = textareaRef.current;
+    const hi = highlightRef.current;
+    if (!ta || !hi) return;
+    const handleScroll = () => {
+      hi.scrollTop = ta.scrollTop;
+      hi.scrollLeft = ta.scrollLeft;
+    };
+    ta.addEventListener("scroll", handleScroll);
+    return () => ta.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Click outside to close
   useEffect(() => {
@@ -73,15 +246,118 @@ export function LokiQueryBar({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSelectSuggestion = (ns: string) => {
-    // Replace the partial namespace value
-    const newQuery = query.replace(
-      /(\{[^}]*namespace="?)([^",}]*)$/i,
-      `$1${ns}"`,
-    );
+  // Use text up to cursor for autocomplete (fixes closed-brace issue)
+  const getTextToCursor = useCallback(() => {
+    return query.slice(0, cursorPos);
+  }, [query, cursorPos]);
+
+  // Detect what to autocomplete — based on cursor position
+  const updateSuggestions = useCallback(
+    async (textToCursor: string) => {
+      // 1. Label value: `{label="partial` or `{namespace="pp-dev", app="par`
+      const labelValueMatch = textToCursor.match(
+        /\{[^}]*?(\w+)\s*=~?\s*"([^"]*)$/,
+      );
+      if (labelValueMatch) {
+        const labelName = labelValueMatch[1];
+        const partial = labelValueMatch[2].toLowerCase();
+
+        let values = labelValuesCache[labelName];
+        if (!values) {
+          try {
+            values = await lokiService.getLabelValues(labelName);
+            setLabelValuesCache((prev) => ({
+              ...prev,
+              [labelName]: values!,
+            }));
+          } catch {
+            values = [];
+          }
+        }
+
+        const filtered = values
+          .filter((v) => v.toLowerCase().includes(partial))
+          .slice(0, 20);
+
+        setSuggestions(
+          filtered.map((v) => ({
+            value: v,
+            type: "label-value",
+            label: labelName,
+          })),
+        );
+        setShowSuggestions(filtered.length > 0);
+        setHighlightedIdx(-1);
+        return;
+      }
+
+      // 2. Label name: `{partial` or `{namespace="val", partial`
+      const labelNameMatch = textToCursor.match(
+        /\{[^}]*?(?:,\s*)?(\w*)$/,
+      );
+      if (labelNameMatch) {
+        const partial = labelNameMatch[1].toLowerCase();
+        const filtered = cachedLabels
+          .filter((l) => l.toLowerCase().includes(partial))
+          .slice(0, 20);
+
+        setSuggestions(
+          filtered.map((l) => ({ value: l, type: "label" })),
+        );
+        setShowSuggestions(filtered.length > 0);
+        setHighlightedIdx(-1);
+        return;
+      }
+
+      setShowSuggestions(false);
+    },
+    [cachedLabels, labelValuesCache],
+  );
+
+  // Debounced suggestion updates based on cursor position
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const textToCursor = getTextToCursor();
+      updateSuggestions(textToCursor);
+    }, 150);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, cursorPos, getTextToCursor, updateSuggestions]);
+
+  const handleSelectSuggestion = (item: SuggestionItem) => {
+    const textBefore = query.slice(0, cursorPos);
+    const textAfter = query.slice(cursorPos);
+
+    let newBefore: string;
+    if (item.type === "label-value") {
+      // Replace partial value up to cursor
+      newBefore = textBefore.replace(
+        /(\{[^}]*?\w+\s*=~?\s*")([^"]*)$/,
+        `$1${item.value}"`,
+      );
+    } else {
+      // Replace partial label name and add `="`
+      newBefore = textBefore.replace(
+        /(\{[^}]*?(?:,\s*)?)(\w*)$/,
+        `$1${item.value}="`,
+      );
+    }
+
+    const newQuery = newBefore + textAfter;
     onChange(newQuery);
     setShowSuggestions(false);
-    textareaRef.current?.focus();
+
+    // Move cursor to after the inserted text
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = newBefore.length;
+        setCursorPos(newBefore.length);
+      }
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -98,7 +374,10 @@ export function LokiQueryBar({
         );
         return;
       }
-      if (e.key === "Enter" && highlightedIdx >= 0) {
+      if (
+        (e.key === "Enter" || e.key === "Tab") &&
+        highlightedIdx >= 0
+      ) {
         e.preventDefault();
         handleSelectSuggestion(suggestions[highlightedIdx]);
         return;
@@ -114,36 +393,67 @@ export function LokiQueryBar({
     }
   };
 
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+    setCursorPos(e.target.selectionStart ?? e.target.value.length);
+  };
+
+  const handleCursorChange = () => {
+    const ta = textareaRef.current;
+    if (ta) {
+      setCursorPos(ta.selectionStart ?? 0);
+    }
+  };
+
+  // Memoize highlighted nodes
+  const highlightedNodes = useMemo(() => highlightLogQL(query), [query]);
+
   return (
     <div
       ref={containerRef}
-      className="flex-none px-4 py-3 bg-slate-900/60 border-b border-slate-800 backdrop-blur-sm"
+      className="flex-none px-4 py-3 bg-slate-900/60 border-b border-slate-800 backdrop-blur-sm relative z-20"
     >
       <div className="flex items-start gap-3">
-        {/* Query Input */}
+        {/* Query Input with Syntax Highlighting */}
         <div className="relative flex-1">
           <div className="relative rounded-lg border border-slate-700 bg-slate-950 focus-within:border-orange-500/60 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all">
+            {/* Highlight overlay (behind textarea) */}
+            <div
+              ref={highlightRef}
+              aria-hidden="true"
+              className="absolute inset-0 py-2.5 px-3 text-sm font-mono leading-relaxed whitespace-pre-wrap break-words overflow-hidden pointer-events-none"
+              style={{ minHeight: "40px" }}
+            >
+              {highlightedNodes}
+            </div>
+
+            {/* Transparent textarea (on top) */}
             <textarea
               ref={textareaRef}
               value={query}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={handleInput}
               onKeyDown={handleKeyDown}
+              onKeyUp={handleCursorChange}
+              onClick={handleCursorChange}
               placeholder={`{namespace="pp-development", app="pp-api"}`}
               rows={1}
-              className="w-full bg-transparent resize-none py-2.5 px-3 text-sm font-mono text-orange-300 placeholder:text-slate-600 focus:outline-none leading-relaxed"
-              style={{ minHeight: "40px" }}
+              spellCheck={false}
+              className="w-full bg-transparent resize-none py-2.5 px-3 text-sm font-mono text-transparent caret-orange-400 placeholder:text-slate-600 focus:outline-none leading-relaxed relative z-10"
+              style={{ minHeight: "40px", caretColor: "#fb923c" }}
             />
           </div>
 
           {/* Autocomplete Suggestions */}
           {showSuggestions && (
-            <div className="absolute top-full left-0 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute top-full left-0 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 max-h-72 overflow-y-auto custom-scrollbar">
               <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800">
-                Namespace suggestions
+                {suggestions[0]?.type === "label"
+                  ? "Label names"
+                  : `Values for ${suggestions[0]?.label}`}
               </div>
-              {suggestions.map((ns, i) => (
+              {suggestions.map((item, i) => (
                 <div
-                  key={ns}
+                  key={`${item.type}-${item.value}`}
                   className={cn(
                     "px-3 py-2 text-xs font-mono cursor-pointer transition-colors flex items-center gap-2",
                     i === highlightedIdx
@@ -151,12 +461,22 @@ export function LokiQueryBar({
                       : "text-slate-300 hover:bg-slate-800",
                   )}
                   onMouseEnter={() => setHighlightedIdx(i)}
-                  onClick={() => handleSelectSuggestion(ns)}
+                  onClick={() => handleSelectSuggestion(item)}
                 >
-                  <span className="w-4 h-4 flex items-center justify-center rounded bg-orange-900/40 text-orange-400 text-[9px] font-bold flex-none">
-                    ns
+                  {item.type === "label" ? (
+                    <Tag className="w-3.5 h-3.5 text-violet-400 flex-none" />
+                  ) : (
+                    <Hash className="w-3.5 h-3.5 text-cyan-400 flex-none" />
+                  )}
+                  <span
+                    className={
+                      item.type === "label"
+                        ? "text-cyan-300"
+                        : "text-emerald-400"
+                    }
+                  >
+                    {item.value}
                   </span>
-                  {ns}
                 </div>
               ))}
             </div>
@@ -165,18 +485,11 @@ export function LokiQueryBar({
 
         {/* Options */}
         <div className="flex items-center gap-2 flex-none pt-0.5">
-          {/* Line limit badge */}
-          <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-400">
-            <ChevronDown className="w-3 h-3" />
-            <span>Line limit: 1000</span>
-          </div>
-
-          {/* Run Query */}
           <button
             onClick={onSubmit}
             disabled={isLoading || !query.trim()}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border",
+              "h-12 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border",
               "bg-orange-600 hover:bg-orange-500 text-white border-orange-500/50 shadow-lg shadow-orange-900/20",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               !isLoading && query.trim() && "active:scale-95",
@@ -198,7 +511,9 @@ export function LokiQueryBar({
           </kbd>{" "}
           to run
         </span>
-        <span>Options · Type Range · Line limit 1000</span>
+        <span>
+          Options · Type Range · Line limit {lineLimit.toLocaleString()}
+        </span>
       </div>
     </div>
   );

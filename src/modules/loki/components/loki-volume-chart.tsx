@@ -1,54 +1,83 @@
 "use client";
 
+import dayjs from "dayjs";
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 import { ChevronDown } from "lucide-react";
-
-export interface VolumeDataPoint {
-  time: string;
-  count: number;
-}
+import type { VolumeDataPoint } from "@/lib/loki";
 
 interface LokiVolumeChartProps {
   data: VolumeDataPoint[];
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  t: {
+    logsVolume: string;
+    tooltipLogs: string;
+  };
 }
 
-const CustomTooltip = ({
+/**
+ * Choose a label format based on how wide the time range is.
+ *   < 1 hour   → "HH:mm:ss"
+ *   < 24 hours → "HH:mm"
+ *   < 7 days   → "DD MMM HH:mm"
+ *   ≥ 7 days   → "DD MMM"
+ */
+function getTimeFormat(data: VolumeDataPoint[]): string {
+  if (data.length < 2) return "HH:mm";
+  const minTs = data[0].time;
+  const maxTs = data[data.length - 1].time;
+  const rangeMs = maxTs - minTs;
+  const ONE_HOUR = 3_600_000;
+  const ONE_DAY = 86_400_000;
+
+  if (rangeMs < ONE_HOUR) return "HH:mm:ss";
+  if (rangeMs < ONE_DAY) return "HH:mm";
+  if (rangeMs < 7 * ONE_DAY) return "DD MMM HH:mm";
+  return "DD MMM";
+}
+
+function CustomTooltip({
   active,
   payload,
   label,
+  logsLabel,
 }: {
   active?: boolean;
   payload?: { value: number }[];
-  label?: string;
-}) => {
-  if (active && payload && payload.length) {
+  label?: number;
+  logsLabel: string;
+}) {
+  if (active && payload && payload.length && label) {
     return (
       <div className="bg-slate-950/95 border border-slate-700 rounded-lg px-3 py-2 shadow-xl text-xs">
-        <p className="text-slate-400 font-mono mb-1">{label}</p>
+        <p className="text-slate-400 font-mono mb-1">
+          {dayjs(label).format("DD MMM YYYY · HH:mm:ss")}
+        </p>
         <p className="text-orange-400 font-bold font-mono">
-          {payload[0].value.toLocaleString()} logs
+          {payload[0].value.toLocaleString()} {logsLabel}
         </p>
       </div>
     );
   }
   return null;
-};
+}
 
 export function LokiVolumeChart({
   data,
   isCollapsed = false,
   onToggleCollapse,
+  t,
 }: LokiVolumeChartProps) {
+  const fmt = getTimeFormat(data);
+
   return (
     <div className="flex-none border-b border-slate-800 bg-slate-900/30">
       {/* Header */}
@@ -59,7 +88,7 @@ export function LokiVolumeChart({
         <ChevronDown
           className={`w-3.5 h-3.5 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
         />
-        <span>Logs volume</span>
+        <span>{t.logsVolume}</span>
       </button>
 
       {!isCollapsed && (
@@ -77,6 +106,10 @@ export function LokiVolumeChart({
               />
               <XAxis
                 dataKey="time"
+                type="number"
+                domain={["dataMin", "dataMax"]}
+                scale="time"
+                tickFormatter={(ts: number) => dayjs(ts).format(fmt)}
                 tick={{ fill: "#475569", fontSize: 9 }}
                 tickLine={false}
                 axisLine={{ stroke: "#1e293b" }}
@@ -89,7 +122,7 @@ export function LokiVolumeChart({
                 width={36}
               />
               <Tooltip
-                content={<CustomTooltip />}
+                content={<CustomTooltip logsLabel={t.tooltipLogs} />}
                 cursor={{ fill: "rgba(251,146,60,0.08)" }}
               />
               <Bar

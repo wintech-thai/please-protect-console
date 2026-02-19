@@ -1,83 +1,183 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useQueryState, parseAsString, parseAsJson } from "nuqs";
 import { Database } from "lucide-react";
+import { toast } from "sonner";
 import {
-    AdvancedTimeRangeSelector,
-    type TimeRangeValue,
+  AdvancedTimeRangeSelector,
+  type TimeRangeValue,
 } from "@/modules/dashboard/components/advanced-time-selector";
+import { lokiService } from "@/lib/loki";
+import type { LokiLogEntry, VolumeDataPoint } from "@/lib/loki";
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 import { LokiQueryBar } from "../components/loki-query-bar";
 import { LokiVolumeChart } from "../components/loki-volume-chart";
 import { LokiOptionsBar, type LokiDisplayOptions } from "../components/loki-options-bar";
 import { LokiLogTable } from "../components/loki-log-table";
-import { generateMockLogs, generateMockVolumeData } from "../utils/mock-data";
 
-const TIME_PICKER_TRANSLATIONS = {
-  absoluteTitle: "Absolute Range",
-  from: "From",
-  to: "To",
-  apply: "Apply",
-  searchPlaceholder: "Search quick ranges...",
-  customRange: "Custom Range",
-  last5m: "Last 5 minutes",
-  last15m: "Last 15 minutes",
-  last30m: "Last 30 minutes",
-  last1h: "Last 1 hour",
-  last3h: "Last 3 hours",
-  last6h: "Last 6 hours",
-  last12h: "Last 12 hours",
-  last24h: "Last 24 hours",
-  last2d: "Last 2 days",
-  last7d: "Last 7 days",
-  last30d: "Last 30 days",
-};
 
-const DEFAULT_QUERY = `{namespace="pp-development", app="pp-api"}`;
+
+/** Convert a relative time value ("5m", "1h", etc.) to seconds */
+function parseRelativeDuration(value: string): number {
+  const match = value.match(/^(\d+)(m|h|d)$/);
+  if (!match) return 3600; // default 1h
+  const n = parseInt(match[1]);
+  switch (match[2]) {
+    case "m": return n * 60;
+    case "h": return n * 3600;
+    case "d": return n * 86400;
+    default: return 3600;
+  }
+}
+
+/** Resolve TimeRangeValue to {start, end} unix seconds */
+function resolveTimeRange(tr: TimeRangeValue): { start: number; end: number } {
+  const now = Math.floor(Date.now() / 1000);
+  if (tr.type === "absolute" && tr.start && tr.end) {
+    return { start: tr.start, end: tr.end };
+  }
+  const duration = parseRelativeDuration(tr.value);
+  return { start: now - duration, end: now };
+}
+
+const DEFAULT_QUERY = ``;
 const LINE_LIMIT = 1000;
+
+const DEFAULT_TIME_RANGE: TimeRangeValue = {
+  type: "relative",
+  value: "1h",
+  label: "Last 1 hour",
+};
 
 const DEFAULT_OPTIONS: LokiDisplayOptions = {
   showTime: true,
-  uniqueLabels: false,
   wrapLines: false,
   prettifyJson: false,
-  deduplication: "none",
   sortOrder: "newest",
 };
 
-// Initial mock data
-const INITIAL_LOGS = generateMockLogs(80);
-const INITIAL_VOLUME = generateMockVolumeData(48);
-
 export default function LokiView() {
-  const [query, setQuery] = useState(DEFAULT_QUERY);
-  const [timeRange, setTimeRange] = useState<TimeRangeValue>({
-    type: "relative",
-    value: "1h",
-    label: "Last 1 hour",
-  });
-  const [options, setOptions] = useState<LokiDisplayOptions>(DEFAULT_OPTIONS);
-  const [logs, setLogs] = useState(INITIAL_LOGS);
-  const [volumeData, setVolumeData] = useState(INITIAL_VOLUME);
-  const [isLoading, setIsLoading] = useState(false);
-  const [volumeCollapsed, setVolumeCollapsed] = useState(false);
+  const { language } = useLanguage();
+  const t = translations.loki[language];
+  const timeRangeT = translations.timePicker[language];
+  // Persist query & time range in URL: ?q=...&range=...
+  const [query, setQuery] = useQueryState("q", parseAsString.withDefault(DEFAULT_QUERY));
+  const [timeRange, setTimeRange] = useQueryState<TimeRangeValue>(
+    "range",
+    parseAsJson<TimeRangeValue>((v) => v as TimeRangeValue).withDefault(DEFAULT_TIME_RANGE),
+  );
 
-  const handleRunQuery = useCallback(() => {
+  const [options, setOptions] = useState<LokiDisplayOptions>(DEFAULT_OPTIONS);
+  const [logs, setLogs] = useState<LokiLogEntry[]>([]);
+  const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [volumeCollapsed, setVolumeCollapsed] = useState(false);
+  const [hasQueried, setHasQueried] = useState(false);
+  const [queryDuration, setQueryDuration] = useState<number | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
+
+  const handleRunQuery = useCallback(async () => {
     if (!query.trim()) return;
     setIsLoading(true);
-    // Simulate API call delay
-    setTimeout(() => {
-      setLogs(generateMockLogs(80));
-      setVolumeData(generateMockVolumeData(48));
-      setIsLoading(false);
-    }, 800);
-  }, [query]);
+    setHasQueried(true);
+    setLimitReached(false);
+    const startTime = performance.now();
 
-  // Sort logs based on options
-  const sortedLogs = [...logs].sort((a, b) => {
-    const ta = new Date(a.timestamp).getTime();
-    const tb = new Date(b.timestamp).getTime();
-    return options.sortOrder === "newest" ? tb - ta : ta - tb;
-  });
+    try {
+      const { start, end } = resolveTimeRange(timeRange);
+
+      // Run log query and volume query in parallel
+      const [logResult, volumeResult] = await Promise.all([
+        lokiService.queryRange(query, start, end, LINE_LIMIT),
+        lokiService.queryVolume(query, start, end, 48),
+      ]);
+
+      setLogs(logResult.entries);
+      setVolumeData(volumeResult);
+      setQueryDuration(Math.round(performance.now() - startTime));
+      setLimitReached(logResult.entries.length >= LINE_LIMIT);
+
+      if (logResult.entries.length === 0) {
+        toast.info(t.noLogsForQuery);
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        t.queryFailed;
+      toast.error(`${t.queryFailed}: ${msg}`);
+      setLogs([]);
+      setVolumeData([]);
+      setQueryDuration(null);
+      setLimitReached(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [query, timeRange, t]);
+
+  /** Load older logs using the oldest entry's timestamp as cursor */
+  const handleLoadMore = useCallback(async () => {
+    if (!query.trim() || logs.length === 0) return;
+    setIsLoadingMore(true);
+
+    try {
+      const { start } = resolveTimeRange(timeRange);
+
+      // Find oldest timestamp in current logs — use as end boundary for next batch
+      const oldestNano = logs.reduce((oldest, log) => {
+        return log.timestampNano < oldest ? log.timestampNano : oldest;
+      }, logs[0].timestampNano);
+
+      // Convert nanoseconds to seconds, subtract 1ns to avoid duplicates
+      const endNano = BigInt(oldestNano) - BigInt(1);
+      const endSec = Number(endNano / BigInt(1_000_000_000));
+
+      if (endSec <= start) {
+        toast.info(t.loadMore.noMoreInRange);
+        setLimitReached(false);
+        return;
+      }
+
+      const { entries } = await lokiService.queryRange(
+        query,
+        start,
+        endSec,
+        LINE_LIMIT,
+      );
+
+      if (entries.length === 0) {
+        toast.info(t.loadMore.noMore);
+        setLimitReached(false);
+      } else {
+        setLogs((prev) => [...prev, ...entries]);
+        setLimitReached(entries.length >= LINE_LIMIT);
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        t.loadMore.failed;
+      toast.error(msg);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [query, timeRange, logs, t]);
+
+  // Sort logs based on options (memoized to avoid re-sorting on every render)
+  const sortedLogs = useMemo(() => {
+    const sorted = [...logs];
+    sorted.sort((a, b) => {
+      const ta = new Date(a.timestamp).getTime();
+      const tb = new Date(b.timestamp).getTime();
+      return options.sortOrder === "newest" ? tb - ta : ta - tb;
+    });
+    return sorted;
+  }, [logs, options.sortOrder]);
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-950 text-slate-200 overflow-hidden">
@@ -90,13 +190,20 @@ export default function LokiView() {
           </div>
           <div className="flex flex-col">
             <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">
-              Loki
+              {t.title}
             </h1>
             <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-              Log Aggregation
+              {t.subtitle}
             </span>
           </div>
         </div>
+
+        {/* Query stats */}
+        {queryDuration !== null && !isLoading && (
+          <div className="text-[10px] font-mono text-slate-500">
+            {logs.length.toLocaleString()} {t.entries} · {queryDuration}ms
+          </div>
+        )}
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -106,7 +213,7 @@ export default function LokiView() {
           value={timeRange}
           onChange={setTimeRange}
           disabled={isLoading}
-          translations={TIME_PICKER_TRANSLATIONS}
+          translations={timeRangeT}
         />
       </div>
 
@@ -116,33 +223,61 @@ export default function LokiView() {
         onChange={setQuery}
         onSubmit={handleRunQuery}
         isLoading={isLoading}
+        lineLimit={LINE_LIMIT}
       />
 
       {/* Volume Chart */}
-      <LokiVolumeChart
-        data={volumeData}
-        isCollapsed={volumeCollapsed}
-        onToggleCollapse={() => setVolumeCollapsed((v) => !v)}
-      />
+      {hasQueried && (
+        <LokiVolumeChart
+          data={volumeData}
+          isCollapsed={volumeCollapsed}
+          onToggleCollapse={() => setVolumeCollapsed((v) => !v)}
+          t={{ logsVolume: t.logsVolume, tooltipLogs: t.tooltipLogs }}
+        />
+      )}
 
       {/* Options Bar */}
-      <LokiOptionsBar
-        options={options}
-        onChange={setOptions}
-        totalRows={sortedLogs.length}
-        lineLimit={LINE_LIMIT}
-        bytesProcessed="261 kB"
-        coveragePercent="6.40%"
-      />
+      {hasQueried && (
+        <LokiOptionsBar
+          options={options}
+          onChange={setOptions}
+          totalRows={sortedLogs.length}
+          lineLimit={LINE_LIMIT}
+          t={t.options}
+        />
+      )}
 
       {/* Log Table */}
-      <LokiLogTable
-        logs={sortedLogs}
-        isLoading={isLoading}
-        options={options}
-        totalRows={sortedLogs.length}
-        lineLimit={LINE_LIMIT}
-      />
+      {hasQueried ? (
+        <LokiLogTable
+          logs={sortedLogs}
+          isLoading={isLoading}
+          options={options}
+          totalRows={sortedLogs.length}
+          lineLimit={LINE_LIMIT}
+          limitReached={limitReached}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={handleLoadMore}
+          t={t}
+        />
+      ) : (
+        <div className="flex-1 flex items-center justify-center flex-col gap-4 text-slate-500">
+          <div className="w-16 h-16 rounded-2xl bg-slate-800/30 border border-slate-800 flex items-center justify-center">
+            <Database className="w-7 h-7 text-slate-600" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-slate-400 mb-1">
+              {t.emptyStateTitle}
+            </p>
+            <p className="text-xs text-slate-600">
+              <kbd className="px-1 py-0.5 bg-slate-800 rounded text-slate-500 font-mono text-[10px]">
+                Ctrl+Enter
+              </kbd>{" "}
+              {t.emptyStateHint}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
