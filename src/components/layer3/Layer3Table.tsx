@@ -1,262 +1,221 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { 
-  ChevronLeft, 
-  ChevronRight,
-  Loader2, 
-  ChevronRight as ChevronRightSmall,
-  ChevronDown,
-  Tag as TagIcon,
-  MoreVertical,
-  Download
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ChevronRight, ChevronDown, MoreVertical } from "lucide-react";
 
 interface Layer3TableProps {
-  onRowClick: (row: any) => void;
   sessions: any[];
+  totalHits: number;
+  isLoading?: boolean;
   page: number;
   itemsPerPage: number;
-  totalHits: number;
-  isLoading: boolean;
-  onPageChange: (page: number) => void;
-  onItemsPerPageChange: (val: number) => void;
   selectedId?: string | null;
+  onSelect?: (session: any) => void;
+  onRowClick?: (session: any) => void;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (limit: number) => void;
 }
 
-const getProtocolStyles = (proto: string) => {
-  const p = proto?.toLowerCase() || "";
-  if (p.includes("tcp")) {
-    return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-  }
-  if (p.includes("udp")) {
-    return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-  }
-  if (p.includes("icmp")) {
-    return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-  }
-  return "bg-slate-500/10 text-slate-400 border-slate-500/20";
-};
-
-export function Layer3Table({ 
-  onRowClick,
+export function Layer3Table({
   sessions,
-  page,
-  itemsPerPage,
   totalHits,
   isLoading,
+  page,
+  itemsPerPage,
+  selectedId,
+  onSelect,
+  onRowClick,
   onPageChange,
   onItemsPerPageChange,
-  selectedId = null
 }: Layer3TableProps) {
   
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const totalPages = Math.ceil(totalHits / itemsPerPage);
-  const startRow = totalHits === 0 ? 0 : (page - 1) * itemsPerPage + 1;
-  const endRow = Math.min(page * itemsPerPage, totalHits);
-
-  const columns = [
-    { key: "startTime", label: "Start Time" },
-    { key: "stopTime", label: "Stop Time" },
-    { key: "proto", label: "Protocol" },
-    { key: "srcIp", label: "Source IP" },
-    { key: "srcPort", label: "Src Port" },
-    { key: "dstIp", label: "Destination IP" },
-    { key: "dstPort", label: "Dst Port" },
-    { key: "packets", label: "Packets" },
-    { key: "bytes", label: "Databytes" },
-    { key: "communityId", label: "Community ID" },
-    { key: "info", label: "Info" },
-    { key: "actions", label: "Action" }, 
-  ];
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setActiveMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const getProtocolColor = (proto: string) => {
+    const p = proto?.toLowerCase() || "";
+    if (p === "tcp") return "bg-purple-500";
+    if (p === "udp") return "bg-orange-500";
+    if (p.includes("icmp")) return "bg-teal-500";
+    return "bg-blue-500";
+  };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-950 text-slate-200 font-sans">
+    <div className="flex flex-col h-full w-full bg-slate-950/50">
       
-      {/* Table Header Section */}
-      <div className="flex-none px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 backdrop-blur-md">
-        <div className="text-sm font-bold text-white tracking-tight opacity-80 uppercase flex items-center gap-3">
+      <div className="flex-none px-6 py-4 border-b border-slate-800/60 bg-slate-900/20">
+        <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
           Layer 3 Traffic Log
-          <div className="h-4 w-[1px] bg-slate-700" />
-          <span className="text-blue-500 font-bold text-xs font-mono">
-            {totalHits.toLocaleString()} SESSIONS FOUND
+          <span className="text-slate-500 font-medium normal-case">
+            ({totalHits.toLocaleString()})
           </span>
-        </div>
+        </h2>
       </div>
 
-      {/* Scrollable Table Area */}
-      <div className="flex-1 overflow-auto custom-scrollbar bg-slate-950 relative">
-        {isLoading ? (
-          <div className="flex h-full items-center justify-center flex-col gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 opacity-50" />
-            <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">Synchronizing Data...</span>
-          </div>
-        ) : (
-          <table className="w-full text-left border-collapse min-w-[1650px]">
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-sm">
-                <th className="w-10 px-4 py-5"></th>
-                {columns.map((col) => (
-                  <th key={col.key} className="px-4 py-5 whitespace-nowrap">
-                    <span className="text-slate-500 font-bold tracking-wider uppercase text-[10px]">
-                      {col.label}
-                    </span>
-                  </th>
-                ))}
+      <div className="flex-1 overflow-auto relative min-h-0 custom-scrollbar">
+        <table className="w-full text-left border-collapse whitespace-nowrap">
+          <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm shadow-[0_1px_0_0_rgba(30,41,59,1)]">
+            <tr>
+              <th className="px-4 py-3 w-10"></th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">Start Time</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">Stop Time</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-center">Protocol</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">Source IP</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">Source Port</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">Destination IP</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">Destination Port</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">Community ID</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-right">Package</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-right">Databytes</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/50">
+            {isLoading ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    Loading traffic data...
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/40">
-              {sessions.map((session) => {
+            ) : sessions.length === 0 ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-8 text-center text-sm text-slate-500">
+                  No data found
+                </td>
+              </tr>
+            ) : (
+              sessions.map((session) => {
                 const isSelected = selectedId === session.id;
-                const isMenuOpen = activeMenuId === session.id;
 
                 return (
                   <tr
                     key={session.id}
+                    onClick={() => onSelect?.(session)}
                     className={cn(
-                      "transition-all duration-200 text-[13px] border-l-4 cursor-pointer group",
+                      "group cursor-pointer transition-colors",
                       isSelected 
-                        ? "bg-blue-600/5 border-l-blue-500 text-white" 
-                        : "hover:bg-slate-900/50 border-l-transparent text-slate-300"
+                        ? "bg-blue-900/40 hover:bg-blue-900/50" 
+                        : "hover:bg-slate-800/40"
                     )}
-                    onClick={() => onRowClick(session)}
                   >
-                    <td className="p-4 text-center">
-                      <div className={cn(
-                        "p-1 transition-colors",
-                        isSelected ? "text-blue-400" : "text-slate-700 group-hover:text-slate-500"
-                      )}>
-                        <ChevronRightSmall className="w-4 h-4" />
-                      </div>
-                    </td>
-
-                    <td className="p-4 whitespace-nowrap font-mono text-[11px] text-slate-500">{session.startTime}</td>
-                    <td className="p-4 whitespace-nowrap font-mono text-[11px] text-slate-500">{session.stopTime}</td>
-                    
-                    <td className="p-4 whitespace-nowrap">
-                      <span className={cn(
-                        "px-2.5 py-0.5 rounded text-[10px] font-bold uppercase border shadow-sm",
-                        getProtocolStyles(session.protocol)
-                      )}>
-                        {session.protocol}
-                      </span>
-                    </td>
-
-                    <td className="p-4 whitespace-nowrap font-mono text-blue-400/90 font-medium">{session.srcIp}</td>
-                    <td className="p-4 whitespace-nowrap font-mono text-slate-400 text-[12px]">{session.srcPort}</td>
-                    <td className="p-4 whitespace-nowrap font-mono text-blue-400/90 font-medium">{session.dstIp}</td>
-                    <td className="p-4 whitespace-nowrap font-mono text-slate-400 text-[12px] font-bold">{session.dstPort}</td>
-                    <td className="p-4 whitespace-nowrap font-mono text-slate-500 text-xs">{session.packets}</td>
-                    <td className="p-4 whitespace-nowrap font-mono text-emerald-500/80 text-xs font-bold">{session.bytes}</td>
-                    <td className="p-4 whitespace-nowrap font-mono text-slate-600 text-[11px] hover:text-blue-400 transition-colors">{session.communityId}</td>
-                    
-                    <td className="p-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 overflow-hidden">
-                        {session.protocols?.map((p: string) => (
-                          <span key={p} className="px-1.5 py-0.5 bg-slate-900 text-slate-500 rounded text-[9px] font-mono font-bold uppercase border border-slate-800">
-                            {p}
-                          </span>
-                        ))}
-                        {session.tags?.map((tag: string) => (
-                          <span key={tag} className="flex items-center gap-1 px-2 py-0.5 bg-slate-900 text-slate-400 rounded-full text-[10px] font-bold border border-slate-800">
-                            <TagIcon size={10} className="text-slate-600" />
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-
-                    <td className="p-4 text-center relative" onClick={(e) => e.stopPropagation()}>
+                    {/* ไอคอนเปิด/ปิด */}
+                    <td className="px-4 py-2.5 w-10 text-center">
                       <button 
-                        onClick={() => setActiveMenuId(isMenuOpen ? null : session.id)}
-                        className={cn(
-                          "p-1.5 rounded-md transition-all hover:bg-slate-800",
-                          isMenuOpen ? "text-blue-400 bg-slate-800 shadow-inner" : "text-slate-600"
-                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRowClick?.(session); 
+                        }}
+                        className="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-700 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
-                        <MoreVertical size={16} />
+                         {isSelected ? (
+                            <ChevronDown className="w-4 h-4 text-blue-400" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300 transition-colors" />
+                          )}
                       </button>
+                    </td>
 
-                      {isMenuOpen && (
-                        <div 
-                          ref={menuRef}
-                          className="absolute right-12 top-4 w-44 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl z-[100] py-1 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl"
-                        >
-                          <button 
-                            className="w-full flex items-center gap-3 px-4 py-3 text-xs text-slate-300 hover:bg-blue-600 hover:text-white transition-colors"
-                            onClick={() => {
-                              console.log("Download PCAP for session:", session.id);
-                              setActiveMenuId(null);
-                            }}
-                          >
-                            <Download size={14} className="opacity-70" />
-                            Download PCAP
-                          </button>
-                        </div>
-                      )}
+                    {/* Timestamps */}
+                    <td className="px-4 py-2.5 text-[12.5px] font-medium text-slate-200">
+                      {session.startTime}
+                    </td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-medium text-slate-200">
+                      {session.stopTime}
+                    </td>
+
+                    {/* Protocol */}
+                    <td className="px-4 py-2.5 text-center">
+                      <div className="inline-flex items-center gap-2">
+                        <div className={cn("w-2 h-2 rounded-full", getProtocolColor(session.protocol))} />
+                        <span className="text-[12px] font-bold text-slate-300 uppercase tracking-wider">
+                          {session.protocol}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Source */}
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-blue-400 hover:text-blue-300">
+                      {session.srcIp}
+                    </td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-400">
+                      {session.srcPort}
+                    </td>
+
+                    {/* Destination */}
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-blue-400 hover:text-blue-300">
+                      {session.dstIp}
+                    </td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-400">
+                      {session.dstPort}
+                    </td>
+
+                    {/* Community ID */}
+                    <td className="px-4 py-2.5 text-[12px] font-mono text-slate-400 max-w-[140px] truncate" title={session.communityId}>
+                      {session.communityId}
+                    </td>
+
+                    {/* Package & Bytes */}
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-300 text-right">
+                      {session.packets}
+                    </td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-emerald-400 font-medium text-right">
+                      {session.databytes}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-2.5 text-center">
+                      <button className="p-1 rounded text-slate-500 hover:bg-slate-700 hover:text-slate-200 transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        )}
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Pagination Footer */}
-      <div className="flex-none flex items-center justify-between sm:justify-end px-6 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-8">
-        <div className="flex items-center gap-3 text-xs text-slate-500 font-bold">
-          <span className="opacity-70 uppercase tracking-tighter text-[10px]">Rows per page</span>
-          <div className="relative group">
-            <select 
-              value={itemsPerPage} 
+      <div className="flex-none flex items-center justify-between px-6 py-3 border-t border-slate-800 bg-slate-950">
+        <div className="w-8"></div>
+        
+        <div className="flex items-center gap-4 text-xs text-slate-400">
+          <div className="flex items-center gap-2">
+            <span>Rows per page</span>
+            <select
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 outline-none focus:border-blue-500 cursor-pointer"
+              value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-              className="appearance-none bg-slate-900 border border-slate-800 rounded pl-3 pr-8 py-1 text-slate-200 outline-none hover:border-slate-600 transition-colors cursor-pointer text-[11px]"
             >
-              {[25, 50, 100, 200].map(val => (
-                <option key={val} value={val}>{val}</option>
-              ))}
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
             </select>
-            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           </div>
-        </div>
+          
+          <span className="font-mono">
+            {((page - 1) * itemsPerPage + 1).toLocaleString()} - {Math.min(page * itemsPerPage, totalHits).toLocaleString()} of {totalHits.toLocaleString()}
+          </span>
 
-        <div className="flex items-center gap-6">
-          <div className="text-xs text-slate-500 font-bold select-none tracking-tight font-mono text-[11px]">
-            {startRow} - {endRow} <span className="mx-1 opacity-50">OF</span> {totalHits.toLocaleString()}
-          </div>
           <div className="flex items-center gap-1">
-            <button 
-              onClick={() => onPageChange(page - 1)} 
-              disabled={page === 1 || isLoading} 
-              className="p-1.5 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-20 transition-all active:scale-90"
+            <button
+              onClick={() => onPageChange(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="p-1 rounded hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 rotate-180" />
             </button>
-            <button 
-              onClick={() => onPageChange(page + 1)} 
-              disabled={page === totalPages || totalPages === 0 || isLoading} 
-              className="p-1.5 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-20 transition-all active:scale-90"
+            <button
+              onClick={() => onPageChange(page + 1)}
+              disabled={page * itemsPerPage >= totalHits}
+              className="p-1 rounded hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
-
     </div>
   );
 }

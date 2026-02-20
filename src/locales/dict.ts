@@ -193,7 +193,7 @@ export const translations = {
       events: "Events",
       layer7: "Layer7 Events",
       layer3: "Layer3 Events",
-      alerts: "Alerts",
+      alerts: "Event Alerts",
       eventIoc: "Event IoC",
       subnetMapping: "Subnet Mapping",
       administrator: "Administrator",
