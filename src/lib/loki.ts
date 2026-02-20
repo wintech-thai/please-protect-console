@@ -258,11 +258,45 @@ export const lokiService = {
     labelName: string,
     start?: number,
     end?: number,
+    queryContext?: string,
   ): Promise<string[]> => {
     const orgId = getOrgId();
+
+    // Fallback: When a query context is specified (like {namespace="pp-devel"}), attempt
+    // to use the /series endpoint which is fully context-aware and filters out values appropriately.
+    if (queryContext) {
+      const params = new URLSearchParams();
+      params.append("match[]", queryContext);
+      if (start) params.set("start", start.toString());
+      if (end) params.set("end", end.toString());
+
+      const url = `${LOKI_BASE(orgId)}/series?${params}`;
+      try {
+        const res = await client.post<{status: string; data: Record<string, string>[] | string[]}>(url, null);
+        const seriesList = res.data?.data ?? [];
+        const uniqueValues = new Set<string>();
+
+        for (const series of seriesList) {
+          if (typeof series === "object" && series !== null && !Array.isArray(series)) {
+             if (series[labelName]) {
+                uniqueValues.add(series[labelName]);
+             }
+          }
+        }
+
+        if (uniqueValues.size > 0) {
+          return Array.from(uniqueValues).sort();
+        }
+      } catch {
+        // Fallback silently if /series is not available
+      }
+    }
+
+    // Default: use the standard /label/<name>/values endpoint
     const params = new URLSearchParams();
     if (start) params.set("start", start.toString());
     if (end) params.set("end", end.toString());
+    if (queryContext) params.set("query", queryContext);
     const url = `${LOKI_BASE(orgId)}/label/${encodeURIComponent(labelName)}/values?${params}`;
     const res = await client.post<LokiLabelsResponse>(url, null);
     return res.data?.data ?? [];

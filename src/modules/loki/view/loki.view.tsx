@@ -16,6 +16,7 @@ import { LokiQueryBar } from "../components/loki-query-bar";
 import { LokiVolumeChart } from "../components/loki-volume-chart";
 import { LokiOptionsBar, type LokiDisplayOptions } from "../components/loki-options-bar";
 import { LokiLogTable } from "../components/loki-log-table";
+import { LokiLogFlyout, type FlyoutDict } from "../components/loki-log-flyout";
 
 
 
@@ -43,7 +44,7 @@ function resolveTimeRange(tr: TimeRangeValue): { start: number; end: number } {
 }
 
 const DEFAULT_QUERY = ``;
-const LINE_LIMIT = 1000;
+const DEFAULT_LINE_LIMIT = 1000;
 
 const DEFAULT_TIME_RANGE: TimeRangeValue = {
   type: "relative",
@@ -69,6 +70,7 @@ export default function LokiView() {
     parseAsJson<TimeRangeValue>((v) => v as TimeRangeValue).withDefault(DEFAULT_TIME_RANGE),
   );
 
+  const [lineLimit, setLineLimit] = useState(DEFAULT_LINE_LIMIT);
   const [options, setOptions] = useState<LokiDisplayOptions>(DEFAULT_OPTIONS);
   const [logs, setLogs] = useState<LokiLogEntry[]>([]);
   const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
@@ -76,32 +78,32 @@ export default function LokiView() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [volumeCollapsed, setVolumeCollapsed] = useState(false);
   const [hasQueried, setHasQueried] = useState(false);
-  const [queryDuration, setQueryDuration] = useState<number | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<LokiLogEntry | null>(null);
+  const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
 
   // Track whether initial mount auto-query has fired
   const isInitialMount = useRef(true);
 
-  const handleRunQuery = useCallback(async () => {
+  const handleRunQuery = useCallback(async (overrideLimit?: number) => {
     if (!query.trim()) return;
     setIsLoading(true);
     setHasQueried(true);
     setLimitReached(false);
-    const startTime = performance.now();
+    const currentLimit = overrideLimit ?? lineLimit;
 
     try {
       const { start, end } = resolveTimeRange(timeRange);
 
       // Run log query and volume query in parallel
       const [logResult, volumeResult] = await Promise.all([
-        lokiService.queryRange(query, start, end, LINE_LIMIT),
+        lokiService.queryRange(query, start, end, currentLimit),
         lokiService.queryVolume(query, start, end, 48),
       ]);
 
       setLogs(logResult.entries);
       setVolumeData(volumeResult);
-      setQueryDuration(Math.round(performance.now() - startTime));
-      setLimitReached(logResult.entries.length >= LINE_LIMIT);
+      setLimitReached(logResult.entries.length >= currentLimit);
 
       if (logResult.entries.length === 0) {
         toast.info(t.noLogsForQuery);
@@ -115,12 +117,11 @@ export default function LokiView() {
       toast.error(`${t.queryFailed}: ${msg}`);
       setLogs([]);
       setVolumeData([]);
-      setQueryDuration(null);
       setLimitReached(false);
     } finally {
       setIsLoading(false);
     }
-  }, [query, timeRange, t]);
+  }, [query, timeRange, lineLimit, t]);
 
   // Auto-run query on page load (if query exists in URL) and when timeRange changes
   // NOTE: we use a ref for query so typing doesn't trigger the effect
@@ -171,7 +172,7 @@ export default function LokiView() {
         query,
         start,
         endSec,
-        LINE_LIMIT,
+        lineLimit,
       );
 
       if (entries.length === 0) {
@@ -179,7 +180,7 @@ export default function LokiView() {
         setLimitReached(false);
       } else {
         setLogs((prev) => [...prev, ...entries]);
-        setLimitReached(entries.length >= LINE_LIMIT);
+        setLimitReached(entries.length >= lineLimit);
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } }; message?: string };
@@ -191,7 +192,14 @@ export default function LokiView() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [query, timeRange, logs, t]);
+  }, [query, timeRange, logs, lineLimit, t]);
+
+  const handleLineLimitChange = useCallback((newLimit: number) => {
+    setLineLimit(newLimit);
+    if (hasQueried) {
+      handleRunQuery(newLimit);
+    }
+  }, [handleRunQuery, hasQueried]);
 
   // Sort logs based on options (memoized to avoid re-sorting on every render)
   const sortedLogs = useMemo(() => {
@@ -206,49 +214,34 @@ export default function LokiView() {
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-950 text-slate-200 overflow-hidden">
-      {/* Top bar: title + time selector */}
-      <div className="flex-none px-4 py-3 bg-slate-900/60 border-b border-slate-800 backdrop-blur-sm flex items-center gap-3">
-        {/* Logo / Title */}
-        <div className="flex items-center gap-2.5 pr-4 border-r border-slate-800">
-          <div className="w-8 h-8 rounded-lg bg-orange-600/10 border border-orange-500/20 flex items-center justify-center">
-            <Database className="w-4 h-4 text-orange-500" />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">
-              {t.title}
-            </h1>
-            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-              {t.subtitle}
-            </span>
-          </div>
-        </div>
-
-        {/* Query stats */}
-        {queryDuration !== null && !isLoading && (
-          <div className="text-[10px] font-mono text-slate-500">
-            {logs.length.toLocaleString()} {t.entries} · {queryDuration}ms
-          </div>
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Time Range Selector */}
-        <AdvancedTimeRangeSelector
-          value={timeRange}
-          onChange={setTimeRange}
-          disabled={isLoading}
-          translations={timeRangeT}
-        />
-      </div>
-
-      {/* Query Bar */}
       <LokiQueryBar
         query={query}
         onChange={setQuery}
-        onSubmit={handleRunQuery}
+        onSubmit={() => handleRunQuery()}
         isLoading={isLoading}
-        lineLimit={LINE_LIMIT}
+        logoContent={
+          <div className="flex items-center gap-2.5 pr-0 md:pr-4 border-b md:border-b-0 md:border-r border-slate-800 pb-3 md:pb-0 w-full md:w-auto">
+            <div className="w-8 h-8 rounded-lg bg-orange-600/10 border border-orange-500/20 flex items-center justify-center">
+              <Database className="w-4 h-4 text-orange-500" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">
+                {t.title}
+              </h1>
+              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                {t.subtitle}
+              </span>
+            </div>
+          </div>
+        }
+        timeRangeContent={
+          <AdvancedTimeRangeSelector
+            value={timeRange}
+            onChange={setTimeRange}
+            disabled={isLoading}
+            translations={timeRangeT}
+          />
+        }
       />
 
       {/* Volume Chart */}
@@ -266,8 +259,6 @@ export default function LokiView() {
         <LokiOptionsBar
           options={options}
           onChange={setOptions}
-          totalRows={sortedLogs.length}
-          lineLimit={LINE_LIMIT}
           t={t.options}
         />
       )}
@@ -279,10 +270,17 @@ export default function LokiView() {
           isLoading={isLoading}
           options={options}
           totalRows={sortedLogs.length}
-          lineLimit={LINE_LIMIT}
+          lineLimit={lineLimit}
           limitReached={limitReached}
           isLoadingMore={isLoadingMore}
           onLoadMore={handleLoadMore}
+          onLineLimitChange={handleLineLimitChange}
+          onLogSelect={setSelectedLog}
+          onIconClick={(log) => {
+            setSelectedLog(log);
+            setIsFlyoutOpen(true);
+          }}
+          selectedLog={selectedLog}
           t={t}
         />
       ) : (
@@ -302,6 +300,15 @@ export default function LokiView() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Detail Flyout */}
+      {isFlyoutOpen && (
+        <LokiLogFlyout
+           log={selectedLog}
+           onClose={() => setIsFlyoutOpen(false)}
+           dict={t.flyout as unknown as FlyoutDict}
+        />
       )}
     </div>
   );

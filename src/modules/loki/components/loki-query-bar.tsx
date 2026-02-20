@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
+import { toast } from "sonner";
 import { Play, Tag, Hash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lokiService } from "@/lib/loki";
@@ -10,7 +13,8 @@ interface LokiQueryBarProps {
   onChange: (val: string) => void;
   onSubmit: () => void;
   isLoading?: boolean;
-  lineLimit?: number;
+  logoContent?: React.ReactNode;
+  timeRangeContent?: React.ReactNode;
 }
 
 interface SuggestionItem {
@@ -175,7 +179,8 @@ export function LokiQueryBar({
   onChange,
   onSubmit,
   isLoading = false,
-  lineLimit = 1000,
+  logoContent,
+  timeRangeContent,
 }: LokiQueryBarProps) {
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -189,6 +194,9 @@ export function LokiQueryBar({
   const containerRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  const { language } = useLanguage();
+  const t = translations.loki[language].queryBar;
 
   // Fetch labels on mount
   useEffect(() => {
@@ -256,19 +264,22 @@ export function LokiQueryBar({
     async (textToCursor: string) => {
       // 1. Label value: `{label="partial` or `{namespace="pp-dev", app="par`
       const labelValueMatch = textToCursor.match(
-        /\{[^}]*?(\w+)\s*=~?\s*"([^"]*)$/,
+        /\{([^}]*?)(\w+)\s*=~?\s*"([^"]*)$/,
       );
       if (labelValueMatch) {
-        const labelName = labelValueMatch[1];
-        const partial = labelValueMatch[2].toLowerCase();
+        const rawContext = labelValueMatch[1].trim().replace(/,\s*$/, "");
+        const queryContext = rawContext ? `{${rawContext}}` : undefined;
+        const labelName = labelValueMatch[2];
+        const partial = labelValueMatch[3].toLowerCase();
 
-        let values = labelValuesCache[labelName];
+        const cacheKey = `${labelName}::${queryContext || "none"}`;
+        let values = labelValuesCache[cacheKey];
         if (!values) {
           try {
-            values = await lokiService.getLabelValues(labelName);
+            values = await lokiService.getLabelValues(labelName, undefined, undefined, queryContext);
             setLabelValuesCache((prev) => ({
               ...prev,
-              [labelName]: values!,
+              [cacheKey]: values!,
             }));
           } catch {
             values = [];
@@ -293,20 +304,30 @@ export function LokiQueryBar({
 
       // 2. Label name: `{partial` or `{namespace="val", partial`
       const labelNameMatch = textToCursor.match(
-        /\{[^}]*?(?:,\s*)?(\w*)$/,
+        /\{([^}]*)$/,
       );
       if (labelNameMatch) {
-        const partial = labelNameMatch[1].toLowerCase();
-        const filtered = cachedLabels
-          .filter((l) => l.toLowerCase().includes(partial))
-          .slice(0, 20);
+        const inside = labelNameMatch[1];
+        const partialMatch = inside.match(/(?:^|,\s*)(\w*)$/);
 
-        setSuggestions(
-          filtered.map((l) => ({ value: l, type: "label" })),
-        );
-        setShowSuggestions(filtered.length > 0);
-        setHighlightedIdx(-1);
-        return;
+        if (partialMatch) {
+          const partial = partialMatch[1].toLowerCase();
+
+          // Extract labels already typed inside this selector
+          const usedLabels = Array.from(inside.matchAll(/(\w+)\s*(?:=|!)/g)).map(m => m[1]);
+
+          const filtered = cachedLabels
+            .filter((l) => !usedLabels.includes(l))
+            .filter((l) => l.toLowerCase().includes(partial))
+            .slice(0, 20);
+
+          setSuggestions(
+            filtered.map((l) => ({ value: l, type: "label" })),
+          );
+          setShowSuggestions(filtered.length > 0);
+          setHighlightedIdx(-1);
+          return;
+        }
       }
 
       setShowSuggestions(false);
@@ -360,6 +381,27 @@ export function LokiQueryBar({
     });
   };
 
+  const validateAndSubmit = () => {
+    const openBraces = (query.match(/\{/g) || []).length;
+    const closeBraces = (query.match(/\}/g) || []).length;
+
+    // Check balanced quotes, ignoring escaped internal quotes \"
+    const unescapedQuotes = query.replace(/\\"/g, "");
+    const quotesCount = (unescapedQuotes.match(/"/g) || []).length;
+
+    if (openBraces !== closeBraces || quotesCount % 2 !== 0) {
+      toast.error(t.syntaxError, { description: t.syntaxErrorDesc });
+      return;
+    }
+
+    if (openBraces > 0 && closeBraces === 0) {
+      toast.error(t.syntaxError, { description: t.syntaxErrorDesc });
+      return;
+    }
+
+    onSubmit();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (showSuggestions && suggestions.length > 0) {
       if (e.key === "ArrowDown") {
@@ -389,7 +431,7 @@ export function LokiQueryBar({
     }
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      onSubmit();
+      validateAndSubmit();
     }
   };
 
@@ -413,15 +455,22 @@ export function LokiQueryBar({
       ref={containerRef}
       className="flex-none px-4 py-3 bg-slate-900/60 border-b border-slate-800 backdrop-blur-sm relative z-20"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+        {/* Logo / Title */}
+        {logoContent && (
+          <div className="flex-none w-full md:w-auto">
+            {logoContent}
+          </div>
+        )}
+
         {/* Query Input with Syntax Highlighting */}
-        <div className="relative flex-1">
+        <div className="relative w-full md:flex-1">
           <div className="relative rounded-lg border border-slate-700 bg-slate-950 focus-within:border-orange-500/60 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all">
             {/* Highlight overlay (behind textarea) */}
             <div
               ref={highlightRef}
               aria-hidden="true"
-              className="absolute inset-0 py-2.5 px-3 text-sm font-mono leading-relaxed whitespace-pre-wrap break-words overflow-hidden pointer-events-none"
+              className="absolute inset-0 py-2.5 px-3 text-sm font-mono leading-relaxed whitespace-pre-wrap wrap-break-word overflow-hidden pointer-events-none"
               style={{ minHeight: "40px" }}
             >
               {highlightedNodes}
@@ -438,8 +487,8 @@ export function LokiQueryBar({
               placeholder={`{namespace="pp-development", app="pp-api"}`}
               rows={1}
               spellCheck={false}
-              className="w-full bg-transparent resize-none py-2.5 px-3 text-sm font-mono text-transparent caret-orange-400 placeholder:text-slate-600 focus:outline-none leading-relaxed relative z-10"
-              style={{ minHeight: "40px", caretColor: "#fb923c" }}
+              className="w-full bg-transparent resize-none px-3 pt-2 text-sm font-mono text-transparent caret-orange-400 placeholder:text-slate-600 focus:outline-none leading-relaxed relative z-10"
+              style={{ minHeight: "34px", caretColor: "#fb923c" }}
             />
           </div>
 
@@ -483,13 +532,22 @@ export function LokiQueryBar({
           )}
         </div>
 
-        {/* Options */}
-        <div className="flex items-center gap-2 flex-none pt-0.5">
+        {/* Bottom actions on mobile / Right actions on desktop */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:w-auto w-full">
+          {/* Time Range */}
+          {timeRangeContent && (
+            <div className="flex-1 sm:flex-none">
+              {timeRangeContent}
+            </div>
+          )}
+
+          {/* Options */}
+          <div className="flex items-center gap-2 flex-none">
           <button
-            onClick={onSubmit}
+            onClick={validateAndSubmit}
             disabled={isLoading || !query.trim()}
             className={cn(
-              "h-12 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border",
+              "h-10 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border",
               "bg-orange-600 hover:bg-orange-500 text-white border-orange-500/50 shadow-lg shadow-orange-900/20",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               !isLoading && query.trim() && "active:scale-95",
@@ -501,10 +559,11 @@ export function LokiQueryBar({
             </span>
           </button>
         </div>
+        </div>
       </div>
 
       {/* Hint */}
-      <div className="mt-1.5 flex items-center gap-4 text-[10px] text-slate-600">
+      {/* <div className="mt-1.5 flex items-center gap-4 text-[10px] text-slate-600">
         <span>
           <kbd className="px-1 py-0.5 bg-slate-800 rounded text-slate-500 font-mono">
             Ctrl+Enter
@@ -512,9 +571,9 @@ export function LokiQueryBar({
           to run
         </span>
         <span>
-          Options · Type Range · Line limit {lineLimit.toLocaleString()}
+          Options · Type Range
         </span>
-      </div>
+      </div> */}
     </div>
   );
 }

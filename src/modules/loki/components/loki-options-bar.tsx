@@ -23,8 +23,6 @@ interface OptionsTranslations {
 interface LokiOptionsBarProps {
   options: LokiDisplayOptions;
   onChange: (opts: LokiDisplayOptions) => void;
-  totalRows: number;
-  lineLimit: number;
   t: OptionsTranslations;
 }
 
@@ -63,8 +61,6 @@ function Toggle({
 export function LokiOptionsBar({
   options,
   onChange,
-  totalRows,
-  lineLimit,
   t,
 }: LokiOptionsBarProps) {
   const set = <K extends keyof LokiDisplayOptions>(
@@ -72,17 +68,8 @@ export function LokiOptionsBar({
     val: LokiDisplayOptions[K],
   ) => onChange({ ...options, [key]: val });
 
-  const limitReached = totalRows >= lineLimit;
-
   return (
     <div className="flex-none border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm">
-      {/* Limit warning */}
-      {limitReached && (
-        <div className="px-4 py-1.5 text-[11px] text-amber-400 bg-amber-500/5 border-b border-amber-500/10">
-          {t.limitWarning.replace("{limit}", lineLimit.toLocaleString())}
-        </div>
-      )}
-
       {/* Options row */}
       <div className="px-4 py-2 flex items-center gap-4 flex-wrap">
         {/* Toggles */}
@@ -97,11 +84,11 @@ export function LokiOptionsBar({
             active={options.wrapLines}
             onClick={() => set("wrapLines", !options.wrapLines)}
           />
-          <Toggle
+          {/* <Toggle
             label={t.prettifyJson}
             active={options.prettifyJson}
             onClick={() => set("prettifyJson", !options.prettifyJson)}
-          />
+          /> */}
         </div>
 
         {/* Spacer */}

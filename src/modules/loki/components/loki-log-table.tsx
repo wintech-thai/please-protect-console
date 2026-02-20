@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useRef, useCallback, memo } from "react";
-import { ChevronRight, ChevronDown, Loader2 } from "lucide-react";
+import { useRef, memo } from "react";
+import { Loader2, ChevronRight } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import type { LokiDisplayOptions } from "./loki-options-bar";
 import type { LokiLogEntry } from "@/lib/loki";
-import { LokiLogDetail } from "./loki-log-detail";
 
 interface LokiLogTranslations {
   fetchingLogs: string;
   noLogsFound: string;
   noLogsHint: string;
   logsHeader: string;
+  entries: string;
+  rowsPerPage: string;
   loadMore: {
     loading: string;
     button: string;
@@ -37,6 +38,11 @@ interface LokiLogTableProps {
   limitReached?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  onLineLimitChange?: (newLimit: number) => void;
+  queryDuration?: number | null;
+  onLogSelect?: (log: LokiLogEntry) => void;
+  onIconClick?: (log: LokiLogEntry) => void;
+  selectedLog?: LokiLogEntry | null;
   t: LokiLogTranslations;
 }
 
@@ -67,40 +73,44 @@ const ROW_HEIGHT = 40; // estimated collapsed row height
 /** Memoized individual log row to avoid re-renders from parent */
 const LogRow = memo(function LogRow({
   log,
-  isExpanded,
   options,
-  onToggle,
-  detailT,
+  isSelected,
+  onClick,
+  onIconClick,
 }: {
   log: LokiLogEntry;
-  isExpanded: boolean;
   options: LokiDisplayOptions;
-  onToggle: (id: string) => void;
-  detailT: LokiLogTranslations["detail"];
+  isSelected?: boolean;
+  onClick: (log: LokiLogEntry) => void;
+  onIconClick: (log: LokiLogEntry) => void;
 }) {
   const levelColor = LEVEL_COLORS[log.level] || LEVEL_COLORS.unknown;
-  const levelBar = LEVEL_BAR[log.level] || LEVEL_BAR.unknown;
 
   return (
-    <div className="group border-b border-slate-800/40">
+    <div className="group border-b border-slate-800/40 relative">
+      {isSelected && (
+        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-blue-500 z-10" />
+      )}
       {/* Log row */}
       <div
         className={cn(
-          "flex cursor-pointer transition-colors duration-100",
-          isExpanded ? "bg-slate-800/40" : "hover:bg-slate-900/60",
+          "flex cursor-pointer transition-colors duration-100 border-t border-transparent hover:border-slate-800/60",
+          isSelected ? "bg-slate-900/80" : "hover:bg-slate-900/60"
         )}
-        onClick={() => onToggle(log.id)}
+        onClick={() => onClick(log)}
       >
         {/* Level bar */}
-        <div className={cn("w-0.5 self-stretch flex-none", levelBar)} />
+        {/* <div className={cn("w-0.5 self-stretch flex-none", levelBar)} /> */}
 
         {/* Expand icon */}
-        <div className="flex-none w-7 flex items-center justify-center self-start pt-2.5 text-slate-600 group-hover:text-slate-400 transition-colors">
-          {isExpanded ? (
-            <ChevronDown className="w-3.5 h-3.5" />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5" />
-          )}
+        <div
+          className="flex-none w-6 flex items-center justify-center self-start pt-2 text-slate-600 hover:text-white transition-colors cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onIconClick(log);
+          }}
+        >
+          <ChevronRight size={20} className={cn("transition-transform", isSelected ? "text-blue-500" : "")} />
         </div>
 
         {/* Timestamp */}
@@ -111,10 +121,10 @@ const LogRow = memo(function LogRow({
         )}
 
         {/* Level badge */}
-        <div className="flex-none self-start pt-2.5 pb-2 pr-3" style={{ width: 72 }}>
+        <div className="flex-none self-start pt-0.5 pr-3" style={{ width: 72 }}>
           <span
             className={cn(
-              "inline-block text-center w-full px-1.5 py-0.5 text-[10px] font-bold uppercase rounded border font-mono tracking-wider",
+              "inline-block text-center w-full px-1.5 py-0.5 text-[10px] font-bold uppercase rounded border",
               levelColor,
             )}
           >
@@ -125,7 +135,7 @@ const LogRow = memo(function LogRow({
         {/* Log line */}
         <div
           className={cn(
-            "flex-1 min-w-0 py-2.5 pr-4 text-xs font-mono text-slate-300 leading-relaxed",
+            "flex-1 min-w-0 py-1 pr-4 text-xs font-mono text-slate-300 leading-relaxed",
             options.wrapLines
               ? "whitespace-pre-wrap wrap-break-word"
               : "truncate",
@@ -134,13 +144,6 @@ const LogRow = memo(function LogRow({
           {log.line.trimStart()}
         </div>
       </div>
-
-      {/* Expanded detail */}
-      {isExpanded && (
-        <div className="border-t border-slate-800/60 bg-slate-900/30">
-          <LokiLogDetail log={log} prettifyJson={options.prettifyJson} t={detailT} />
-        </div>
-      )}
     </div>
   );
 });
@@ -154,25 +157,18 @@ export function LokiLogTable({
   limitReached,
   isLoadingMore,
   onLoadMore,
+  onLineLimitChange,
+  onLogSelect,
+  onIconClick,
+  selectedLog,
   t,
 }: LokiLogTableProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const handleToggle = useCallback((id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  }, []);
 
   const virtualizer = useVirtualizer({
     count: logs.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: useCallback(
-      (index: number) => {
-        // Expanded rows are taller
-        return logs[index]?.id === expandedId ? 300 : ROW_HEIGHT;
-      },
-      [expandedId, logs],
-    ),
+    estimateSize: () => ROW_HEIGHT,
     overscan: 20,
   });
 
@@ -237,10 +233,10 @@ export function LokiLogTable({
               >
                 <LogRow
                   log={log}
-                  isExpanded={expandedId === log.id}
                   options={options}
-                  onToggle={handleToggle}
-                  detailT={t.detail}
+                  isSelected={selectedLog?.id === log.id}
+                  onClick={onLogSelect!}
+                  onIconClick={onIconClick!}
                 />
               </div>
             );
@@ -248,7 +244,7 @@ export function LokiLogTable({
         </div>
 
         {/* Load more button */}
-        {limitReached && onLoadMore && (
+        {/* {limitReached && onLoadMore && (
           <div className="px-4 py-3 border-t border-slate-800/60 flex items-center justify-center">
             <button
               onClick={onLoadMore}
@@ -270,7 +266,23 @@ export function LokiLogTable({
               )}
             </button>
           </div>
-        )}
+        )} */}
+      </div>
+
+      {/* Footer / Pagination Section */}
+      <div className="flex-none flex items-center justify-between sm:justify-end px-6 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-8">
+        <div className="flex items-center gap-3 text-xs text-slate-500 font-bold">
+          <span className="opacity-70">{t.rowsPerPage || "Rows per page:"}</span>
+          <select
+            value={lineLimit}
+            onChange={(e) => onLineLimitChange?.(Number(e.target.value))}
+            className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-200 outline-none hover:border-slate-600 transition-colors cursor-pointer"
+          >
+            {[100, 500, 1000].map(val => (
+              <option key={val} value={val}>{val}</option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
