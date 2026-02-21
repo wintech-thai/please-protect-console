@@ -231,7 +231,7 @@ export const lokiService = {
       limit: limit.toString(),
     });
     const url = `${LOKI_BASE(orgId)}/query_range?${params}`;
-    const res = await client.post<LokiQueryRangeResponse>(url, null);
+    const res = await client.get<LokiQueryRangeResponse>(url);
 
     const streams = (res.data?.data?.result ?? []) as LokiStream[];
     const entries = parseLokiStreams(streams);
@@ -241,13 +241,44 @@ export const lokiService = {
   /**
    * Get all label names from Loki.
    */
-  getLabels: async (start?: number, end?: number): Promise<string[]> => {
+  getLabels: async (start?: number, end?: number, queryContext?: string): Promise<string[]> => {
     const orgId = getOrgId();
+
+    // If we have a context (e.g., {namespace="a", app="b"}), fetch series and extract keys
+    if (queryContext) {
+      const params = new URLSearchParams();
+      params.append("match[]", queryContext);
+      if (start) params.set("start", start.toString());
+      if (end) params.set("end", end.toString());
+
+      const url = `${LOKI_BASE(orgId)}/series?${params}`;
+      try {
+        const res = await client.get<{status: string; data: Record<string, string>[] | string[]}>(url);
+        const seriesList = res.data?.data ?? [];
+        const uniqueKeys = new Set<string>();
+
+        for (const series of seriesList) {
+          if (typeof series === "object" && series !== null && !Array.isArray(series)) {
+            for (const key of Object.keys(series)) {
+              if (key !== "__name__") { // __name__ is an internal label we don't usually need to autocomplete
+                uniqueKeys.add(key);
+              }
+            }
+          }
+        }
+
+        return Array.from(uniqueKeys).sort();
+      } catch {
+        // Fallback silently
+      }
+    }
+
+    // Default fallback to all labels globally
     const params = new URLSearchParams();
     if (start) params.set("start", start.toString());
     if (end) params.set("end", end.toString());
     const url = `${LOKI_BASE(orgId)}/labels?${params}`;
-    const res = await client.post<LokiLabelsResponse>(url, null);
+    const res = await client.get<LokiLabelsResponse>(url);
     return res.data?.data ?? [];
   },
 
@@ -272,7 +303,7 @@ export const lokiService = {
 
       const url = `${LOKI_BASE(orgId)}/series?${params}`;
       try {
-        const res = await client.post<{status: string; data: Record<string, string>[] | string[]}>(url, null);
+        const res = await client.get<{status: string; data: Record<string, string>[] | string[]}>(url);
         const seriesList = res.data?.data ?? [];
         const uniqueValues = new Set<string>();
 
@@ -284,9 +315,7 @@ export const lokiService = {
           }
         }
 
-        if (uniqueValues.size > 0) {
-          return Array.from(uniqueValues).sort();
-        }
+        return Array.from(uniqueValues).sort();
       } catch {
         // Fallback silently if /series is not available
       }
@@ -298,7 +327,7 @@ export const lokiService = {
     if (end) params.set("end", end.toString());
     if (queryContext) params.set("query", queryContext);
     const url = `${LOKI_BASE(orgId)}/label/${encodeURIComponent(labelName)}/values?${params}`;
-    const res = await client.post<LokiLabelsResponse>(url, null);
+    const res = await client.get<LokiLabelsResponse>(url);
     return res.data?.data ?? [];
   },
 
@@ -328,7 +357,7 @@ export const lokiService = {
     const url = `${LOKI_BASE(orgId)}/query_range?${params}`;
 
     try {
-      const res = await client.post<LokiQueryRangeResponse>(url, null);
+      const res = await client.get<LokiQueryRangeResponse>(url);
       const results = (res.data?.data?.result ?? []) as LokiMatrixResult[];
 
       // Merge all matrix series into a single volume timeline

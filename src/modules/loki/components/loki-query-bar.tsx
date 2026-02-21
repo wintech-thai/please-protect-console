@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
 import { toast } from "sonner";
-import { Play, Tag, Hash } from "lucide-react";
+import { Play, Tag, Hash, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { lokiService } from "@/lib/loki";
 
@@ -19,8 +19,9 @@ interface LokiQueryBarProps {
 
 interface SuggestionItem {
   value: string;
-  type: "label" | "label-value";
+  type: "label" | "label-value" | "pipe-operator";
   label?: string;
+  description?: string;
 }
 
 // --- LogQL Syntax Highlighter ---
@@ -174,6 +175,73 @@ function highlightLogQL(text: string): React.ReactNode[] {
   return nodes;
 }
 
+// --- Autocomplete Helpers ---
+
+type AutocompleteTarget =
+  | { type: "label-value"; labelName: string; partial: string; queryContext?: string; rawContext: string }
+  | { type: "label-name"; partial: string; queryContext?: string; rawContext: string; usedLabels: string[] }
+  | { type: "pipe-operator"; partial: string; replaceMatch: string }
+  | null;
+
+function parseAutocompleteTarget(textToCursor: string): AutocompleteTarget {
+  // 1. Label value: `{label="partial` or `{namespace="pp-dev", app="par`
+  const labelValueMatch = textToCursor.match(/\{([^}]*?)(\w+)\s*=~?\s*"([^"]*)$/);
+  if (labelValueMatch) {
+    const rawContext = labelValueMatch[1].trim().replace(/,\s*$/, "");
+    const queryContext = rawContext ? `{${rawContext}}` : undefined;
+    return {
+      type: "label-value",
+      labelName: labelValueMatch[2],
+      partial: labelValueMatch[3].toLowerCase(),
+      queryContext,
+      rawContext,
+    };
+  }
+
+  // 2. Label name: `{partial` or `{namespace="val", partial`
+  const labelNameMatch = textToCursor.match(/\{([^}]*)$/);
+  if (labelNameMatch) {
+    const inside = labelNameMatch[1];
+    const partialMatch = inside.match(/(?:^|,\s*)(\w*)$/);
+    if (partialMatch) {
+      const partial = partialMatch[1].toLowerCase();
+      const usedLabels = Array.from(inside.matchAll(/(\w+)\s*(?:=|!)/g)).map((m) => m[1]);
+
+      // Reconstruct context up to this point
+      const contextMatch = textToCursor.match(/\{([^}]*?)(?:,\s*\w*$|\w*$)/);
+      const rawContext = contextMatch ? contextMatch[1].trim().replace(/,\s*$/, "") : "";
+      const queryContext = rawContext ? `{${rawContext}}` : undefined;
+
+      return {
+        type: "label-name",
+        partial,
+        queryContext,
+        rawContext,
+        usedLabels,
+      };
+    }
+  }
+
+  // 3. Pipe operators: after braces are balanced and quotes are balanced
+  const openBraces = (textToCursor.match(/\{/g) || []).length;
+  const closeBraces = (textToCursor.match(/\}/g) || []).length;
+  if (openBraces > 0 && openBraces === closeBraces) {
+    const unescapedQuotes = textToCursor.replace(/\\"/g, "");
+    if ((unescapedQuotes.match(/"/g) || []).length % 2 === 0) {
+      const pipeMatch = textToCursor.match(/(\s+(?:[|!=~]*\s*)?[a-z_]*)$/i);
+      if (pipeMatch) {
+         return {
+            type: "pipe-operator",
+            partial: pipeMatch[1],
+            replaceMatch: pipeMatch[1]
+         };
+      }
+    }
+  }
+
+  return null;
+}
+
 export function LokiQueryBar({
   query,
   onChange,
@@ -262,75 +330,92 @@ export function LokiQueryBar({
   // Detect what to autocomplete — based on cursor position
   const updateSuggestions = useCallback(
     async (textToCursor: string) => {
-      // 1. Label value: `{label="partial` or `{namespace="pp-dev", app="par`
-      const labelValueMatch = textToCursor.match(
-        /\{([^}]*?)(\w+)\s*=~?\s*"([^"]*)$/,
-      );
-      if (labelValueMatch) {
-        const rawContext = labelValueMatch[1].trim().replace(/,\s*$/, "");
-        const queryContext = rawContext ? `{${rawContext}}` : undefined;
-        const labelName = labelValueMatch[2];
-        const partial = labelValueMatch[3].toLowerCase();
+      const target = parseAutocompleteTarget(textToCursor);
 
-        const cacheKey = `${labelName}::${queryContext || "none"}`;
+      if (!target) {
+        setShowSuggestions(false);
+        return;
+      }
+
+      if (target.type === "label-value") {
+        const cacheKey = `${target.labelName}::${target.queryContext || "none"}`;
         let values = labelValuesCache[cacheKey];
+
         if (!values) {
           try {
-            values = await lokiService.getLabelValues(labelName, undefined, undefined, queryContext);
-            setLabelValuesCache((prev) => ({
-              ...prev,
-              [cacheKey]: values!,
-            }));
+            values = await lokiService.getLabelValues(target.labelName, undefined, undefined, target.queryContext);
+            setLabelValuesCache((prev) => ({ ...prev, [cacheKey]: values! }));
           } catch {
             values = [];
           }
         }
 
         const filtered = values
-          .filter((v) => v.toLowerCase().includes(partial))
+          .filter((v) => v.toLowerCase().includes(target.partial))
           .slice(0, 20);
 
-        setSuggestions(
-          filtered.map((v) => ({
-            value: v,
-            type: "label-value",
-            label: labelName,
-          })),
-        );
+        setSuggestions(filtered.map((v) => ({ value: v, type: "label-value", label: target.labelName })));
         setShowSuggestions(filtered.length > 0);
         setHighlightedIdx(-1);
         return;
       }
 
-      // 2. Label name: `{partial` or `{namespace="val", partial`
-      const labelNameMatch = textToCursor.match(
-        /\{([^}]*)$/,
-      );
-      if (labelNameMatch) {
-        const inside = labelNameMatch[1];
-        const partialMatch = inside.match(/(?:^|,\s*)(\w*)$/);
+      if (target.type === "label-name") {
+        const cacheKey = `labels::${target.queryContext || "global"}`;
+        let availableLabels = cachedLabels;
 
-        if (partialMatch) {
-          const partial = partialMatch[1].toLowerCase();
-
-          // Extract labels already typed inside this selector
-          const usedLabels = Array.from(inside.matchAll(/(\w+)\s*(?:=|!)/g)).map(m => m[1]);
-
-          const filtered = cachedLabels
-            .filter((l) => !usedLabels.includes(l))
-            .filter((l) => l.toLowerCase().includes(partial))
-            .slice(0, 20);
-
-          setSuggestions(
-            filtered.map((l) => ({ value: l, type: "label" })),
-          );
-          setShowSuggestions(filtered.length > 0);
-          setHighlightedIdx(-1);
-          return;
+        if (target.queryContext) {
+          try {
+            if (!labelValuesCache[cacheKey]) {
+              const labels = await lokiService.getLabels(undefined, undefined, target.queryContext);
+              const filteredLabels = labels.filter((l) => l !== "__name__");
+              setLabelValuesCache((prev) => ({ ...prev, [cacheKey]: filteredLabels }));
+              availableLabels = filteredLabels;
+            } else {
+              availableLabels = labelValuesCache[cacheKey];
+            }
+          } catch {
+            availableLabels = cachedLabels;
+          }
         }
+
+        const filtered = availableLabels
+          .filter((l) => !target.usedLabels.includes(l))
+          .filter((l) => l.toLowerCase().includes(target.partial))
+          .slice(0, 20);
+
+        setSuggestions(filtered.map((l) => ({ value: l, type: "label" })));
+        setShowSuggestions(filtered.length > 0);
+        setHighlightedIdx(-1);
+        return;
       }
 
-      setShowSuggestions(false);
+      if (target.type === "pipe-operator") {
+        const PIPE_OPS = [
+          { value: '|= ""', desc: "Contains string" },
+          { value: '!= ""', desc: "Does not contain string" },
+          { value: '|~ ""', desc: "Matches regex" },
+          { value: '!~ ""', desc: "Does not match regex" },
+          { value: "| json", desc: "Extract JSON fields" },
+          { value: "| logfmt", desc: "Extract Logfmt fields" },
+          { value: "| pattern", desc: "Extract using pattern" },
+          { value: "| regexp", desc: "Extract using regexp" },
+          { value: "| line_format", desc: "Format log line" },
+          { value: "| label_format", desc: "Format labels" },
+          { value: "| unwrap", desc: "Unwrap a metric" },
+        ];
+
+        const trimmedPartial = target.partial.replace(/\s+/g, '').toLowerCase();
+
+        const filtered = PIPE_OPS.filter(op =>
+          op.value.replace(/\s+/g, '').toLowerCase().includes(trimmedPartial)
+        );
+
+        setSuggestions(filtered.map(op => ({ value: op.value, type: "pipe-operator", description: op.desc })));
+        setShowSuggestions(filtered.length > 0);
+        setHighlightedIdx(-1);
+        return;
+      }
     },
     [cachedLabels, labelValuesCache],
   );
@@ -352,18 +437,28 @@ export function LokiQueryBar({
     const textAfter = query.slice(cursorPos);
 
     let newBefore: string;
+    let cursorOffset = 0;
+
     if (item.type === "label-value") {
-      // Replace partial value up to cursor
       newBefore = textBefore.replace(
         /(\{[^}]*?\w+\s*=~?\s*")([^"]*)$/,
         `$1${item.value}"`,
       );
-    } else {
-      // Replace partial label name and add `="`
+    } else if (item.type === "label") {
       newBefore = textBefore.replace(
         /(\{[^}]*?(?:,\s*)?)(\w*)$/,
         `$1${item.value}="`,
       );
+    } else if (item.type === "pipe-operator") {
+      newBefore = textBefore.replace(
+        /(\s+(?:[|!=~]*\s*)?[a-z_]*)$/i,
+        ` ${item.value}`
+      );
+      if (item.value.endsWith('""')) {
+        cursorOffset = -1; // Move cursor between quotes
+      }
+    } else {
+      newBefore = textBefore;
     }
 
     const newQuery = newBefore + textAfter;
@@ -375,8 +470,9 @@ export function LokiQueryBar({
       const ta = textareaRef.current;
       if (ta) {
         ta.focus();
-        ta.selectionStart = ta.selectionEnd = newBefore.length;
-        setCursorPos(newBefore.length);
+        const pos = newBefore.length + cursorOffset;
+        ta.selectionStart = ta.selectionEnd = pos;
+        setCursorPos(pos);
       }
     });
   };
@@ -498,6 +594,8 @@ export function LokiQueryBar({
               <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800">
                 {suggestions[0]?.type === "label"
                   ? "Label names"
+                  : suggestions[0]?.type === "pipe-operator"
+                  ? "Operations"
                   : `Values for ${suggestions[0]?.label}`}
               </div>
               {suggestions.map((item, i) => (
@@ -514,6 +612,8 @@ export function LokiQueryBar({
                 >
                   {item.type === "label" ? (
                     <Tag className="w-3.5 h-3.5 text-violet-400 flex-none" />
+                  ) : item.type === "pipe-operator" ? (
+                    <Filter className="w-3.5 h-3.5 text-amber-500 flex-none" />
                   ) : (
                     <Hash className="w-3.5 h-3.5 text-cyan-400 flex-none" />
                   )}
@@ -521,11 +621,18 @@ export function LokiQueryBar({
                     className={
                       item.type === "label"
                         ? "text-cyan-300"
+                        : item.type === "pipe-operator"
+                        ? "text-amber-400"
                         : "text-emerald-400"
                     }
                   >
                     {item.value}
                   </span>
+                  {item.description && (
+                    <span className="text-slate-500 text-[10px] ml-2 font-sans truncate">
+                      {item.description}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
