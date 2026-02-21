@@ -128,81 +128,117 @@ export default function Layer3Page() {
         startTime: bounds.start.unix(),
         stopTime: bounds.end.unix(),
         expression: luceneQuery,
-        length: 1000,
-        start: 0,
+        length: itemsPerPage, 
+        start: (page - 1) * itemsPerPage, 
       });
 
-      const mappedSessions = response.data.map((item: any) => ({
-        id: item.id,
-        rootId: item.rootId || item.id,
-        communityId: item.communityId || "-", // 🌟 เพิ่ม Community ID ตรงนี้
-        node: item.node || "-",
-        startTime: dayjs(item.firstPacket).format("MMM D, YYYY HH:mm:ss"),
-        stopTime: dayjs(item.lastPacket).format("MMM D, YYYY HH:mm:ss"),
-        protocol: item.ipProtocol === 6 ? "TCP" : item.ipProtocol === 17 ? "UDP" : (item.ipProtocol === 58 ? "ICMPv6" : "ICMP"),
-        ipProtocol: item.ipProtocol,
-        srcIp: item.source?.ip || "-",
-        srcPort: item.source?.port ?? 0,
-        dstIp: item.destination?.ip || "-",
-        dstPort: item.destination?.port ?? 0,
-        packets: (item.network?.packets || 0).toLocaleString(),
-        bytes: (item.network?.bytes || 0).toLocaleString(),
-        databytes: (item.totDataBytes || 0).toLocaleString(), 
-        source: { ...item.source, databytes: item.client?.bytes || 0 },
-        destination: { ...item.destination, databytes: item.server?.bytes || 0 },
-        ssh: item.ssh ? {
-          versions: item.ssh.version ? (Array.isArray(item.ssh.version) ? item.ssh.version.join(" ") : item.ssh.version) : "-",
-          hassh: item.ssh.hassh || "-",
-          hasshServer: item.ssh.hasshServer || "-"
-        } : null,
-        protocols: item.dns ? ["DNS"] : (item.protocols || []),
-        tags: item.tags || [],
-        payload8: item.payload8 || "-",
-        tcpflags: item.tcpflags ? Object.entries(item.tcpflags).map(([k,v]) => `${k.toUpperCase()} ${v}`).join(" ") : "-",
-        tcp_seq_src: item.source?.tcp_seq || 0,
-        tcp_seq_dst: item.destination?.tcp_seq || 0,
-        ttl_src: item.source?.ttl || 0,
-        ttl_dst: item.destination?.ttl || 0,
-        etherType: item.etherType || "2,048"
-      }));
+      const mappedSessions = response.data.map((item: any) => {
+        const pkts = item.totPackets ?? item["network.packets"] ?? item.network?.packets ?? 0;
+        const bts = item.totBytes ?? item["network.bytes"] ?? item.network?.bytes ?? 0;
 
-      setSessions(mappedSessions.slice((page - 1) * itemsPerPage, page * itemsPerPage));
+        const sIp = item["source.ip"] || item.source?.ip || "-";
+        const sPort = item["source.port"] ?? item.source?.port ?? 0;
+        const dIp = item["destination.ip"] || item.destination?.ip || "-";
+        const dPort = item["destination.port"] ?? item.destination?.port ?? 0;
+
+        return {
+          id: item.id,
+          rootId: item.rootId || item.id,
+          communityId: item.communityId || item["network.community_id"] || "-", 
+          node: item.node || "-",
+          startTime: dayjs(item.firstPacket).format("MMM D, YYYY HH:mm:ss"),
+          stopTime: dayjs(item.lastPacket).format("MMM D, YYYY HH:mm:ss"),
+          protocol: item.ipProtocol === 6 ? "TCP" : item.ipProtocol === 17 ? "UDP" : (item.ipProtocol === 58 ? "ICMPv6" : "ICMP"),
+          ipProtocol: item.ipProtocol,
+          
+          srcIp: sIp,
+          srcPort: sPort,
+          dstIp: dIp,
+          dstPort: dPort,
+          
+          packets: pkts.toLocaleString(),
+          bytes: bts.toLocaleString(),
+          databytes: (item.totDataBytes || 0).toLocaleString(), 
+          
+          source: { 
+            ...(item.source || {}), 
+            ip: sIp,
+            port: sPort,
+            packets: item["source.packets"] ?? item.source?.packets ?? 0,
+            bytes: item["source.bytes"] ?? item.source?.bytes ?? 0,
+            databytes: item["client.bytes"] ?? item.client?.bytes ?? 0 
+          },
+          destination: { 
+            ...(item.destination || {}), 
+            ip: dIp,
+            port: dPort,
+            packets: item["destination.packets"] ?? item.destination?.packets ?? 0,
+            bytes: item["destination.bytes"] ?? item.destination?.bytes ?? 0,
+            databytes: item["server.bytes"] ?? item.server?.bytes ?? 0 
+          },
+          
+          ssh: item.ssh ? {
+            versions: item.ssh.version ? (Array.isArray(item.ssh.version) ? item.ssh.version.join(" ") : item.ssh.version) : "-",
+            hassh: item.ssh.hassh || "-",
+            hasshServer: item.ssh.hasshServer || "-"
+          } : null,
+          protocols: item.dns ? ["DNS"] : (item.protocols || []),
+          tags: item.tags || [],
+          payload8: item.payload8 || "-",
+          tcpflags: item.tcpflags ? Object.entries(item.tcpflags).map(([k,v]) => `${k.toUpperCase()} ${v}`).join(" ") : "-",
+          tcp_seq_src: item["source.tcp_seq"] ?? item.source?.tcp_seq ?? 0,
+          tcp_seq_dst: item["destination.tcp_seq"] ?? item.destination?.tcp_seq ?? 0,
+          ttl_src: item["source.ttl"] ?? item.source?.ttl ?? 0,
+          ttl_dst: item["destination.ttl"] ?? item.destination?.ttl ?? 0,
+          etherType: item.etherType || "2,048"
+        };
+      });
+
+      setSessions(mappedSessions);
       setTotalHits(response.recordsFiltered || 0);
 
-      // --- Histogram Fallback ---
-      const numBuckets = 60; 
-      const startMs = bounds.start.valueOf();
-      const endMs = bounds.end.valueOf();
-      const bucketSizeMs = (endMs - startMs) / numBuckets;
-
-      const bucketSizeSec = Math.round(bucketSizeMs / 1000);
-      const displayInterval = bucketSizeSec >= 60 ? `${Math.floor(bucketSizeSec / 60)}m` : `${bucketSizeSec}s`;
-
-      const buckets = Array.from({ length: numBuckets }).map((_, i) => ({
-        key: startMs + i * bucketSizeMs,
-        doc_count: 0,
-        by_protocol: { 
-          buckets: [
-            { key: "tcp", doc_count: 0 }, 
-            { key: "udp", doc_count: 0 }, 
-            { key: "icmp", doc_count: 0 }
-          ] 
-        },
-      }));
-
-      response.data.forEach((item: any) => {
-        const ts = item.firstPacket;
-        const idx = Math.floor((ts - startMs) / bucketSizeMs);
-        if (idx >= 0 && idx < numBuckets) {
-          buckets[idx].doc_count++;
-          const proto = item.ipProtocol === 6 ? "tcp" : item.ipProtocol === 17 ? "udp" : "icmp";
-          const pBucket = buckets[idx].by_protocol.buckets.find((b) => b.key === proto);
-          if (pBucket) pBucket.doc_count++;
-        }
+      // --- สร้าง Histogram Data จาก response.graph ---
+      let tcpCount = 0, udpCount = 0, icmpCount = 0;
+      mappedSessions.forEach((s: any) => {
+        if (s.protocol === "TCP") tcpCount++;
+        else if (s.protocol === "UDP") udpCount++;
+        else icmpCount++;
       });
+      const dataTotal = Math.max(tcpCount + udpCount + icmpCount, 1);
+      const ratioTcp = tcpCount / dataTotal;
+      const ratioUdp = udpCount / dataTotal;
 
-      setHistogramData(buckets);
-      setCurrentInterval(displayInterval);
+      if (response.graph && response.graph.sessionsHisto) {
+        const intervalSec = response.graph.interval || 60;
+        const displayInterval = intervalSec >= 60 ? `${Math.floor(intervalSec / 60)}m` : `${intervalSec}s`;
+        
+        const buckets = response.graph.sessionsHisto.map((bucket: [number, number]) => {
+          const timestamp = bucket[0];
+          const totalCount = bucket[1];
+          
+          const estTcp = Math.round(totalCount * ratioTcp);
+          const estUdp = Math.round(totalCount * ratioUdp);
+          const estIcmp = totalCount - estTcp - estUdp;
+
+          return {
+            key: timestamp,
+            doc_count: totalCount,
+            by_protocol: {
+              buckets: [
+                { key: "tcp", doc_count: estTcp },
+                { key: "udp", doc_count: estUdp },
+                { key: "icmp", doc_count: Math.max(0, estIcmp) }
+              ]
+            }
+          };
+        });
+        
+        setHistogramData(buckets);
+        setCurrentInterval(displayInterval);
+      } else {
+        setHistogramData([]);
+        setCurrentInterval("60s");
+      }
 
     } catch (err: any) {
       console.error(err);

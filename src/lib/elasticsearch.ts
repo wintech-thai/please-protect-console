@@ -3,7 +3,6 @@
 import { client } from "@/lib/axios";
 
 // --- 1. Interfaces ---
-
 export interface ArkimeSession {
   id: string;
   firstPacket: number;
@@ -24,15 +23,18 @@ export interface ArkimeResponse<T> {
   data: T[];
   recordsTotal: number;
   recordsFiltered: number;
+  graph?: any; 
+  map?: any;   
   [key: string]: any;
 }
 
 export interface ArkimeQuery {
   expression?: string;
-  startTime: number; // Unix timestamp
-  stopTime: number;  // Unix timestamp
-  length?: number;   // limit
-  start?: number;    // offset
+  startTime: number; 
+  stopTime: number;  
+  length?: number;   
+  start?: number;    
+  fields?: string;   
 }
 
 export interface Layer7EventDocument {
@@ -86,7 +88,6 @@ export interface EsSearchPayload {
 }
 
 // --- 2. Helper Functions ---
-
 const calculateDynamicInterval = (query: any): string => {
   try {
     let range: any = null;
@@ -113,7 +114,6 @@ const calculateDynamicInterval = (query: any): string => {
     return "1m";
   }
 };
-
 
 const calculateMainChartInterval = (start: number, end: number): string => {
   const diffHours = (end - start) / 3600;
@@ -168,25 +168,29 @@ const flattenMapping = (mapping: any, prefix = ""): string[] => {
 };
 
 // --- 3. Arkime Service Logic ---
-
 export const arkimeService = {
   getSessions: async (orgId: string, query: ArkimeQuery): Promise<ArkimeResponse<ArkimeSession>> => {
     if (!orgId) throw new Error("Organization ID is required.");
 
-    const params = new URLSearchParams({
-      date: "1", // custom time
-      startTime: query.startTime.toString(),
-      stopTime: query.stopTime.toString(),
-      length: (query.length || 50).toString(),
-      start: (query.start || 0).toString(),
-    });
+    const defaultFields = "firstPacket,lastPacket,ipProtocol,node,totDataBytes,source.ip,source.port,destination.ip,destination.port,totPackets,totBytes,network.packets,network.bytes,source.packets,source.bytes,destination.packets,destination.bytes,client.bytes,server.bytes,communityId";
 
-    if (query.expression) {
-      params.append("expression", query.expression);
+    const params: Record<string, any> = {
+      date: "-2", 
+      startTime: query.startTime,
+      stopTime: query.stopTime,
+      length: query.length || 100,
+      start: query.start || 0,
+      fields: query.fields || defaultFields, 
+      facets: 1, 
+      desc: true 
+    };
+
+    if (query.expression && query.expression.trim() !== "") {
+      params.expression = query.expression;
     }
 
-    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/sessions?${params.toString()}`;
-    const response = await client.get(endpoint);
+    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/sessions`;
+    const response = await client.get(endpoint, { params });
     return response.data;
   },
 
@@ -199,7 +203,6 @@ export const arkimeService = {
 };
 
 // --- 4. ElasticSearch Service Logic ---
-
 export const esService = {
   search: async <T>(endpoint: string, payload: EsSearchPayload): Promise<EsResponse<T>> => {
     const cleanPayload = {
