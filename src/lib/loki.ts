@@ -55,7 +55,9 @@ export interface LokiLogEntry {
 
 export interface VolumeDataPoint {
   time: number; // ms timestamp
-  count: number;
+  stdout: number;
+  stderr: number;
+  [key: string]: number; // Allow any other stream names to be safe
 }
 
 // --- Parsers ---
@@ -167,22 +169,31 @@ export function aggregateVolumeData(
   const range = maxTs - minTs || 60_000; // fallback 1 min
   const bucketSize = range / bucketCount;
 
-  const buckets: { ts: number; count: number }[] = [];
+  const buckets: { ts: number; stdout: number; stderr: number }[] = [];
   for (let i = 0; i < bucketCount; i++) {
-    buckets.push({ ts: minTs + i * bucketSize, count: 0 });
+    buckets.push({ ts: minTs + i * bucketSize, stdout: 0, stderr: 0 });
   }
 
-  for (const ts of timestamps) {
+  for (const log of entries) {
+    const ts = new Date(log.timestamp).getTime();
     const idx = Math.min(
       Math.floor((ts - minTs) / bucketSize),
       bucketCount - 1,
     );
-    buckets[idx].count++;
+
+    // Group by stream label if available
+    const streamType = (log.labels.stream || "").toLowerCase();
+    if (streamType === "stderr") {
+      buckets[idx].stderr++;
+    } else {
+      buckets[idx].stdout++;
+    }
   }
 
   return buckets.map((b) => ({
     time: b.ts,
-    count: b.count,
+    stdout: b.stdout,
+    stderr: b.stderr,
   }));
 }
 
@@ -347,7 +358,8 @@ export const lokiService = {
     const stepSec = parseStep(step);
 
     // Wrap the log selector in count_over_time with the step as the range
-    const metricQuery = `count_over_time(${logql} [${step}])`;
+    // We group by stream so we get matrix results split by stream="stdout" / stream="stderr"
+    const metricQuery = `sum by (stream) (count_over_time(${logql} [${step}]))`;
     const params = new URLSearchParams({
       query: metricQuery,
       start: start.toString(),
@@ -360,19 +372,35 @@ export const lokiService = {
       const res = await client.get<LokiQueryRangeResponse>(url);
       const results = (res.data?.data?.result ?? []) as LokiMatrixResult[];
 
-      // Merge all matrix series into a single volume timeline
-      const volumeMap = new Map<number, number>();
-      for (const series of results) {
-        for (const [ts, val] of series.values) {
-          const msTs = ts * 1000;
-          volumeMap.set(msTs, (volumeMap.get(msTs) ?? 0) + parseInt(val, 10));
+      // Merge all matrix series into a single volume timeline grouped by time and stream
+    const volumeMap = new Map<number, { stdout: number; stderr: number }>();
+
+    for (const series of results) {
+      const streamLabel = (series.metric.stream || "").toLowerCase();
+      const isStderr = streamLabel === "stderr";
+
+      for (const [ts, val] of series.values) {
+        const msTs = ts * 1000;
+
+        if (!volumeMap.has(msTs)) {
+          volumeMap.set(msTs, { stdout: 0, stderr: 0 });
+        }
+
+        const current = volumeMap.get(msTs)!;
+        const count = parseInt(val, 10);
+
+        if (isStderr) {
+          current.stderr += count;
+        } else {
+          current.stdout += count;
         }
       }
+    }
 
-      // Convert to sorted array
-      return Array.from(volumeMap.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([time, count]) => ({ time, count }));
+    // Convert to sorted array
+    return Array.from(volumeMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([time, counts]) => ({ time, stdout: counts.stdout, stderr: counts.stderr }));
     } catch {
       // Fallback: return empty if metric query not supported
       return [];

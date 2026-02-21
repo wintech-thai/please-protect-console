@@ -2,13 +2,13 @@
 
 import dayjs from "dayjs";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
 } from "recharts";
 import { ChevronDown } from "lucide-react";
 import type { VolumeDataPoint } from "@/lib/loki";
@@ -51,19 +51,28 @@ function CustomTooltip({
   logsLabel,
 }: {
   active?: boolean;
-  payload?: { value: number }[];
+  payload?: { value: number; name?: string }[];
   label?: number;
   logsLabel: string;
 }) {
   if (active && payload && payload.length && label) {
     return (
       <div className="bg-slate-950/95 border border-slate-700 rounded-lg px-3 py-2 shadow-xl text-xs">
-        <p className="text-slate-400 font-mono mb-1">
+        <p className="text-slate-400 font-mono mb-1.5 border-b border-slate-800 pb-1.5">
           {dayjs(label).format("DD MMM YYYY · HH:mm:ss")}
         </p>
-        <p className="text-orange-400 font-bold font-mono">
-          {payload[0].value.toLocaleString()} {logsLabel}
-        </p>
+        <div className="flex flex-col gap-1">
+          {payload.map((entry, idx) => (
+            <div key={idx} className="flex justify-between items-center gap-4">
+              <span className="text-slate-400 font-medium capitalize">{entry.name}:</span>
+              <span
+                className={`font-bold font-mono ${entry.name === 'stderr' ? 'text-red-400' : 'text-emerald-400'}`}
+              >
+                {Number(entry.value).toLocaleString()} {logsLabel}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -126,9 +135,19 @@ export function LokiVolumeChart({
                 cursor={{ fill: "rgba(251,146,60,0.08)" }}
               />
               <Bar
-                dataKey="count"
-                fill="#ea580c"
-                opacity={0.75}
+                dataKey="stdout"
+                name="stdout"
+                stackId="a"
+                fill="#10b981" // emerald-500
+                opacity={0.8}
+                maxBarSize={24}
+              />
+              <Bar
+                dataKey="stderr"
+                name="stderr"
+                stackId="a"
+                fill="#ef4444" // red-500
+                opacity={0.8}
                 radius={[2, 2, 0, 0]}
                 maxBarSize={24}
               />

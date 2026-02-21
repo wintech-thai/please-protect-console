@@ -137,7 +137,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
   const isActive = (path: string) => {
     if (path === "/overview") return pathname === path;
     if (path === "/admin/users") return pathname.startsWith("/admin");
-    if (path === "/system/organization") return pathname.startsWith("/system");
+    if (path.startsWith("/system")) return pathname.startsWith("/system");
     return pathname.startsWith(path);
   };
 
