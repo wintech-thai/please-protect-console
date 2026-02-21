@@ -6,7 +6,7 @@ import { translations } from "@/locales/dict";
 import { toast } from "sonner";
 import { Play, Tag, Hash, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { lokiService } from "@/lib/loki";
+import { isValidLogQL, lokiService } from "@/lib/loki";
 
 interface LokiQueryBarProps {
   query: string;
@@ -478,19 +478,9 @@ export function LokiQueryBar({
   };
 
   const validateAndSubmit = () => {
-    const openBraces = (query.match(/\{/g) || []).length;
-    const closeBraces = (query.match(/\}/g) || []).length;
+    const isValid = isValidLogQL(query);
 
-    // Check balanced quotes, ignoring escaped internal quotes \"
-    const unescapedQuotes = query.replace(/\\"/g, "");
-    const quotesCount = (unescapedQuotes.match(/"/g) || []).length;
-
-    if (openBraces !== closeBraces || quotesCount % 2 !== 0) {
-      toast.error(t.syntaxError, { description: t.syntaxErrorDesc });
-      return;
-    }
-
-    if (openBraces > 0 && closeBraces === 0) {
+    if (!isValid) {
       toast.error(t.syntaxError, { description: t.syntaxErrorDesc });
       return;
     }

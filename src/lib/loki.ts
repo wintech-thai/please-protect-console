@@ -409,3 +409,27 @@ export const lokiService = {
     }
   },
 };
+
+/**
+ * Validates basic LogQL syntax: balanced braces and quotes.
+ */
+export function isValidLogQL(query: string): boolean {
+  if (!query.trim()) return false;
+
+  const openBraces = (query.match(/\{/g) || []).length;
+  const closeBraces = (query.match(/\}/g) || []).length;
+
+  const unescapedQuotes = query.replace(/\\"/g, "");
+  const quotesCount = (unescapedQuotes.match(/"/g) || []).length;
+
+  if (openBraces !== closeBraces || quotesCount % 2 !== 0) {
+    return false;
+  }
+
+  if (openBraces > 0 && closeBraces === 0) {
+    return false;
+  }
+
+  return true;
+}
+

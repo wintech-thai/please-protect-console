@@ -8,7 +8,7 @@ import {
   AdvancedTimeRangeSelector,
   type TimeRangeValue,
 } from "@/modules/dashboard/components/advanced-time-selector";
-import { lokiService } from "@/lib/loki";
+import { lokiService, isValidLogQL } from "@/lib/loki";
 import type { LokiLogEntry, VolumeDataPoint } from "@/lib/loki";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
@@ -83,12 +83,58 @@ export default function LokiView() {
   const [hasMoreNewer, setHasMoreNewer] = useState(false);
   const [selectedLog, setSelectedLog] = useState<LokiLogEntry | null>(null);
   const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    let restoredQuery = query;
+    let restoredRange = timeRange;
+
+    if (!searchParams.has("q")) {
+      const savedQuery = localStorage.getItem("loki_query");
+      if (savedQuery) {
+        setQuery(savedQuery);
+        restoredQuery = savedQuery;
+      }
+    }
+    if (!searchParams.has("range")) {
+      const savedRange = localStorage.getItem("loki_range");
+      if (savedRange) {
+        try {
+          const parsed = JSON.parse(savedRange);
+          setTimeRange(parsed);
+          restoredRange = parsed;
+        } catch {
+          // Ignore parse errors from localStorage
+        }
+      }
+    }
+
+    localStorage.setItem("loki_query", restoredQuery);
+    localStorage.setItem("loki_range", JSON.stringify(restoredRange));
+    setIsRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isRestored) return;
+    localStorage.setItem("loki_query", query);
+    localStorage.setItem("loki_range", JSON.stringify(timeRange));
+  }, [query, timeRange, isRestored]);
 
   // Track whether initial mount auto-query has fired
   const isInitialMount = useRef(true);
 
   const handleRunQuery = useCallback(async (overrideLimit?: number) => {
     if (!query.trim()) return;
+    const isValid = isValidLogQL(query);
+
+    if (!isValid) {
+      toast.error(t.queryBar.syntaxError, { description: t.queryBar.syntaxErrorDesc });
+      return;
+    }
     setIsLoading(true);
     setHasQueried(true);
     setHasMoreOlder(false);
@@ -128,15 +174,17 @@ export default function LokiView() {
     }
   }, [query, timeRange, lineLimit, t]);
 
-  // Auto-run query on page load (if query exists in URL) and when timeRange changes
+  // Auto-run query on page load (if query exists in URL or restored) and when timeRange changes
   // NOTE: we use a ref for query so typing doesn't trigger the effect
   const queryRef = useRef(query);
   queryRef.current = query;
 
   useEffect(() => {
+    if (!isRestored) return;
+
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      // On mount: auto-run if query exists in URL
+      // On mount/restore: auto-run if query exists
       if (queryRef.current.trim()) {
         handleRunQuery();
       }
@@ -148,7 +196,7 @@ export default function LokiView() {
       handleRunQuery();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRange]);
+  }, [timeRange, isRestored]);
 
   /** Load older logs using the oldest entry's timestamp as cursor */
   const handleLoadOlder = useCallback(async () => {
