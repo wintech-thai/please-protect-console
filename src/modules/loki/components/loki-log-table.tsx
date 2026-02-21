@@ -34,6 +34,7 @@ interface LokiLogTranslations {
 }
 
 interface LokiLogTableProps {
+  query?: string;
   logs: LokiLogEntry[];
   isLoading: boolean;
   options: LokiDisplayOptions;
@@ -53,27 +54,98 @@ interface LokiLogTableProps {
   t: LokiLogTranslations;
 }
 
-const LEVEL_COLORS: Record<string, string> = {
-  info: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30",
-  warn: "text-amber-400 bg-amber-500/10 border-amber-500/30",
-  error: "text-red-400 bg-red-500/10 border-red-500/30",
-  debug: "text-slate-400 bg-slate-500/10 border-slate-500/30",
-  trace: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
-  critical: "text-rose-400 bg-rose-500/10 border-rose-500/30",
-  fatal: "text-rose-400 bg-rose-500/10 border-rose-500/30",
-  unknown: "text-slate-500 bg-slate-800/50 border-slate-700/30",
-};
+// const LEVEL_COLORS: Record<string, string> = {
+//   info: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30",
+//   warn: "text-amber-400 bg-amber-500/10 border-amber-500/30",
+//   error: "text-red-400 bg-red-500/10 border-red-500/30",
+//   debug: "text-slate-400 bg-slate-500/10 border-slate-500/30",
+//   trace: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30",
+//   critical: "text-rose-400 bg-rose-500/10 border-rose-500/30",
+//   fatal: "text-rose-400 bg-rose-500/10 border-rose-500/30",
+//   unknown: "text-slate-500 bg-slate-800/50 border-slate-700/30",
+// };
 
-const LEVEL_BAR: Record<string, string> = {
-  info: "bg-cyan-500",
-  warn: "bg-amber-500",
-  error: "bg-red-500",
-  debug: "bg-slate-500",
-  trace: "bg-indigo-500",
-  critical: "bg-rose-500",
-  fatal: "bg-rose-500",
-  unknown: "bg-slate-600",
-};
+// const LEVEL_BAR: Record<string, string> = {
+//   info: "bg-cyan-500",
+//   warn: "bg-amber-500",
+//   error: "bg-red-500",
+//   debug: "bg-slate-500",
+//   trace: "bg-indigo-500",
+//   critical: "bg-rose-500",
+//   fatal: "bg-rose-500",
+//   unknown: "bg-slate-600",
+// };
+
+/** Extract matching filter terms from the PromQL/LogQL query (e.g., |= "error" or |~ "regex") */
+function extractHighlightTerms(query?: string): { type: "exact" | "regex", value: string }[] {
+  if (!query) return [];
+  const terms: { type: "exact" | "regex", value: string }[] = [];
+
+  // match `|= "literal"` or `|= \`literal\`` or `|~ "regex"`
+  const regex = /\|(=|~)\s*("([^"\\]*(?:\\.[^"\\]*)*)"|`([^`]*)`)/g;
+  let match;
+  while ((match = regex.exec(query)) !== null) {
+    const isRegex = match[1] === "~";
+    let val = match[3] !== undefined ? match[3] : match[4];
+    if (val) {
+      // Unescape internal quotes and double backslashes
+      if (match[3] !== undefined) {
+         val = val.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+      }
+      terms.push({ type: isRegex ? "regex" : "exact", value: val });
+    }
+  }
+  return terms;
+}
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Safely highlights the extracted terms from the raw log line */
+function HighlightLine({ text, highlightTerms }: { text: string; highlightTerms: { type: "exact" | "regex", value: string }[] }) {
+  const line = text.trimStart();
+  if (!highlightTerms || highlightTerms.length === 0 || !line) {
+    return <>{line}</>;
+  }
+
+  const regexParts: string[] = [];
+  for (const term of highlightTerms) {
+    if (term.type === "exact") {
+      regexParts.push(escapeRegExp(term.value));
+    } else {
+      regexParts.push(term.value);
+    }
+  }
+
+  if (regexParts.length === 0) return <>{line}</>;
+
+  let combinedRegex: RegExp | null = null;
+  try {
+    combinedRegex = new RegExp(`(${regexParts.join('|')})`, 'gi');
+  } catch {
+    // If the regex is invalid, gracefully fallback
+    return <>{line}</>;
+  }
+
+  const parts = line.split(combinedRegex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        // Every even index is regular text, odd is matched text
+        if (i % 2 === 1) {
+          return (
+            <span key={i} className="bg-orange-500 text-orange-100 rounded-sm font-semibold">
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
 
 const ROW_HEIGHT = 40; // estimated collapsed row height
 
@@ -81,6 +153,7 @@ const ROW_HEIGHT = 40; // estimated collapsed row height
 const LogRow = memo(function LogRow({
   log,
   options,
+  highlightTerms,
   isSelected,
   onClick,
   onIconClick,
@@ -88,11 +161,10 @@ const LogRow = memo(function LogRow({
   log: LokiLogEntry;
   options: LokiDisplayOptions;
   isSelected?: boolean;
+  highlightTerms: { type: "exact" | "regex", value: string }[];
   onClick: (log: LokiLogEntry) => void;
   onIconClick: (log: LokiLogEntry) => void;
 }) {
-  const levelColor = LEVEL_COLORS[log.level] || LEVEL_COLORS.unknown;
-
   return (
     <div className="group border-b border-slate-800/40 relative">
       {isSelected && (
@@ -128,7 +200,7 @@ const LogRow = memo(function LogRow({
         )}
 
         {/* Level badge */}
-        <div className="flex-none self-start pt-0.5 pr-3" style={{ width: 72 }}>
+        {/* <div className="flex-none self-start pt-0.5 pr-3" style={{ width: 72 }}>
           <span
             className={cn(
               "inline-block text-center w-full px-1.5 py-0.5 text-[10px] font-bold uppercase rounded border",
@@ -137,7 +209,7 @@ const LogRow = memo(function LogRow({
           >
             {log.level === "unknown" ? "—" : log.level}
           </span>
-        </div>
+        </div> */}
 
         {/* Log line */}
         <div
@@ -148,7 +220,7 @@ const LogRow = memo(function LogRow({
               : "truncate",
           )}
         >
-          {log.line.trimStart()}
+          <HighlightLine text={log.line} highlightTerms={highlightTerms} />
         </div>
       </div>
     </div>
@@ -156,6 +228,7 @@ const LogRow = memo(function LogRow({
 });
 
 export function LokiLogTable({
+  query,
   logs,
   isLoading,
   options,
@@ -228,6 +301,7 @@ export function LokiLogTable({
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const log = logs[virtualRow.index];
+            const highlightTerms = extractHighlightTerms(query);
             return (
               <div
                 key={log.id}
@@ -244,6 +318,7 @@ export function LokiLogTable({
                 <LogRow
                   log={log}
                   options={options}
+                  highlightTerms={highlightTerms}
                   isSelected={selectedLog?.id === log.id}
                   onClick={onLogSelect!}
                   onIconClick={onIconClick!}

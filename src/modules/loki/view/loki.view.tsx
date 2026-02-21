@@ -350,6 +350,7 @@ export default function LokiView() {
       {/* Log Table */}
       {hasQueried ? (
         <LokiLogTable
+          query={query}
           logs={sortedLogs}
           isLoading={isLoading}
           options={options}
