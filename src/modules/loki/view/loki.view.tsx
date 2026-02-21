@@ -89,40 +89,34 @@ export default function LokiView() {
     if (typeof window === "undefined") return;
 
     const searchParams = new URLSearchParams(window.location.search);
-    let restoredQuery = query;
-    let restoredRange = timeRange;
 
-    if (!searchParams.has("q")) {
-      const savedQuery = localStorage.getItem("loki_query");
-      if (savedQuery) {
-        setQuery(savedQuery);
-        restoredQuery = savedQuery;
-      }
-    }
-    if (!searchParams.has("range")) {
-      const savedRange = localStorage.getItem("loki_range");
-      if (savedRange) {
-        try {
-          const parsed = JSON.parse(savedRange);
-          setTimeRange(parsed);
-          restoredRange = parsed;
-        } catch {
-          // Ignore parse errors from localStorage
+    // Defer pushing new state slightly so Next.js router transitions have fully committed.
+    // This fixes nuqs state updates being ignored when navigating client-side from the sidebar.
+    const timer = setTimeout(() => {
+      if (!searchParams.has("q")) {
+        const savedQuery = localStorage.getItem("loki_query");
+        if (savedQuery) {
+          setQuery(savedQuery, { history: "replace" });
         }
       }
-    }
+      if (!searchParams.has("range")) {
+        const savedRange = localStorage.getItem("loki_range");
+        if (savedRange) {
+          try {
+            const parsed = JSON.parse(savedRange);
+            setTimeRange(parsed, { history: "replace" });
+          } catch {
+            // Ignore parse errors from localStorage
+          }
+        }
+      }
 
-    localStorage.setItem("loki_query", restoredQuery);
-    localStorage.setItem("loki_range", JSON.stringify(restoredRange));
-    setIsRestored(true);
+      setIsRestored(true);
+    }, 50);
+
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (!isRestored) return;
-    localStorage.setItem("loki_query", query);
-    localStorage.setItem("loki_range", JSON.stringify(timeRange));
-  }, [query, timeRange, isRestored]);
 
   // Track whether initial mount auto-query has fired
   const isInitialMount = useRef(true);
@@ -135,6 +129,11 @@ export default function LokiView() {
       toast.error(t.queryBar.syntaxError, { description: t.queryBar.syntaxErrorDesc });
       return;
     }
+
+    // Persist to local storage explicitly upon execution
+    localStorage.setItem("loki_query", query);
+    localStorage.setItem("loki_range", JSON.stringify(timeRange));
+
     setIsLoading(true);
     setHasQueried(true);
     setHasMoreOlder(false);
