@@ -233,6 +233,7 @@ export const lokiService = {
     start: number,
     end: number,
     limit: number = 1000,
+    direction: "forward" | "backward" = "backward"
   ): Promise<{ entries: LokiLogEntry[]; streams: LokiStream[] }> => {
     const orgId = getOrgId();
     const params = new URLSearchParams({
@@ -240,6 +241,7 @@ export const lokiService = {
       start: start.toString(),
       end: end.toString(),
       limit: limit.toString(),
+      direction: direction,
     });
     const url = `${LOKI_BASE(orgId)}/query_range?${params}`;
     const res = await client.get<LokiQueryRangeResponse>(url);

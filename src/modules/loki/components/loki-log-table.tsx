@@ -14,10 +14,14 @@ interface LokiLogTranslations {
   logsHeader: string;
   entries: string;
   rowsPerPage: string;
-  loadMore: {
-    loading: string;
-    button: string;
-    next: string;
+  pagination: {
+    loadNewer: string;
+    loadOlder: string;
+    loadingNewer: string;
+    loadingOlder: string;
+    noMoreNewer: string;
+    noMoreOlder: string;
+    failed: string;
   };
   detail: {
     labels: string;
@@ -35,9 +39,12 @@ interface LokiLogTableProps {
   options: LokiDisplayOptions;
   totalRows: number;
   lineLimit: number;
-  limitReached?: boolean;
-  isLoadingMore?: boolean;
-  onLoadMore?: () => void;
+  hasMoreOlder?: boolean;
+  hasMoreNewer?: boolean;
+  isLoadingOlder?: boolean;
+  isLoadingNewer?: boolean;
+  onLoadOlder?: () => void;
+  onLoadNewer?: () => void;
   onLineLimitChange?: (newLimit: number) => void;
   queryDuration?: number | null;
   onLogSelect?: (log: LokiLogEntry) => void;
@@ -154,9 +161,12 @@ export function LokiLogTable({
   options,
   totalRows,
   lineLimit,
-  limitReached,
-  isLoadingMore,
-  onLoadMore,
+  hasMoreOlder,
+  hasMoreNewer,
+  isLoadingOlder,
+  isLoadingNewer,
+  onLoadOlder,
+  onLoadNewer,
   onLineLimitChange,
   onLogSelect,
   onIconClick,
@@ -243,34 +253,32 @@ export function LokiLogTable({
           })}
         </div>
 
-        {/* Load more button */}
-        {/* {limitReached && onLoadMore && (
-          <div className="px-4 py-3 border-t border-slate-800/60 flex items-center justify-center">
-            <button
-              onClick={onLoadMore}
-              disabled={isLoadingMore}
-              className="flex items-center gap-2 px-6 py-2 text-xs font-medium text-orange-400 hover:text-orange-300 bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoadingMore ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  {t.loadMore.loading}
-                </>
-              ) : (
-                <>
-                  {t.loadMore.button}
-                  <span className="text-[10px] text-orange-500/60 font-mono">
-                    ({t.loadMore.next.replace("{limit}", lineLimit.toLocaleString())})
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
-        )} */}
       </div>
 
       {/* Footer / Pagination Section */}
-      <div className="flex-none flex items-center justify-between sm:justify-end px-6 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-8">
+      <div className="flex-none flex items-center justify-between px-6 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-8">
+        <div className="flex items-center gap-2">
+          {hasMoreNewer && onLoadNewer && (
+            <button
+              onClick={onLoadNewer}
+              disabled={isLoadingNewer}
+              className="flex items-center gap-2 px-4 py-1.5 text-xs font-medium text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoadingNewer ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              {t.pagination?.loadNewer || "Newer logs"}
+            </button>
+          )}
+          {hasMoreOlder && onLoadOlder && (
+            <button
+              onClick={onLoadOlder}
+              disabled={isLoadingOlder}
+              className="flex items-center gap-2 px-4 py-1.5 text-xs font-medium text-orange-400 hover:text-orange-300 bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoadingOlder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              {t.pagination?.loadOlder || "Older logs"}
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-3 text-xs text-slate-500 font-bold">
           <span className="opacity-70">{t.rowsPerPage || "Rows per page:"}</span>
           <select

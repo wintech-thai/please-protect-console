@@ -1656,13 +1656,14 @@ export const translations = {
         oldestFirst: "Oldest first",
         limitWarning: "Line limit ({limit}) reached — narrow your query or time range for more specific results.",
       },
-      loadMore: {
-        loading: "Loading older logs...",
-        button: "Load older logs",
-        next: "next {limit}",
-        noMore: "No more logs available.",
-        noMoreInRange: "No more logs available in this time range.",
-        failed: "Failed to load more logs",
+      pagination: {
+        loadNewer: "Newer logs",
+        loadOlder: "Older logs",
+        loadingNewer: "Loading newer logs...",
+        loadingOlder: "Loading older logs...",
+        noMoreNewer: "No newer logs.",
+        noMoreOlder: "No older logs.",
+        failed: "Failed to load logs",
       },
       detail: {
         labels: "Labels",
@@ -1716,12 +1717,13 @@ export const translations = {
         oldestFirst: "เก่าสุดก่อน",
         limitWarning: "ถึงขีดจำกัด ({limit}) แล้ว — จำกัดคำค้นหาหรือช่วงเวลาเพื่อผลลัพธ์ที่เจาะจงขึ้น",
       },
-      loadMore: {
-        loading: "กำลังโหลดบันทึกเก่า...",
-        button: "โหลดบันทึกเก่า",
-        next: "ถัดไป {limit}",
-        noMore: "ไม่มีบันทึกเพิ่มเติม",
-        noMoreInRange: "ไม่มีบันทึกเพิ่มเติมในช่วงเวลานี้",
+      pagination: {
+        loadNewer: "โหลดบันทึกใหม่",
+        loadOlder: "โหลดบันทึกเก่า",
+        loadingNewer: "กำลังโหลดบันทึกใหม่...",
+        loadingOlder: "กำลังโหลดบันทึกเก่า...",
+        noMoreNewer: "ไม่มีบันทึกใหม่เพิ่มเติม",
+        noMoreOlder: "ไม่มีบันทึกเก่าเพิ่มเติม",
         failed: "โหลดบันทึกเพิ่มเติมล้มเหลว",
       },
       detail: {

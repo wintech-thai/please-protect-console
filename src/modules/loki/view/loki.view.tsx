@@ -75,10 +75,12 @@ export default function LokiView() {
   const [logs, setLogs] = useState<LokiLogEntry[]>([]);
   const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [isLoadingNewer, setIsLoadingNewer] = useState(false);
   const [volumeCollapsed, setVolumeCollapsed] = useState(false);
   const [hasQueried, setHasQueried] = useState(false);
-  const [limitReached, setLimitReached] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [hasMoreNewer, setHasMoreNewer] = useState(false);
   const [selectedLog, setSelectedLog] = useState<LokiLogEntry | null>(null);
   const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
 
@@ -89,7 +91,8 @@ export default function LokiView() {
     if (!query.trim()) return;
     setIsLoading(true);
     setHasQueried(true);
-    setLimitReached(false);
+    setHasMoreOlder(false);
+    setHasMoreNewer(false);
     const currentLimit = overrideLimit ?? lineLimit;
 
     try {
@@ -103,7 +106,8 @@ export default function LokiView() {
 
       setLogs(logResult.entries);
       setVolumeData(volumeResult);
-      setLimitReached(logResult.entries.length >= currentLimit);
+      setHasMoreOlder(logResult.entries.length >= currentLimit);
+      setHasMoreNewer(false);
 
       if (logResult.entries.length === 0) {
         toast.info(t.noLogsForQuery);
@@ -117,7 +121,8 @@ export default function LokiView() {
       toast.error(`${t.queryFailed}: ${msg}`);
       setLogs([]);
       setVolumeData([]);
-      setLimitReached(false);
+      setHasMoreOlder(false);
+      setHasMoreNewer(false);
     } finally {
       setIsLoading(false);
     }
@@ -146,51 +151,82 @@ export default function LokiView() {
   }, [timeRange]);
 
   /** Load older logs using the oldest entry's timestamp as cursor */
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadOlder = useCallback(async () => {
     if (!query.trim() || logs.length === 0) return;
-    setIsLoadingMore(true);
+    setIsLoadingOlder(true);
 
     try {
       const { start } = resolveTimeRange(timeRange);
 
-      // Find oldest timestamp in current logs — use as end boundary for next batch
       const oldestNano = logs.reduce((oldest, log) => {
         return log.timestampNano < oldest ? log.timestampNano : oldest;
       }, logs[0].timestampNano);
 
-      // Convert nanoseconds to seconds, subtract 1ns to avoid duplicates
       const endNano = BigInt(oldestNano) - BigInt(1);
       const endSec = Number(endNano / BigInt(1_000_000_000));
 
       if (endSec <= start) {
-        toast.info(t.loadMore.noMoreInRange);
-        setLimitReached(false);
+        toast.info(t.pagination.noMoreOlder);
+        setHasMoreOlder(false);
         return;
       }
 
-      const { entries } = await lokiService.queryRange(
-        query,
-        start,
-        endSec,
-        lineLimit,
-      );
+      const { entries } = await lokiService.queryRange(query, start, endSec, lineLimit, "backward");
 
       if (entries.length === 0) {
-        toast.info(t.loadMore.noMore);
-        setLimitReached(false);
+        toast.info(t.pagination.noMoreOlder);
+        setHasMoreOlder(false);
       } else {
         setLogs((prev) => [...prev, ...entries]);
-        setLimitReached(entries.length >= lineLimit);
+        setHasMoreOlder(entries.length >= lineLimit);
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } }; message?: string };
-      const msg =
-        error?.response?.data?.message ||
-        error?.message ||
-        t.loadMore.failed;
+      const msg = error?.response?.data?.message || error?.message || t.pagination.failed;
       toast.error(msg);
     } finally {
-      setIsLoadingMore(false);
+      setIsLoadingOlder(false);
+    }
+  }, [query, timeRange, logs, lineLimit, t]);
+
+  /** Load newer logs using the newest entry's timestamp as cursor */
+  const handleLoadNewer = useCallback(async () => {
+    if (!query.trim() || logs.length === 0) return;
+    setIsLoadingNewer(true);
+
+    try {
+      const { end } = resolveTimeRange(timeRange);
+
+      const newestNano = logs.reduce((newest, log) => {
+        return log.timestampNano > newest ? log.timestampNano : newest;
+      }, logs[0].timestampNano);
+
+      const startNano = BigInt(newestNano) + BigInt(1);
+      const startSec = Number(startNano / BigInt(1_000_000_000));
+
+      if (startSec >= end) {
+        toast.info(t.pagination.noMoreNewer);
+        setHasMoreNewer(false);
+        return;
+      }
+
+      // Query forward to fetch newer logs
+      const { entries } = await lokiService.queryRange(query, startSec, end, lineLimit, "forward");
+
+      if (entries.length === 0) {
+        toast.info(t.pagination.noMoreNewer);
+        setHasMoreNewer(false);
+      } else {
+        // Because the returned array is newest-first, we just spread it before the old array
+        setLogs((prev) => [...entries, ...prev]);
+        setHasMoreNewer(entries.length >= lineLimit);
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = error?.response?.data?.message || error?.message || t.pagination.failed;
+      toast.error(msg);
+    } finally {
+      setIsLoadingNewer(false);
     }
   }, [query, timeRange, logs, lineLimit, t]);
 
@@ -271,9 +307,12 @@ export default function LokiView() {
           options={options}
           totalRows={sortedLogs.length}
           lineLimit={lineLimit}
-          limitReached={limitReached}
-          isLoadingMore={isLoadingMore}
-          onLoadMore={handleLoadMore}
+          hasMoreOlder={hasMoreOlder}
+          hasMoreNewer={hasMoreNewer}
+          isLoadingOlder={isLoadingOlder}
+          isLoadingNewer={isLoadingNewer}
+          onLoadOlder={handleLoadOlder}
+          onLoadNewer={handleLoadNewer}
           onLineLimitChange={handleLineLimitChange}
           onLogSelect={setSelectedLog}
           onIconClick={(log) => {
