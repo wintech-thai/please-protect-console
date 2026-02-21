@@ -144,7 +144,9 @@ export default function Layer3Page() {
         return {
           id: item.id,
           rootId: item.rootId || item.id,
-          communityId: item.communityId || item["network.community_id"] || "-", 
+          
+          communityId: item.communityId || item["network.community_id"] || item.network?.community_id || "-", 
+          
           node: item.node || "-",
           startTime: dayjs(item.firstPacket).format("MMM D, YYYY HH:mm:ss"),
           stopTime: dayjs(item.lastPacket).format("MMM D, YYYY HH:mm:ss"),

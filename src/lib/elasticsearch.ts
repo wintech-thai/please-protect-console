@@ -172,7 +172,7 @@ export const arkimeService = {
   getSessions: async (orgId: string, query: ArkimeQuery): Promise<ArkimeResponse<ArkimeSession>> => {
     if (!orgId) throw new Error("Organization ID is required.");
 
-    const defaultFields = "firstPacket,lastPacket,ipProtocol,node,totDataBytes,source.ip,source.port,destination.ip,destination.port,totPackets,totBytes,network.packets,network.bytes,source.packets,source.bytes,destination.packets,destination.bytes,client.bytes,server.bytes,communityId";
+    const defaultFields = "firstPacket,lastPacket,ipProtocol,node,totDataBytes,source.ip,source.port,destination.ip,destination.port,totPackets,totBytes,network.packets,network.bytes,source.packets,source.bytes,destination.packets,destination.bytes,client.bytes,server.bytes,communityId,network.community_id";
 
     const params: Record<string, any> = {
       date: "-2", 
