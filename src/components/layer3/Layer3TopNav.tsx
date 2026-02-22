@@ -30,7 +30,9 @@ interface Layer3TopNavProps {
   timeDict: TimePickerTranslations;
   onRefresh: () => void;
   isLoading: boolean;
-  dict?: any;
+  dict?: any; 
+  currentLang?: "EN" | "TH"; 
+  onLangToggle?: () => void; 
   fields?: any[];
 }
 
@@ -45,6 +47,7 @@ export function Layer3TopNav({
   timeDict,
   onRefresh,
   isLoading,
+  dict,
   fields = []
 }: Layer3TopNavProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -119,10 +122,10 @@ export function Layer3TopNav({
         </div>
         <div className="flex flex-col">
           <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">
-            Layer 3 Traffic Analysis
+            {dict?.title || "Layer 3 Traffic Analysis"}
           </h1>
           <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">
-            NETWORK LAYER MONITORING
+            {dict?.subtitle || "NETWORK LAYER MONITORING"}
           </span>
         </div>
       </div>
@@ -202,7 +205,7 @@ export function Layer3TopNav({
         >
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
           <span className="hidden sm:inline">
-            {isLoading ? "Refreshing..." : "Refresh"} 
+            {isLoading ? "Refreshing..." : (dict?.refresh || "Refresh")} 
           </span>
         </button>
 
@@ -213,7 +216,7 @@ export function Layer3TopNav({
               className="border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all active:scale-95"
             >
               <Download size={16} className="text-slate-400" />
-              <span className="text-xs font-bold uppercase tracking-wider hidden md:inline">Export</span>
+              <span className="text-xs font-bold uppercase tracking-wider hidden md:inline">{dict?.export || "Export"}</span>
               <ChevronDown size={14} className="opacity-50" />
             </button>
           </PopoverTrigger>
@@ -223,7 +226,7 @@ export function Layer3TopNav({
               onClick={() => console.log("Download PCAP Triggered")}
             >
               <Download size={14} className="opacity-70" />
-              Download PCAP
+              {dict?.downloadPcap || "Download PCAP"}
             </button>
           </PopoverContent>
         </Popover>

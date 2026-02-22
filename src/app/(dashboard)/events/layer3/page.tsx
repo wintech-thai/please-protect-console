@@ -22,6 +22,7 @@ import { Layer3Flyout } from "@/components/layer3/Layer3Flyout";
 // Context & Locales
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
+import { layer3Dict } from "@/locales/layer3dict"; 
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -36,7 +37,17 @@ const getOrgId = () => {
 };
 
 export default function Layer3Page() {
-  const { language } = useLanguage();
+  // --- 1. Global Language Management ---
+  const { language, setLanguage } = useLanguage();
+  const langKey = (language === "TH" ? "TH" : "EN") as "EN" | "TH";
+  const dict = layer3Dict[langKey]; 
+
+  const toggleLanguage = () => {
+    const nextLang = language === "EN" ? "TH" : "EN";
+    setLanguage(nextLang);
+  };
+
+  // --- 2. State Management ---
   const [searchInput, setSearchInput] = useState("");
   const [luceneQuery, setLuceneQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -60,8 +71,6 @@ export default function Layer3Page() {
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-
-  const dict = useMemo(() => (translations as any).navbar[language] || translations.navbar.EN, [language]);
 
   const timeDict: TimePickerTranslations = useMemo(() => {
     const picker = (translations as any).timePicker?.[language] || (translations as any).timePicker?.EN || {};
@@ -350,7 +359,10 @@ export default function Layer3Page() {
           timeDict={timeDict}
           onRefresh={() => setRefreshKey((k) => k + 1)} 
           isLoading={isLoading}
-          dict={dict}
+          
+          dict={dict.header} 
+          currentLang={langKey}
+          onLangToggle={toggleLanguage}
           fields={fieldsMetadata}
         />
         
@@ -379,6 +391,8 @@ export default function Layer3Page() {
             }}
             onPageChange={setPage} 
             onItemsPerPageChange={setItemsPerPage}
+
+            t={dict.table}
           />
         </div>
         
@@ -387,6 +401,8 @@ export default function Layer3Page() {
           fields={fieldsMetadata} 
           isOpen={!!detailSession} 
           onClose={() => setDetailSession(null)} 
+
+          t={dict.flyout}
         />
       </div>
     </div>
