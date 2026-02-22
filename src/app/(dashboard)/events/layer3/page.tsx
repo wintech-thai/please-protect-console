@@ -133,20 +133,101 @@ export default function Layer3Page() {
       });
 
       const mappedSessions = response.data.map((item: any) => {
-        const pkts = item.totPackets ?? item["network.packets"] ?? item.network?.packets ?? 0;
-        const bts = item.totBytes ?? item["network.bytes"] ?? item.network?.bytes ?? 0;
+        const pkts = item["network.packets"] ?? item.totPackets ?? item.network?.packets ?? 0;
+        const bts = item["network.bytes"] ?? item.totBytes ?? item.network?.bytes ?? 0;
 
         const sIp = item["source.ip"] || item.source?.ip || "-";
         const sPort = item["source.port"] ?? item.source?.port ?? 0;
         const dIp = item["destination.ip"] || item.destination?.ip || "-";
         const dPort = item["destination.port"] ?? item.destination?.port ?? 0;
 
+        const getSeq = (val: any) => {
+          if (val === undefined || val === null || val === "" || val === "-") return "-";
+          const num = Array.isArray(val) ? val[0] : val; 
+          const parsed = Number(num);
+          return isNaN(parsed) ? String(num) : parsed.toLocaleString();
+        };
+
+        const seqSrcRaw = item.tcpseqSrc ?? item["tcpseq.src"] ?? item.tcpseq?.src ?? item["source.tcp_seq"] ?? item.source?.tcp_seq;
+        const seqDstRaw = item.tcpseqDst ?? item["tcpseq.dst"] ?? item.tcpseq?.dst ?? item["destination.tcp_seq"] ?? item.destination?.tcp_seq;
+        
+        const seqSrc = getSeq(seqSrcRaw);
+        const seqDst = getSeq(seqDstRaw);
+
+        const ttlSrc = item.srcTTL ?? item["source.ttl"] ?? item.source?.ttl ?? "-";
+        const ttlDst = item.dstTTL ?? item["destination.ttl"] ?? item.destination?.ttl ?? "-";
+
+        let parsedTcpFlags = "-";
+        const flagsArray: string[] = [];
+        const extractFlag = (label: string, key: string) => {
+          const val = item[`tcpflags.${key}`] ?? (item.tcpflags ? item.tcpflags[key] : undefined);
+          if (val !== undefined) flagsArray.push(`${label} ${val}`);
+        };
+        extractFlag("SYN", "syn");
+        extractFlag("SYN-ACK", "syn-ack");
+        extractFlag("ACK", "ack");
+        extractFlag("PSH", "psh");
+        extractFlag("RST", "rst");
+        extractFlag("FIN", "fin");
+        extractFlag("URG", "urg");
+
+        if (flagsArray.length > 0) {
+          parsedTcpFlags = flagsArray.join("  ");
+        } else if (item.tcpflags && typeof item.tcpflags === 'string') {
+          parsedTcpFlags = item.tcpflags;
+        } else if (item.tcpflags && typeof item.tcpflags === 'object') {
+          parsedTcpFlags = Object.entries(item.tcpflags).map(([k, v]) => `${k.toUpperCase()} ${v}`).join("  ");
+        }
+
+        const buildPayload8 = (hex?: string, utf8?: string) => {
+          if (!hex && !utf8) return "";
+          return `${hex || ''}${utf8 ? ` ( ${utf8} )` : ""}`;
+        };
+
+        const srcP8Hex = item["payload8.src.hex"] ?? item.payload8?.src?.hex ?? item.srcPayload8;
+        const srcP8Utf8 = item["payload8.src.utf8"] ?? item.payload8?.src?.utf8 ?? item.srcPayload8UTF8;
+        const dstP8Hex = item["payload8.dst.hex"] ?? item.payload8?.dst?.hex ?? item.dstPayload8;
+        const dstP8Utf8 = item["payload8.dst.utf8"] ?? item.payload8?.dst?.utf8 ?? item.dstPayload8UTF8;
+
+        const p8Arr: string[] = [];
+        const sP8Str = buildPayload8(srcP8Hex, srcP8Utf8);
+        if (sP8Str) p8Arr.push(`Src ${sP8Str}`);
+        
+        const dP8Str = buildPayload8(dstP8Hex, dstP8Utf8);
+        if (dP8Str) p8Arr.push(`Dst ${dP8Str}`);
+
+        let finalPayload8 = p8Arr.length > 0 ? p8Arr.join("  ") : "-";
+
+        if (finalPayload8 === "-" && item.payload8) {
+          if (typeof item.payload8 === 'string') {
+            finalPayload8 = item.payload8;
+          } else if (Array.isArray(item.payload8)) {
+            finalPayload8 = item.payload8.map((p: string | Record<string, string>) => {
+              if (typeof p === 'object' && p !== null) {
+                const hex = p.hex || '';
+                const utf8 = p.utf8 ? ` (${p.utf8})` : '';
+                return `${hex}${utf8}`;
+              }
+              return String(p);
+            }).join(" | ");
+          } else if (typeof item.payload8 === 'object') {
+             finalPayload8 = JSON.stringify(item.payload8);
+          }
+        }
+
+        const formatMac = (rawMac: any) => {
+          if (!rawMac || rawMac === "-") return "-";
+          if (Array.isArray(rawMac)) return rawMac.length > 0 ? `Mac ${rawMac.join(", ")}` : "-";
+          return `Mac ${rawMac}`;
+        };
+
+        const srcMacRaw = item["source.mac"] ?? item.source?.mac ?? item.srcMac ?? item.mac1 ?? item["mac1-term"] ?? "-";
+        const dstMacRaw = item["destination.mac"] ?? item.destination?.mac ?? item.dstMac ?? item.mac2 ?? item["mac2-term"] ?? "-";
+
         return {
           id: item.id,
           rootId: item.rootId || item.id,
-          
           communityId: item.communityId || item["network.community_id"] || item.network?.community_id || "-", 
-          
           node: item.node || "-",
           startTime: dayjs(item.firstPacket).format("MMM D, YYYY HH:mm:ss"),
           stopTime: dayjs(item.lastPacket).format("MMM D, YYYY HH:mm:ss"),
@@ -161,23 +242,34 @@ export default function Layer3Page() {
           packets: pkts.toLocaleString(),
           bytes: bts.toLocaleString(),
           databytes: (item.totDataBytes || 0).toLocaleString(), 
+
+          tcp_seq_src: seqSrc,
+          tcp_seq_dst: seqDst,
+          ttl_src: ttlSrc,
+          ttl_dst: ttlDst,
           
           source: { 
             ...(item.source || {}), 
             ip: sIp,
             port: sPort,
+            mac: formatMac(srcMacRaw),
             packets: item["source.packets"] ?? item.source?.packets ?? 0,
             bytes: item["source.bytes"] ?? item.source?.bytes ?? 0,
-            databytes: item["client.bytes"] ?? item.client?.bytes ?? 0 
+            databytes: item["client.bytes"] ?? item.client?.bytes ?? 0,
           },
           destination: { 
             ...(item.destination || {}), 
             ip: dIp,
             port: dPort,
+            mac: formatMac(dstMacRaw),
             packets: item["destination.packets"] ?? item.destination?.packets ?? 0,
             bytes: item["destination.bytes"] ?? item.destination?.bytes ?? 0,
-            databytes: item["server.bytes"] ?? item.server?.bytes ?? 0 
+            databytes: item["server.bytes"] ?? item.server?.bytes ?? 0,
           },
+          
+          payload8: finalPayload8,
+          tags: Array.isArray(item.tags) ? item.tags : (item.tags ? [item.tags] : []),
+          tcpflags: parsedTcpFlags,
           
           ssh: item.ssh ? {
             versions: item.ssh.version ? (Array.isArray(item.ssh.version) ? item.ssh.version.join(" ") : item.ssh.version) : "-",
@@ -185,21 +277,13 @@ export default function Layer3Page() {
             hasshServer: item.ssh.hasshServer || "-"
           } : null,
           protocols: item.dns ? ["DNS"] : (item.protocols || []),
-          tags: item.tags || [],
-          payload8: item.payload8 || "-",
-          tcpflags: item.tcpflags ? Object.entries(item.tcpflags).map(([k,v]) => `${k.toUpperCase()} ${v}`).join(" ") : "-",
-          tcp_seq_src: item["source.tcp_seq"] ?? item.source?.tcp_seq ?? 0,
-          tcp_seq_dst: item["destination.tcp_seq"] ?? item.destination?.tcp_seq ?? 0,
-          ttl_src: item["source.ttl"] ?? item.source?.ttl ?? 0,
-          ttl_dst: item["destination.ttl"] ?? item.destination?.ttl ?? 0,
-          etherType: item.etherType || "2,048"
+          etherType: item.ethertype || item.etherType || "2,048 (IPv4)"
         };
       });
 
       setSessions(mappedSessions);
       setTotalHits(response.recordsFiltered || 0);
 
-      // --- สร้าง Histogram Data จาก response.graph ---
       let tcpCount = 0, udpCount = 0, icmpCount = 0;
       mappedSessions.forEach((s: any) => {
         if (s.protocol === "TCP") tcpCount++;
@@ -217,7 +301,6 @@ export default function Layer3Page() {
         const buckets = response.graph.sessionsHisto.map((bucket: [number, number]) => {
           const timestamp = bucket[0];
           const totalCount = bucket[1];
-          
           const estTcp = Math.round(totalCount * ratioTcp);
           const estUdp = Math.round(totalCount * ratioUdp);
           const estIcmp = totalCount - estTcp - estUdp;

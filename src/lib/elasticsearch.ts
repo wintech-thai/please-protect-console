@@ -172,7 +172,23 @@ export const arkimeService = {
   getSessions: async (orgId: string, query: ArkimeQuery): Promise<ArkimeResponse<ArkimeSession>> => {
     if (!orgId) throw new Error("Organization ID is required.");
 
-    const defaultFields = "firstPacket,lastPacket,ipProtocol,node,totDataBytes,source.ip,source.port,destination.ip,destination.port,totPackets,totBytes,network.packets,network.bytes,source.packets,source.bytes,destination.packets,destination.bytes,client.bytes,server.bytes,communityId,network.community_id";
+    const defaultFields = [
+      "firstPacket", "lastPacket", "ipProtocol", "node", "totDataBytes",
+      "source.ip", "source.port", "destination.ip", "destination.port",
+      "totPackets", "totBytes", "network.packets", "network.bytes", 
+      "source.packets", "source.bytes", "destination.packets", "destination.bytes",
+      "client.bytes", "server.bytes", "communityId", "network.community_id",
+      "source.mac", "destination.mac", "srcMac", "dstMac", "mac1-term", "mac2-term",
+      
+      // TCP Sequence & TTL
+      "tcpseqSrc", "tcpseqDst", "tcpseq.src", "tcpseq.dst", "source.tcp_seq", "destination.tcp_seq",
+      "srcTTL", "dstTTL", "source.ttl", "destination.ttl", 
+      
+      // Tags, Flags, Payload
+      "ethertype", "etherType", "tags", "tag", "protocols",
+      "payload8.src.hex", "payload8.src.utf8", "payload8.dst.hex", "payload8.dst.utf8", "srcPayload8", "dstPayload8", "payload8",
+      "tcpflags.syn", "tcpflags.syn-ack", "tcpflags.ack", "tcpflags.psh", "tcpflags.rst", "tcpflags.fin", "tcpflags.urg", "tcpflags"
+    ].join(",");
 
     const params: Record<string, any> = {
       date: "-2", 

@@ -19,22 +19,26 @@ export function Layer3Flyout({ data, fields, isOpen, onClose }: FlyoutProps) {
     return found ? found.friendlyName : defaultName;
   };
 
-  const ArkimeRow = ({ label, value, isMono = false, color = "text-slate-200" }: any) => (
-    <div className="flex items-start py-0.5 px-2 hover:bg-white/[0.03] transition-colors group">
-      <div className="w-[120px] flex-none text-right pr-4">
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/50 inline-block min-w-[95px]">
-          {label}
-        </span>
+  const ArkimeRow = ({ label, value, isMono = false, color = "text-slate-200" }: any) => {
+    const displayValue = value === undefined || value === null || value === "" || value === "Src - | Dst -" ? "-" : value;
+
+    return (
+      <div className="flex items-start py-0.5 px-2 hover:bg-white/[0.03] transition-colors group">
+        <div className="w-[120px] flex-none text-right pr-4">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/50 inline-block min-w-[95px]">
+            {label}
+          </span>
+        </div>
+        <div className={cn(
+          "flex-1 text-[12px] break-all pt-0.5 leading-relaxed",
+          isMono ? "font-mono" : "font-sans",
+          displayValue === "-" ? "text-slate-600" : color
+        )}>
+          {displayValue}
+        </div>
       </div>
-      <div className={cn(
-        "flex-1 text-[12px] break-all pt-0.5 leading-relaxed",
-        isMono ? "font-mono" : "font-sans",
-        color
-      )}>
-        {value !== undefined && value !== null && value !== "" && (!Array.isArray(value) || value.length > 0) ? value : "-"}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const StatRow = ({ label, stats, isSrc = true }: any) => (
     <div className="flex items-center py-1 px-2 border-b border-slate-800/30 last:border-0">
@@ -56,6 +60,13 @@ export function Layer3Flyout({ data, fields, isOpen, onClose }: FlyoutProps) {
       </div>
     </div>
   );
+
+  const formatSrcDst = (src: any, dst: any) => {
+    const s = src !== undefined && src !== null ? src : "-";
+    const d = dst !== undefined && dst !== null ? dst : "-";
+    if (s === "-" && d === "-") return "-";
+    return `Src ${s} | Dst ${d}`;
+  };
 
   return (
     <>
@@ -91,7 +102,7 @@ export function Layer3Flyout({ data, fields, isOpen, onClose }: FlyoutProps) {
             <ArkimeRow label="Node" value={data.node} />
             
             <ArkimeRow label="Protocols" value={data.protocols?.length > 0 ? data.protocols.join(" ") : data.protocol} color="text-blue-400" />
-            <ArkimeRow label="Ethertype" value={`${data.etherType || '2,048'} (IPv4)`} />
+            <ArkimeRow label="Ethertype" value={data.etherType || "2,048 (IPv4)"} />
             <ArkimeRow label="IP Protocol" value={`${data.protocol} (${data.ipProtocol})`} />
             
             <div className="py-2 my-3 border-y border-slate-800/60 bg-slate-900/40 rounded">
@@ -107,17 +118,17 @@ export function Layer3Flyout({ data, fields, isOpen, onClose }: FlyoutProps) {
             <div className="pt-2 mt-2 border-t border-slate-800/60">
                 <ArkimeRow label="Payload8" value={data.payload8} isMono color="text-amber-200/50" />
                 <ArkimeRow label="Tags" value={
-                  data.tags?.length > 0 ? (
+                  data.tags?.length > 0 && data.tags[0] !== undefined ? (
                     <div className="flex flex-wrap gap-1 mt-1">
                       {data.tags.map((t: string) => (
                         <span key={t} className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[9px] font-bold text-slate-400">{t}</span>
                       ))}
                     </div>
-                  ) : null 
+                  ) : "-" 
                 } />
-                <ArkimeRow label="TCP Flags" value={data.tcpflags} color="text-slate-400" />
-                <ArkimeRow label="TCP Initial Seq" value={`Src ${data.tcp_seq_src} | Dst ${data.tcp_seq_dst}`} isMono />
-                <ArkimeRow label="IP TTL" value={`Src ${data.ttl_src} | Dst ${data.ttl_dst}`} isMono />
+                <ArkimeRow label="TCP Flags" value={data.tcpflags} color="text-slate-400 font-bold" />
+                <ArkimeRow label="TCP Initial Seq" value={formatSrcDst(data.tcp_seq_src, data.tcp_seq_dst)} isMono />
+                <ArkimeRow label="IP TTL" value={formatSrcDst(data.ttl_src, data.ttl_dst)} isMono />
             </div>
           </div>
 
