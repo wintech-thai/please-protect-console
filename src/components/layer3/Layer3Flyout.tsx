@@ -1,6 +1,7 @@
 "use client";
 
-import { X, Terminal } from "lucide-react";
+import { useState } from "react";
+import { X, Terminal, Copy, Check, FileJson } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FlyoutProps {
@@ -8,35 +9,51 @@ interface FlyoutProps {
   fields?: any[]; 
   isOpen: boolean;
   onClose: () => void;
-  t?: any; 
+  t?: any;
 }
 
 export function Layer3Flyout({ data, fields, isOpen, onClose, t }: FlyoutProps) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
   if (!data) return null;
 
-  const getFriendlyName = (dbField: string, defaultName: string) => {
-    if (!fields || !Array.isArray(fields) || fields.length === 0) return defaultName;
-    const found = fields.find(f => f.dbField === dbField);
-    return found ? found.friendlyName : defaultName;
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const ArkimeRow = ({ label, value, isMono = false, color = "text-slate-200" }: any) => {
     const displayValue = value === undefined || value === null || value === "" || value === "Src - | Dst -" ? "-" : value;
+    const textToCopy = String(displayValue);
 
     return (
-      <div className="flex items-start py-0.5 px-2 hover:bg-white/[0.03] transition-colors group">
+      <div className="relative flex items-start py-0.5 px-2 hover:bg-white/[0.04] transition-colors group rounded-sm">
         <div className="w-[130px] flex-none text-right pr-4">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/50 inline-block min-w-[100px]">
             {label}
           </span>
         </div>
         <div className={cn(
-          "flex-1 text-[12px] break-all pt-0.5 leading-relaxed",
+          "flex-1 text-[12px] break-all pt-0.5 leading-relaxed pr-8", 
           isMono ? "font-mono" : "font-sans",
           displayValue === "-" ? "text-slate-600" : color
         )}>
           {displayValue}
         </div>
+
+        {displayValue !== "-" && (
+          <button
+            onClick={() => handleCopy(textToCopy, label)}
+            title={`Copy ${label}`}
+            className={cn(
+              "absolute right-2 top-0.5 p-1.5 rounded bg-slate-800 border border-slate-700 text-slate-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-slate-700 hover:text-white",
+              copiedId === label && "opacity-100 text-emerald-400 border-emerald-500/50 bg-emerald-500/10"
+            )}
+          >
+            {copiedId === label ? <Check size={12} /> : <Copy size={12} />}
+          </button>
+        )}
       </div>
     );
   };
@@ -87,12 +104,31 @@ export function Layer3Flyout({ data, fields, isOpen, onClose, t }: FlyoutProps) 
               <p className="text-[10px] font-mono text-blue-400/70 mt-0.5">{data.id}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-all">
-            <X size={20} />
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {/* ปุ่ม Copy JSON */}
+            <button 
+              onClick={() => handleCopy(JSON.stringify(data, null, 2), "all_json")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded border text-[10px] font-bold uppercase tracking-wider transition-all",
+                copiedId === "all_json" 
+                  ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400" 
+                  : "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
+              )}
+            >
+              {copiedId === "all_json" ? <Check size={14} /> : <FileJson size={14} />}
+              {copiedId === "all_json" ? "Copied" : "Copy JSON"}
+            </button>
+
+            <div className="w-px h-6 bg-slate-700 mx-1"></div>
+
+            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-all">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4 pb-10">
           <div className="space-y-0.5 bg-slate-900/20 p-2 rounded-xl border border-slate-800/50 shadow-inner">
             <div className="text-[10px] font-bold text-slate-500 px-2 py-1 mb-2 uppercase tracking-widest border-b border-slate-800/50 bg-slate-800/10 rounded-t">
               {t?.generalInfo || "GENERAL INFORMATION"}
