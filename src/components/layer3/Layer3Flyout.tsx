@@ -65,13 +65,26 @@ export function Layer3Flyout({
       return val !== undefined && val !== null && val !== "-" ? String(val).replace(/,/g, "") : "-";
     };
 
+    const getProtocolFilterValue = () => {
+      if (data.protocols?.length > 0) return data.protocols;
+      if (data.protocol === "ICMPv6") return "icmp"; 
+      return data.protocol?.toLowerCase();
+    };
+
     const fields = [
       { label: "TIME", value: `${data.startTime || "-"} - ${data.stopTime || "-"}` }, 
       { label: "ID", value: data.id, filterValue: cleanIdForFilter(data.id), fieldKey: "id" },
       { label: "ROOT ID", value: data.rootId || data.id, filterValue: cleanIdForFilter(data.rootId || data.id), fieldKey: "rootId" },
       { label: "COMMUNITY ID", value: data.communityId, fieldKey: "network.community_id" },
       { label: "NODE", value: data.node, fieldKey: "node" },
-      { label: "PROTOCOLS", value: data.protocols?.length > 0 ? data.protocols : [data.protocol], fieldKey: "protocols" },
+      
+      { 
+        label: "PROTOCOLS", 
+        value: data.protocols?.length > 0 ? data.protocols : [data.protocol], 
+        filterValue: getProtocolFilterValue(),
+        fieldKey: "protocols" 
+      },
+      
       { label: "ETHERTYPE", value: data.etherType || "2,048 (IPv4)", filterValue: String(data.etherType || "2048").replace(/\D/g, ""), fieldKey: "ethertype" },
       { label: "SRC PACKETS", value: data.source?.packets || 0, fieldKey: "source.packets" },
       { label: "SRC BYTES", value: data.source?.bytes || 0, fieldKey: "source.bytes" },
@@ -90,7 +103,6 @@ export function Layer3Flyout({
       { label: "TAGS", value: data.tags?.length > 0 && data.tags[0] !== undefined ? data.tags : "-", fieldKey: "tags" },
       { label: "TCP INIT SEQ (SRC)", value: data.tcp_seq_src, filterValue: cleanNumber(data.tcp_seq_src), fieldKey: "tcpseq.src" }, 
       { label: "TCP INIT SEQ (DST)", value: data.tcp_seq_dst, filterValue: cleanNumber(data.tcp_seq_dst), fieldKey: "tcpseq.dst" }, 
-      
       { label: "ip.ttl (src)", value: data.ttl_src }, 
       { label: "ip.ttl (dst)", value: data.ttl_dst }, 
     ];
@@ -116,7 +128,7 @@ export function Layer3Flyout({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [data, currentIndex, onNavigate, onClose]);
 
-  if (!data || !t) return null;
+  if (!data) return null;
 
   const handleSearchSubmit = () => setFilterText(searchInput);
   
@@ -218,7 +230,6 @@ export function Layer3Flyout({
         data ? "translate-x-0" : "translate-x-full"
       )}>
         
-        {/* Header Section */}
         <div className="flex-none px-6 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest opacity-80">
@@ -253,7 +264,6 @@ export function Layer3Flyout({
           </button>
         </div>
 
-        {/* Tab Navigation */}
         <div className="flex-none flex px-6 border-b border-slate-800 bg-slate-950">
           <button
             onClick={() => setDrawerTab("table")}
@@ -275,12 +285,10 @@ export function Layer3Flyout({
           </button>
         </div>
 
-        {/* Main Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col bg-slate-950">
           {drawerTab === "table" ? (
             <div className="flex flex-col h-full">
               
-              {/* Search Bar inside Flyout */}
               <div className="flex-none p-4 border-b border-slate-800 bg-slate-950">
                 <div className="relative group">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
@@ -294,13 +302,11 @@ export function Layer3Flyout({
                 </div>
               </div>
 
-              {/* Header Column Labels */}
               <div className="flex-none flex border-b border-slate-800 bg-slate-900/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest select-none">
                 <div className="w-[35%] px-4 py-2 border-r border-slate-800">{t?.flyout?.field || "FIELD"}</div>
                 <div className="w-[65%] px-4 py-2">{t?.flyout?.value || "VALUE"}</div>
               </div>
 
-              {/* Scrollable Data Table */}
               <div className="flex-1 overflow-auto custom-scrollbar pb-10">
                 {displayFields
                   .filter((f) => isDeepMatch(f, filterText))
@@ -341,7 +347,6 @@ export function Layer3Flyout({
               </div>
             </div>
           ) : (
-            /* JSON View Area */
             <div className="p-0 h-full bg-slate-950 flex flex-col">
               <div className="p-4 border-b border-slate-800 flex items-center bg-slate-900/30">
                 <button

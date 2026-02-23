@@ -35,6 +35,8 @@ export interface ArkimeQuery {
   length?: number;   
   start?: number;    
   fields?: string;   
+  order?: string; 
+  sort?: string;
 }
 
 export interface Layer7EventDocument {
@@ -180,11 +182,9 @@ export const arkimeService = {
       "client.bytes", "server.bytes", "communityId", "network.community_id",
       "source.mac", "destination.mac", "srcMac", "dstMac", "mac1-term", "mac2-term",
       
-      // TCP Sequence & TTL
       "tcpseqSrc", "tcpseqDst", "tcpseq.src", "tcpseq.dst", "source.tcp_seq", "destination.tcp_seq",
       "srcTTL", "dstTTL", "source.ttl", "destination.ttl", 
       
-      // Tags, Flags, Payload
       "ethertype", "etherType", "tags", "tag", "protocols",
       "payload8.src.hex", "payload8.src.utf8", "payload8.dst.hex", "payload8.dst.utf8", "srcPayload8", "dstPayload8", "payload8",
       "tcpflags.syn", "tcpflags.syn-ack", "tcpflags.ack", "tcpflags.psh", "tcpflags.rst", "tcpflags.fin", "tcpflags.urg", "tcpflags"
@@ -203,6 +203,14 @@ export const arkimeService = {
 
     if (query.expression && query.expression.trim() !== "") {
       params.expression = query.expression;
+    }
+
+    if (query.order) {
+      params.order = query.order;
+    } else if (query.sort) {
+      params.sort = query.sort;
+    } else {
+      params.order = "firstPacket:desc"; 
     }
 
     const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/sessions`;

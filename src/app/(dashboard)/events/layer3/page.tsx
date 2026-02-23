@@ -188,7 +188,7 @@ export default function Layer3Page() {
     setIsLoading(true);
     try {
       const bounds = (() => {
-        const now = dayjs();
+        const now = dayjs().utc(); 
         let start = now.subtract(15, "minute"),
           end = now;
         if (timeRange.type === "relative") {
@@ -203,8 +203,8 @@ export default function Layer3Page() {
           timeRange.start &&
           timeRange.end
         ) {
-          start = dayjs.unix(timeRange.start);
-          end = dayjs.unix(timeRange.end);
+          start = dayjs.unix(timeRange.start).utc(); 
+          end = dayjs.unix(timeRange.end).utc(); 
         }
         return { start, end };
       })();
@@ -227,12 +227,25 @@ export default function Layer3Page() {
           : combinedFilters;
       }
 
+      // Debug เพื่อให้เห็นภาพว่างส่งอะไรไปยัง Arkime API
+      console.group("🚀 Layer 3 - Arkime API Request");
+      console.log("📝 Expression:", finalExpression || "(none)");
+      console.log("⏰ Time (UTC):", {
+        start: bounds.start.format("YYYY-MM-DD HH:mm:ss"),
+        end: bounds.end.format("YYYY-MM-DD HH:mm:ss"),
+        startUnix: bounds.start.unix(),
+        endUnix: bounds.end.unix()
+      });
+      console.log("📄 Paging:", { page, itemsPerPage, offset: (page - 1) * itemsPerPage });
+      console.groupEnd();
+
       const response = await arkimeService.getSessions(orgId as string, {
         startTime: bounds.start.unix(),
         stopTime: bounds.end.unix(),
         expression: finalExpression,
         length: itemsPerPage,
         start: (page - 1) * itemsPerPage,
+        order: "firstPacket:desc"
       });
 
       const mappedSessions = response.data.map((item: any) => {
@@ -414,6 +427,9 @@ export default function Layer3Page() {
           ttl_src: ttlSrc,
           ttl_dst: ttlDst,
 
+          protocols: item.protocols || [],
+          tags: Array.isArray(item.tags) ? item.tags : (item.tags ? [item.tags] : []),
+
           source: {
             ...(item.source || {}),
             ip: sIp,
@@ -435,11 +451,6 @@ export default function Layer3Page() {
           },
 
           payload8: finalPayload8,
-          tags: Array.isArray(item.tags)
-            ? item.tags
-            : item.tags
-              ? [item.tags]
-              : [],
           tcpflags: parsedTcpFlags,
 
           ssh: item.ssh
@@ -453,7 +464,6 @@ export default function Layer3Page() {
                 hasshServer: item.ssh.hasshServer || "-",
               }
             : null,
-          protocols: item.dns ? ["DNS"] : item.protocols || [],
           etherType: item.ethertype || item.etherType || "2,048 (IPv4)",
         };
       });
@@ -635,7 +645,7 @@ export default function Layer3Page() {
           }}
           onClose={() => setDetailSession(null)}
           onAddFilter={handleAddFilter}
-          t={dict.flyout} 
+          t={dict} 
         />
       </div>
     </div>
