@@ -15,6 +15,7 @@ interface Layer3TableProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (limit: number) => void;
   t: any; 
+  onAddFilter?: (key: string, value: any, operator: "==" | "!=") => void;
 }
 
 export function Layer3Table({

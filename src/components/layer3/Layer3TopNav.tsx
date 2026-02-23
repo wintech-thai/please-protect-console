@@ -148,7 +148,7 @@ export function Layer3TopNav({
             }}
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
-            placeholder="protocols == tcp && srcIp == 1.2.3.4"
+            placeholder="protocols == tcp"
             className="w-full h-10 bg-slate-900 border-slate-700 border rounded-lg pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-blue-500/50 transition-all font-mono"
           />
 

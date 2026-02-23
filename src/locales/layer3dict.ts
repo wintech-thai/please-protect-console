@@ -54,12 +54,17 @@ export const layer3Dict = {
       dst: "DST",
       packets: "Packets",
       bytes: "Bytes",
-      databytes: "Databytes"
+      databytes: "Databytes",
+      searchPlaceholder: "Search fields or values...",
+      field: "FIELD",
+      value: "VALUE",
+      copyJson: "COPY JSON",
+      copied: "COPIED!"
     }
   },
   TH: {
     header: {
-      title: "วิเคราะห์ทราฟฟิก Layer 3",
+      title: "การวิเคราะห์ทราฟฟิก Layer 3",
       subtitle: "การตรวจสอบระดับเครือข่าย",
       hits: "รายการ",
       refresh: "รีเฟรช",
@@ -112,7 +117,12 @@ export const layer3Dict = {
       dst: "ปลายทาง",
       packets: "แพ็กเก็ต",
       bytes: "ไบต์",
-      databytes: "ดาต้าไบต์"
+      databytes: "ดาต้าไบต์",
+      searchPlaceholder: "ค้นหาฟิลด์หรือข้อมูล...",
+      field: "ฟิลด์",
+      value: "ข้อมูล",
+      copyJson: "คัดลอก JSON",
+      copied: "คัดลอกแล้ว!"
     }
   }
 };
