@@ -90,6 +90,7 @@ export function Layer3Flyout({
       { label: "TAGS", value: data.tags?.length > 0 && data.tags[0] !== undefined ? data.tags : "-", fieldKey: "tags" },
       { label: "TCP INIT SEQ (SRC)", value: data.tcp_seq_src, filterValue: cleanNumber(data.tcp_seq_src), fieldKey: "tcpseq.src" }, 
       { label: "TCP INIT SEQ (DST)", value: data.tcp_seq_dst, filterValue: cleanNumber(data.tcp_seq_dst), fieldKey: "tcpseq.dst" }, 
+      
       { label: "ip.ttl (src)", value: data.ttl_src }, 
       { label: "ip.ttl (dst)", value: data.ttl_dst }, 
     ];
@@ -115,7 +116,7 @@ export function Layer3Flyout({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [data, currentIndex, onNavigate, onClose]);
 
-  if (!data) return null;
+  if (!data || !t) return null;
 
   const handleSearchSubmit = () => setFilterText(searchInput);
   
@@ -213,10 +214,11 @@ export function Layer3Flyout({
   return (
     <>
       <div className={cn(
-        "fixed top-0 right-0 h-screen w-[650px] bg-slate-950 border-l border-slate-800 shadow-[-20px_0_60px_rgba(0,0,0,0.7)] z-[100] flex flex-col transition-transform duration-300 ease-in-out",
+        "fixed top-0 right-0 h-screen w-[850px] bg-slate-950 border-l border-slate-800 shadow-[-20px_0_60px_rgba(0,0,0,0.7)] z-[100] flex flex-col transition-transform duration-300 ease-in-out",
         data ? "translate-x-0" : "translate-x-full"
       )}>
         
+        {/* Header Section */}
         <div className="flex-none px-6 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest opacity-80">
@@ -251,6 +253,7 @@ export function Layer3Flyout({
           </button>
         </div>
 
+        {/* Tab Navigation */}
         <div className="flex-none flex px-6 border-b border-slate-800 bg-slate-950">
           <button
             onClick={() => setDrawerTab("table")}
@@ -272,10 +275,12 @@ export function Layer3Flyout({
           </button>
         </div>
 
+        {/* Main Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col bg-slate-950">
           {drawerTab === "table" ? (
             <div className="flex flex-col h-full">
               
+              {/* Search Bar inside Flyout */}
               <div className="flex-none p-4 border-b border-slate-800 bg-slate-950">
                 <div className="relative group">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
@@ -289,11 +294,13 @@ export function Layer3Flyout({
                 </div>
               </div>
 
+              {/* Header Column Labels */}
               <div className="flex-none flex border-b border-slate-800 bg-slate-900/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest select-none">
-                <div className="w-[40%] px-4 py-2 border-r border-slate-800">{t?.flyout?.field || "FIELD"}</div>
-                <div className="w-[60%] px-4 py-2">{t?.flyout?.value || "VALUE"}</div>
+                <div className="w-[35%] px-4 py-2 border-r border-slate-800">{t?.flyout?.field || "FIELD"}</div>
+                <div className="w-[65%] px-4 py-2">{t?.flyout?.value || "VALUE"}</div>
               </div>
 
+              {/* Scrollable Data Table */}
               <div className="flex-1 overflow-auto custom-scrollbar pb-10">
                 {displayFields
                   .filter((f) => isDeepMatch(f, filterText))
@@ -305,11 +312,11 @@ export function Layer3Flyout({
 
                     return (
                       <div key={idx} className="group flex border-b border-slate-900 hover:bg-slate-900/30 transition-colors text-sm relative">
-                        <div className="w-[40%] px-4 py-2 border-r border-slate-900 flex items-center justify-between min-w-0 group/field">
+                        <div className="w-[35%] px-4 py-2 border-r border-slate-900 flex items-center justify-between min-w-0 group/field">
                           
                           <div className="flex items-center min-w-0">
                             <span className="font-semibold text-blue-400/90 truncate select-text cursor-text" title={f.fieldKey || f.label}>
-                              {f.fieldKey || f.label}
+                              {f.label}
                             </span>
                           </div>
 
@@ -325,7 +332,7 @@ export function Layer3Flyout({
                           )}
                         </div>
                         
-                        <div className="w-[60%] px-4 py-2 flex items-center min-w-0 break-all">
+                        <div className="w-[65%] px-4 py-2 flex items-center min-w-0 break-all">
                           {renderValueCell(f)}
                         </div>
                       </div>
@@ -334,6 +341,7 @@ export function Layer3Flyout({
               </div>
             </div>
           ) : (
+            /* JSON View Area */
             <div className="p-0 h-full bg-slate-950 flex flex-col">
               <div className="p-4 border-b border-slate-800 flex items-center bg-slate-900/30">
                 <button
