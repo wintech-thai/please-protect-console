@@ -331,7 +331,7 @@ export function LokiLogTable({
       </div>
 
       {/* Footer / Pagination Section */}
-      <div className="flex-none flex items-center justify-between px-6 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-8">
+      <div className="flex-none flex items-center justify-between pr-6 pl-2 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-8">
         <div className="flex items-center gap-2">
           {hasMoreNewer && onLoadNewer && (
             <button
