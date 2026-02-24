@@ -27,6 +27,8 @@ const getDynamicProtocolColor = (proto: string) => {
 
 export function Layer3Histogram({ data = [], totalHits, interval, maxDocCount, isLoading }: HistogramProps) {
   const axisLabelStep = Math.max(Math.floor(data.length / 8), 1);
+  
+  const safeMax = Math.max(maxDocCount, 10);
 
   return (
     <div className="flex-none h-56 bg-slate-900/50 border-b border-slate-800 p-6 pb-12 flex flex-col backdrop-blur-sm relative z-0 select-none">
@@ -64,16 +66,16 @@ export function Layer3Histogram({ data = [], totalHits, interval, maxDocCount, i
           const isRightHalf = i > data.length / 2;
 
           return (
-            <div key={i} className="flex-1 min-w-0 h-full flex flex-col justify-end group relative cursor-pointer">
+            <div key={i} className="flex-1 min-w-0 max-w-[40px] h-full flex flex-col justify-end group relative cursor-pointer mx-auto">
               
-              <div className="absolute inset-y-0 inset-x-0 bg-blue-500/[0.05] hidden group-hover:block z-0 pointer-events-none" />
+              <div className="absolute inset-y-0 -inset-x-1 bg-blue-500/[0.05] hidden group-hover:block z-0 pointer-events-none rounded-sm" />
 
               <div className="w-full flex flex-col justify-end h-full z-10 relative opacity-85 group-hover:opacity-100 transition-opacity">
                 {allBuckets.map((sub: any) => (
                   <div
                     key={sub.key}
                     style={{
-                      height: `${(sub.doc_count / (maxDocCount || 1)) * 100}%`,
+                      height: `${(sub.doc_count / safeMax) * 100}%`,
                       backgroundColor: getDynamicProtocolColor(sub.key),
                     }}
                     className={cn(

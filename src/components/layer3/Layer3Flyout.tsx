@@ -67,7 +67,7 @@ export function Layer3Flyout({
 
     const getProtocolFilterValue = () => {
       if (data.protocols?.length > 0) return data.protocols;
-      if (data.protocol === "ICMPv6") return "icmp"; 
+      if (data.protocol === "ICMP6") return "icmp"; 
       return data.protocol?.toLowerCase();
     };
 

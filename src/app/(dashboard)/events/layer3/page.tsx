@@ -409,7 +409,7 @@ export default function Layer3Page() {
               : item.ipProtocol === 17
                 ? "UDP"
                 : item.ipProtocol === 58
-                  ? "ICMPv6"
+                  ? "ICMP6"
                   : "ICMP",
           ipProtocol: item.ipProtocol,
 
@@ -547,7 +547,11 @@ export default function Layer3Page() {
             setPage(1);
           }}
           timeDict={timeDict}
-          onRefresh={() => setRefreshKey((k) => k + 1)}
+          onRefresh={() => {
+            setLuceneQuery(searchInput); 
+            setPage(1);                 
+            setRefreshKey((k) => k + 1); 
+          }}
           isLoading={isLoading}
           dict={dict.header}
           currentLang={langKey}
