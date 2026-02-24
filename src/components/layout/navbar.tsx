@@ -17,7 +17,10 @@ import {
   Users,
   Key,
   FileText,
-  ShieldAlert
+  ShieldAlert,
+  PanelLeft,
+  Target,
+  Network,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -47,7 +50,12 @@ interface NavItem {
   children?: { label: string; href: string; icon?: React.ReactNode }[];
 }
 
-export function Navbar() {
+interface NavbarProps {
+  hasSidebar?: boolean;
+  onToggleSidebar?: () => void;
+}
+
+export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -106,6 +114,8 @@ export function Navbar() {
         { label: t.layer7, href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
         { label: t.layer3, href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
         { label: t.alerts, href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
+        { label: t.eventIoc, href: "#", icon: <Target className="w-4 h-4 mr-2" /> },
+        { label: t.subnetMapping, href: "#", icon: <Network className="w-4 h-4 mr-2" /> },
       ]
     },
     {
@@ -118,11 +128,16 @@ export function Navbar() {
         { label: t.audit, href: "/admin/audit-log", icon: <FileText className="w-4 h-4 mr-2" /> },
       ]
     },
+    {
+      label: t.system,
+      href: "/system/organization/domain-certificate",
+    },
   ], [t]);
 
   const isActive = (path: string) => {
     if (path === "/overview") return pathname === path;
     if (path === "/admin/users") return pathname.startsWith("/admin");
+    if (path.startsWith("/system")) return pathname.startsWith("/system");
     return pathname.startsWith(path);
   };
 
@@ -141,6 +156,15 @@ export function Navbar() {
 
           {/* Logo Section */}
           <div className="flex items-center gap-3">
+            {hasSidebar && onToggleSidebar && (
+              <button
+                onClick={onToggleSidebar}
+                className="flex md:hidden items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
+                title="Toggle sidebar"
+              >
+                <PanelLeft className="w-5 h-5" />
+              </button>
+            )}
             <div className="relative w-10 h-10 flex items-center justify-center">
               <Image
                 src="/img/rtarf.png"
@@ -161,7 +185,7 @@ export function Navbar() {
             {navItems.map((item) => {
               if (item.children) {
                 return (
-                  <DropdownMenu key={item.href} modal={false}>
+                  <DropdownMenu key={item.label} modal={false}>
                     <DropdownMenuTrigger asChild>
                       <button
                         className={`
@@ -179,9 +203,12 @@ export function Navbar() {
 
                     <DropdownMenuContent align="start" className="bg-[#0B1120] border border-blue-900/30 shadow-xl shadow-black/50 rounded-lg mt-2 min-w-[220px] p-1 text-blue-100">
                       {item.children.map((subItem) => (
-                        <DropdownMenuItem key={subItem.href} asChild>
+                        <DropdownMenuItem key={subItem.label} asChild>
                           <Link
                             href={subItem.href}
+                            onClick={(e) => {
+                                if (subItem.href === "#") e.preventDefault();
+                            }}
                             className={cn(
                               "flex items-center px-3 py-3 text-base rounded-md cursor-pointer outline-none transition-colors w-full",
                               pathname === subItem.href
@@ -201,7 +228,7 @@ export function Navbar() {
 
               return (
                 <Link
-                  key={item.href}
+                  key={item.label}
                   href={item.href}
                   className={cn(
                     "flex items-center gap-1 px-4 py-2 text-base font-medium transition-all duration-200 rounded-md",
@@ -264,7 +291,7 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* User Profile Dropdown with Tooltip */}
+            {/* User Profile Dropdown */}
             <DropdownMenu modal={false}>
               <TooltipProvider disableHoverableContent>
                 <Tooltip delayDuration={100}>
@@ -340,7 +367,10 @@ export function Navbar() {
                 <Link
                   href={item.href}
                   className="block px-4 py-4 text-base font-medium text-slate-300 border-b border-blue-900/30 hover:bg-blue-900/20 hover:text-cyan-400"
-                  onClick={() => !item.children && setIsMobileMenuOpen(false)}
+                  onClick={(e) => {
+                    if (item.href === "#") e.preventDefault();
+                    if (!item.children && item.href !== "#") setIsMobileMenuOpen(false);
+                  }}
                 >
                   {item.label}
                 </Link>
@@ -348,10 +378,13 @@ export function Navbar() {
                   <div className="bg-[#020617]/50 pl-4 border-b border-blue-900/30">
                     {item.children.map((subItem) => (
                       <Link
-                        key={subItem.href}
+                        key={subItem.label}
                         href={subItem.href}
                         className="flex items-center gap-2 px-4 py-3 text-base text-slate-400 hover:text-cyan-400"
-                        onClick={() => setIsMobileMenuOpen(false)}
+                        onClick={(e) => {
+                          if (subItem.href === "#") e.preventDefault();
+                          else setIsMobileMenuOpen(false);
+                        }}
                       >
                         {subItem.icon}
                         {subItem.label}

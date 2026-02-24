@@ -1,394 +1,623 @@
 "use client";
 
-import { useState, Fragment, useEffect } from "react";
-import { 
-  Search, 
-  Filter, 
-  ShieldCheck, 
-  ShieldBan, 
-  Activity,
-  ArrowRight,
-  Monitor,
-  ChevronDown,
-  ChevronRight,
-  Network,
-  Info,
-  ChevronLeft, 
-  ChevronsLeft,
-  ChevronsRight
-} from "lucide-react";
-import { useLanguage } from "@/context/LanguageContext"; 
-import { translations } from "@/locales/dict"; 
+import { useState, useEffect, useCallback, useMemo } from "react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import { toast } from "sonner";
+import { Filter, X, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// Mock Data
-const BASE_TIME = new Date("2024-01-16T12:00:00Z").getTime();
+// Services & Types
+import { arkimeService } from "@/lib/elasticsearch";
+import {
+  TimeRangeValue,
+  TimePickerTranslations,
+} from "@/modules/dashboard/components/advanced-time-selector";
 
-const EVENTS = Array.from({ length: 200 }, (_, i) => ({
-  id: i + 1,
-  time: new Date(BASE_TIME - i * 60000).toISOString(),
-  proto: i % 3 === 0 ? "UDP" : i % 5 === 0 ? "ICMP" : "TCP",
-  srcIp: `192.168.1.${50 + (i % 200)}`,
-  srcPort: 54412 + i,
-  srcCountry: i % 4 === 0 ? "RU" : "TH",
-  srcAsn: i % 2 === 0 ? "TRUE-INTERNET" : "3BB-BROADBAND",
-  dstIp: "104.21.55.2",
-  dstPort: 443,
-  dstCountry: "US",
-  dstAsn: "CLOUDFLARENET",
-  action: i % 5 === 0 ? "BLOCK" : "ALLOW",
-  size: `${(i + 1) * 128} B`,
-  info: i % 5 === 0 ? "Potential Attack Blocked" : "Normal Traffic Flow",
-  flags: i % 3 === 0 ? ["SYN"] : ["PSH", "ACK"],
-  ttl: 64,
-  interface: "eth0"
-}));
+// Components
+import { Layer3TopNav } from "@/components/layer3/Layer3TopNav";
+import { Layer3Histogram } from "@/components/layer3/Layer3Histogram";
+import { Layer3Table } from "@/components/layer3/Layer3Table";
+import { Layer3Flyout } from "@/components/layer3/Layer3Flyout";
+
+// Context & Locales
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
+import { layer3Dict } from "@/locales/layer3dict";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const getOrgId = () => {
+  if (typeof window === "undefined") return null;
+  return (
+    localStorage.getItem("orgId") ||
+    localStorage.getItem("currentOrgId") ||
+    null
+  );
+};
+
+interface FilterItem {
+  id: string;
+  key: string;
+  value: any;
+  operator: "==" | "!=";
+}
+
+const needsQuotes = (key: string, val: any) => {
+  if (typeof val !== "string") return false;
+  if (key.match(/\.(ip|port|packets|bytes|ttl)$/i) || key === "ipProtocol")
+    return false;
+  if (!isNaN(Number(val)) && val.trim() !== "") return false;
+
+  return true; 
+};
 
 export default function Layer3Page() {
-  const { language } = useLanguage(); 
-  const t = translations.layer3[language as keyof typeof translations.layer3] || translations.layer3.EN;
-  const [searchTerm, setSearchTerm] = useState("");
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const { language, setLanguage } = useLanguage();
+  const langKey = (language === "TH" ? "TH" : "EN") as "EN" | "TH";
+  const dict = layer3Dict[langKey];
 
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25); 
-
-  const toggleRow = (id: number) => {
-    setExpandedRow(expandedRow === id ? null : id);
+  const toggleLanguage = () => {
+    const nextLang = language === "EN" ? "TH" : "EN";
+    setLanguage(nextLang);
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, itemsPerPage]);
+  const [searchInput, setSearchInput] = useState("");
+  const [luceneQuery, setLuceneQuery] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const formatDetailedTime = (isoString: string) => {
-    try {
-      const date = new Date(isoString);
-      const locale = language === "TH" ? "th-TH" : "en-US";
-      const timeStr = date.toLocaleTimeString(locale, { 
-        hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' 
-      });
-      const ms = date.getMilliseconds().toString().padStart(3, '0');
-      const dateStr = date.toLocaleDateString(locale, {
-        day: '2-digit', month: '2-digit', year: 'numeric'
-      });
-      return { timeStr, ms, dateStr };
-    } catch (e) {
-      return { timeStr: isoString, ms: "000", dateStr: "-" };
-    }
-  };
+  const [activeFilters, setActiveFilters] = useState<FilterItem[]>([]);
 
-  const filteredEvents = EVENTS.filter((event) => {
-    const term = searchTerm.toLowerCase();
-    return (
-      event.srcIp.includes(term) ||
-      event.dstIp.includes(term) ||
-      event.proto.toLowerCase().includes(term) ||
-      event.info.toLowerCase().includes(term)
-    );
+  const [timeRange, setTimeRange] = useState<TimeRangeValue>({
+    type: "relative",
+    value: "15m",
+    label: "Last 15 minutes",
   });
 
-  const totalItems = filteredEvents.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentEvents = filteredEvents.slice(startIndex, endIndex);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [fieldsMetadata, setFieldsMetadata] = useState<any[]>([]);
+  const [totalHits, setTotalHits] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-        setCurrentPage(page);
-        setExpandedRow(null);
+  const [histogramData, setHistogramData] = useState<any[]>([]);
+  const [currentInterval, setCurrentInterval] = useState("60s");
+
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [detailSession, setDetailSession] = useState<any | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  const timeDict: TimePickerTranslations = useMemo(() => {
+    const picker =
+      (translations as any).timePicker?.[language] ||
+      (translations as any).timePicker?.EN ||
+      {};
+    return {
+      absoluteTitle: picker.absoluteTitle || "Absolute Range",
+      from: picker.from || "From",
+      to: picker.to || "To",
+      apply: picker.apply || "Apply",
+      searchPlaceholder: picker.searchPlaceholder || "Search...",
+      customRange: picker.customRange || "Custom Range",
+      last5m: picker.last5m || "Last 5 minutes",
+      last15m: picker.last15m || "Last 15 minutes",
+      last30m: picker.last30m || "Last 30 minutes",
+      last1h: picker.last1h || "Last 1 hour",
+      last3h: picker.last3h || "Last 3 hours",
+      last6h: picker.last6h || "Last 6 hours",
+      last12h: picker.last12h || "Last 12 hours",
+      last24h: picker.last24h || "Last 24 hours",
+      last2d: picker.last2d || "Last 2 days",
+      last7d: picker.last7d || "Last 7 days",
+      last30d: picker.last30d || "Last 30 days",
+      ...picker,
+    };
+  }, [language]);
+
+  const maxDocCount = useMemo(() => {
+    if (!histogramData || histogramData.length === 0) return 1;
+    return Math.max(...histogramData.map((b) => b.doc_count || 0), 1);
+  }, [histogramData]);
+
+  const handleAddFilter = useCallback(
+    (key: string, value: any, operator: "==" | "!=") => {
+      if (typeof value === "object" && value !== null) return;
+
+      let processedValue = value;
+
+      if (typeof processedValue === "string") {
+        processedValue = processedValue.replace(/^['"](.*)['"]$/, "$1");
+      }
+
+      const caseSensitiveFields = [
+        "id",
+        "rootId",
+        "network.community_id",
+        "communityId",
+        "payload8",
+        "ssh.hassh",
+        "ssh.hasshServer",
+      ];
+
+      if (
+        typeof processedValue === "string" &&
+        !caseSensitiveFields.includes(key)
+      ) {
+        processedValue = processedValue.toLowerCase();
+      }
+
+      setActiveFilters((prev) => {
+        const filtered = prev.filter(
+          (f) => !(f.key === key && f.value === processedValue),
+        );
+        return [
+          ...filtered,
+          {
+            id: `${key}-${processedValue}-${Date.now()}`,
+            key,
+            value: processedValue,
+            operator,
+          },
+        ];
+      });
+      setPage(1);
+    },
+    [],
+  );
+
+  const fetchMetadata = useCallback(async () => {
+    const orgId = getOrgId();
+    try {
+      const data = await arkimeService.getFields(orgId as string);
+      if (data && !Array.isArray(data) && typeof data === "object") {
+        const arrayData = Object.entries(data).map(([key, value]: any) => ({
+          dbField: key,
+          exp: value.exp || key,
+          friendlyName: value.friendlyName || key,
+        }));
+        setFieldsMetadata(arrayData);
+      }
+    } catch (err) {}
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    const orgId = getOrgId();
+    setIsLoading(true);
+    try {
+      const bounds = (() => {
+        const now = dayjs().utc(); 
+        let start = now.subtract(15, "minute"),
+          end = now;
+        if (timeRange.type === "relative") {
+          const num = parseInt(timeRange.value.replace(/\D/g, ""));
+          const unit = timeRange.value.replace(/\d/g, "");
+          start = now.subtract(
+            num,
+            unit === "m" ? "minute" : unit === "h" ? "hour" : "day",
+          );
+        } else if (
+          timeRange.type === "absolute" &&
+          timeRange.start &&
+          timeRange.end
+        ) {
+          start = dayjs.unix(timeRange.start).utc(); 
+          end = dayjs.unix(timeRange.end).utc(); 
+        }
+        return { start, end };
+      })();
+
+      let finalExpression = luceneQuery ? `(${luceneQuery})` : "";
+      if (activeFilters.length > 0) {
+        const filterExprs = activeFilters.map((f) => {
+          let safeValue = f.value;
+
+          if (needsQuotes(f.key, safeValue)) {
+            if (!safeValue.startsWith('"') && !safeValue.endsWith('"')) {
+              safeValue = `"${safeValue}"`;
+            }
+          }
+          return `${f.key} ${f.operator} ${safeValue}`;
+        });
+        const combinedFilters = filterExprs.join(" && ");
+        finalExpression = finalExpression
+          ? `${finalExpression} && ${combinedFilters}`
+          : combinedFilters;
+      }
+
+      console.group("🚀 Layer 3 - Arkime API Request");
+      console.log("📝 Expression:", finalExpression || "(none)");
+      console.log("⏰ Time (UTC):", {
+        start: bounds.start.format("YYYY-MM-DD HH:mm:ss"),
+        end: bounds.end.format("YYYY-MM-DD HH:mm:ss"),
+        startUnix: bounds.start.unix(),
+        endUnix: bounds.end.unix()
+      });
+      console.log("📄 Paging:", { page, itemsPerPage, offset: (page - 1) * itemsPerPage });
+      console.groupEnd();
+
+      const response = await arkimeService.getSessions(orgId as string, {
+        startTime: bounds.start.unix(),
+        stopTime: bounds.end.unix(),
+        expression: finalExpression,
+        length: itemsPerPage,
+        start: (page - 1) * itemsPerPage,
+        order: "firstPacket:desc"
+      });
+
+      const mappedSessions = response.data.map((item: any) => {
+        const pkts = item["network.packets"] ?? item.totPackets ?? item.network?.packets ?? 0;
+        const bts = item["network.bytes"] ?? item.totBytes ?? item.network?.bytes ?? 0;
+        const sIp = item["source.ip"] || item.source?.ip || "-";
+        const sPort = item["source.port"] ?? item.source?.port ?? 0;
+        const dIp = item["destination.ip"] || item.destination?.ip || "-";
+        const dPort = item["destination.port"] ?? item.destination?.port ?? 0;
+
+        const getSeq = (val: any) => {
+          if (val === undefined || val === null || val === "" || val === "-") return "-";
+          const num = Array.isArray(val) ? val[0] : val;
+          const parsed = Number(num);
+          return isNaN(parsed) ? String(num) : parsed.toLocaleString();
+        };
+
+        const seqSrcRaw = item.tcpseqSrc ?? item["tcpseq.src"] ?? item.tcpseq?.src ?? item["source.tcp_seq"] ?? item.source?.tcp_seq;
+        const seqDstRaw = item.tcpseqDst ?? item["tcpseq.dst"] ?? item.tcpseq?.dst ?? item["destination.tcp_seq"] ?? item.destination?.tcp_seq;
+        const seqSrc = getSeq(seqSrcRaw);
+        const seqDst = getSeq(seqDstRaw);
+
+        const ttlSrc = item.srcTTL ?? item["source.ttl"] ?? item.source?.ttl ?? "-";
+        const ttlDst = item.dstTTL ?? item["destination.ttl"] ?? item.destination?.ttl ?? "-";
+
+        let parsedTcpFlags = "-";
+        const flagsArray: string[] = [];
+        const extractFlag = (label: string, key: string) => {
+          const val = item[`tcpflags.${key}`] ?? (item.tcpflags ? item.tcpflags[key] : undefined);
+          if (val !== undefined) flagsArray.push(`${label} ${val}`);
+        };
+        extractFlag("SYN", "syn");
+        extractFlag("SYN-ACK", "syn-ack");
+        extractFlag("ACK", "ack");
+        extractFlag("PSH", "psh");
+        extractFlag("RST", "rst");
+        extractFlag("FIN", "fin");
+        extractFlag("URG", "urg");
+
+        if (flagsArray.length > 0) {
+          parsedTcpFlags = flagsArray.join("  ");
+        } else if (item.tcpflags && typeof item.tcpflags === "string") {
+          parsedTcpFlags = item.tcpflags;
+        } else if (item.tcpflags && typeof item.tcpflags === "object") {
+          parsedTcpFlags = Object.entries(item.tcpflags).map(([k, v]) => `${k.toUpperCase()} ${v}`).join("  ");
+        }
+
+        const buildPayload8 = (hex?: string, utf8?: string) => {
+          if (!hex && !utf8) return "";
+          return `${hex || ""}${utf8 ? ` ( ${utf8} )` : ""}`;
+        };
+
+        const srcP8Hex = item["payload8.src.hex"] ?? item.payload8?.src?.hex ?? item.srcPayload8;
+        const srcP8Utf8 = item["payload8.src.utf8"] ?? item.payload8?.src?.utf8 ?? item.srcPayload8UTF8;
+        const dstP8Hex = item["payload8.dst.hex"] ?? item.payload8?.dst?.hex ?? item.dstPayload8;
+        const dstP8Utf8 = item["payload8.dst.utf8"] ?? item.payload8?.dst?.utf8 ?? item.dstPayload8UTF8;
+
+        const p8Arr: string[] = [];
+        const sP8Str = buildPayload8(srcP8Hex, srcP8Utf8);
+        if (sP8Str) p8Arr.push(`Src ${sP8Str}`);
+
+        const dP8Str = buildPayload8(dstP8Hex, dstP8Utf8);
+        if (dP8Str) p8Arr.push(`Dst ${dP8Str}`);
+
+        let finalPayload8 = p8Arr.length > 0 ? p8Arr.join("  ") : "-";
+
+        if (finalPayload8 === "-" && item.payload8) {
+          if (typeof item.payload8 === "string") {
+            finalPayload8 = item.payload8;
+          } else if (Array.isArray(item.payload8)) {
+            finalPayload8 = item.payload8.map((p: string | Record<string, string>) => {
+              if (typeof p === "object" && p !== null) {
+                const hex = p.hex || "";
+                const utf8 = p.utf8 ? ` (${p.utf8})` : "";
+                return `${hex}${utf8}`;
+              }
+              return String(p);
+            }).join(" | ");
+          } else if (typeof item.payload8 === "object") {
+            finalPayload8 = JSON.stringify(item.payload8);
+          }
+        }
+
+        const formatMac = (rawMac: any) => {
+          if (!rawMac || rawMac === "-") return "-";
+          if (Array.isArray(rawMac)) return rawMac.length > 0 ? `Mac ${rawMac.join(", ")}` : "-";
+          return `Mac ${rawMac}`;
+        };
+
+        const srcMacRaw = item["source.mac"] ?? item.source?.mac ?? item.srcMac ?? item.mac1 ?? item["mac1-term"] ?? "-";
+        const dstMacRaw = item["destination.mac"] ?? item.destination?.mac ?? item.dstMac ?? item.mac2 ?? item["mac2-term"] ?? "-";
+
+        let infoProtocols = item.protocols || [];
+        if (infoProtocols.length === 0 && (item.ipProtocol === 1 || item.ipProtocol === 58)) {
+          infoProtocols = ["icmp"];
+        } else {
+          infoProtocols = infoProtocols.map((p: string) => 
+            (p.toLowerCase() === "icmp6" || p.toLowerCase() === "icmpv6") ? "icmp" : p
+          );
+        }
+
+        return {
+          id: item.id,
+          rootId: item.rootId || item.id,
+          communityId: item.communityId || item["network.community_id"] || item.network?.community_id || "-",
+          node: item.node || "-",
+          startTime: dayjs(item.firstPacket).format("MMM D, YYYY HH:mm:ss"),
+          stopTime: dayjs(item.lastPacket).format("MMM D, YYYY HH:mm:ss"),
+          protocol: item.ipProtocol === 6 ? "TCP" : item.ipProtocol === 17 ? "UDP" : item.ipProtocol === 58 ? "ICMP6" : "ICMP",
+          ipProtocol: item.ipProtocol,
+          srcIp: sIp,
+          srcPort: sPort,
+          dstIp: dIp,
+          dstPort: dPort,
+          packets: pkts.toLocaleString(),
+          bytes: bts.toLocaleString(),
+          databytes: (item.totDataBytes || 0).toLocaleString(),
+          tcp_seq_src: seqSrc,
+          tcp_seq_dst: seqDst,
+          ttl_src: ttlSrc,
+          ttl_dst: ttlDst,
+          protocols: infoProtocols,
+          tags: Array.isArray(item.tags) ? item.tags : (item.tags ? [item.tags] : []),
+          source: {
+            ...(item.source || {}),
+            ip: sIp,
+            port: sPort,
+            mac: formatMac(srcMacRaw),
+            packets: item["source.packets"] ?? item.source?.packets ?? 0,
+            bytes: item["source.bytes"] ?? item.source?.bytes ?? 0,
+            databytes: item["client.bytes"] ?? item.client?.bytes ?? 0,
+          },
+          destination: {
+            ...(item.destination || {}),
+            ip: dIp,
+            port: dPort,
+            mac: formatMac(dstMacRaw),
+            packets: item["destination.packets"] ?? item.destination?.packets ?? 0,
+            bytes: item["destination.bytes"] ?? item.destination?.bytes ?? 0,
+            databytes: item["server.bytes"] ?? item.server?.bytes ?? 0,
+          },
+          payload8: finalPayload8,
+          tcpflags: parsedTcpFlags,
+          ssh: item.ssh ? {
+            versions: item.ssh.version ? Array.isArray(item.ssh.version) ? item.ssh.version.join(" ") : item.ssh.version : "-",
+            hassh: item.ssh.hassh || "-",
+            hasshServer: item.ssh.hasshServer || "-",
+          } : null,
+          etherType: item.ethertype || item.etherType || "2,048 (IPv4)",
+          
+          http: {
+            host: item["host.http"] ?? item.host?.http ?? item["http.host"] ?? item.http?.host,
+          },
+          
+          tls: {
+            version: item["tls.version"] ?? item.tls?.version,
+            cipher: item["tls.cipher"] ?? item.tls?.cipher,
+            srcSessionId: item["tls.sessionid"] ?? item.tls?.sessionid ?? item["tls.session_id"] ?? item.tls?.session_id ?? item["tls.sessionId"] ?? item.tls?.sessionId,
+            ja3: item["tls.ja3"] ?? item.tls?.ja3 ?? item.ja3,
+            ja3s: item["tls.ja3s"] ?? item.tls?.ja3s ?? item.ja3s,
+            ja4: item["tls.ja4"] ?? item.tls?.ja4 ?? item.ja4,
+          },
+        };
+      });
+
+      setSessions(mappedSessions);
+      setTotalHits(response.recordsFiltered || 0);
+
+      let tcpCount = 0, udpCount = 0, icmpCount = 0;
+      mappedSessions.forEach((s: any) => {
+        if (s.protocol === "TCP") tcpCount++;
+        else if (s.protocol === "UDP") udpCount++;
+        else icmpCount++;
+      });
+      const dataTotal = Math.max(tcpCount + udpCount + icmpCount, 1);
+      const ratioTcp = tcpCount / dataTotal;
+      const ratioUdp = udpCount / dataTotal;
+
+      if (response.graph && response.graph.sessionsHisto) {
+        const diffSec = bounds.end.unix() - bounds.start.unix();
+        const originalIntervalSec = response.graph.interval || 60;
+        
+        let targetIntervalSec = Math.ceil(diffSec / 60); 
+        
+        if (targetIntervalSec <= 1) targetIntervalSec = 1;
+        else if (targetIntervalSec <= 5) targetIntervalSec = 5;
+        else if (targetIntervalSec <= 10) targetIntervalSec = 10;
+        else if (targetIntervalSec <= 15) targetIntervalSec = 15;
+        else if (targetIntervalSec <= 30) targetIntervalSec = 30;
+        else if (targetIntervalSec <= 60) targetIntervalSec = 60;
+        else if (targetIntervalSec <= 5 * 60) targetIntervalSec = 5 * 60;
+        else if (targetIntervalSec <= 10 * 60) targetIntervalSec = 10 * 60;
+        else if (targetIntervalSec <= 30 * 60) targetIntervalSec = 30 * 60;
+        else if (targetIntervalSec <= 60 * 60) targetIntervalSec = 60 * 60;
+        
+        targetIntervalSec = Math.max(originalIntervalSec, targetIntervalSec);
+        
+        const intervalMs = targetIntervalSec * 1000;
+        const displayInterval = targetIntervalSec >= 60 ? `${Math.floor(targetIntervalSec / 60)}m` : `${targetIntervalSec}s`;
+
+        const dataMap = new Map();
+        response.graph.sessionsHisto.forEach((bucket: [number, number]) => {
+          const snappedMs = Math.floor(bucket[0] / intervalMs) * intervalMs;
+          dataMap.set(snappedMs, (dataMap.get(snappedMs) || 0) + bucket[1]);
+        });
+
+        const startMs = Math.floor(bounds.start.valueOf() / intervalMs) * intervalMs;
+        const endMs = Math.ceil(bounds.end.valueOf() / intervalMs) * intervalMs;
+        
+        const fullBuckets = [];
+        let currentMs = startMs;
+
+        while (currentMs <= endMs) {
+          const totalCount = dataMap.get(currentMs) || 0;
+          
+          const estTcp = totalCount > 0 ? Math.round(totalCount * ratioTcp) : 0;
+          const estUdp = totalCount > 0 ? Math.round(totalCount * ratioUdp) : 0;
+          const estIcmp = totalCount > 0 ? totalCount - estTcp - estUdp : 0;
+
+          fullBuckets.push({
+            key: currentMs,
+            doc_count: totalCount,
+            by_protocol: {
+              buckets: totalCount > 0 ? [
+                { key: "tcp", doc_count: estTcp },
+                { key: "udp", doc_count: estUdp },
+                { key: "icmp", doc_count: Math.max(0, estIcmp) },
+              ] : [],
+            },
+          });
+
+          currentMs += intervalMs;
+        }
+
+        setHistogramData(fullBuckets);
+        setCurrentInterval(displayInterval);
+      } else {
+        setHistogramData([]);
+        setCurrentInterval("60s");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Fetch failed. Please check connection.");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [luceneQuery, activeFilters, timeRange, page, itemsPerPage, refreshKey]);
+
+  useEffect(() => {
+    fetchData();
+    fetchMetadata();
+  }, [fetchData, fetchMetadata]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; border: 2px solid #0f172a; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
-        .custom-scrollbar::-webkit-scrollbar-corner { background: #0f172a; }
-      `}</style>
+    <div className="flex h-full bg-slate-950 text-slate-200 font-sans overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        <Layer3TopNav
+          luceneQuery={searchInput}
+          onQueryChange={setSearchInput}
+          onQuerySubmit={() => {
+            setLuceneQuery(searchInput);
+            setPage(1);
+          }}
+          timeRange={timeRange}
+          onTimeRangeChange={(val) => {
+            setTimeRange(val);
+            setPage(1);
+          }}
+          timeDict={timeDict}
+          onRefresh={() => {
+            setLuceneQuery(searchInput); 
+            setPage(1);                 
+            setRefreshKey((k) => k + 1); 
+          }}
+          isLoading={isLoading}
+          dict={dict.header}
+          currentLang={langKey}
+          onLangToggle={toggleLanguage}
+          fields={fieldsMetadata}
+        />
 
-      <div className="flex-none flex flex-col gap-4 pt-6 px-2 md:px-6 mb-4">
-        
-        {/* Title */}
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-500/10 rounded-lg border border-blue-500/20 shadow-blue-500/5">
-            <Activity className="w-6 h-6 text-blue-500" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2 tracking-tight">
-              {t.title}
-            </h1>
-            <p className="text-slate-400 text-xs mt-0.5 flex items-center gap-1.5">
-               <Network className="w-3 h-3" /> {t.subtitle}
-            </p>
-          </div>
-        </div>
-
-        {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <div className="w-full sm:w-96 flex items-center gap-2 px-3 py-2 bg-slate-900/50 border border-slate-700/50 rounded-lg shadow-sm focus-within:border-blue-500/50 transition-colors">
-            <Search className="w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder={t.placeholder}
-              className="w-full bg-transparent text-sm outline-none text-slate-200 placeholder:text-slate-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap">
-            <Filter className="w-4 h-4" /> 
-            <span>{t.filters}</span>
-          </button>
-        </div>
-
-      </div>
-
-      <div className="flex-1 bg-slate-900 border-y border-slate-800 shadow-2xl overflow-hidden backdrop-blur-sm flex flex-col min-h-0 relative">
-        
-        {/* Table Body */}
-        <div className="flex-1 overflow-auto custom-scrollbar relative">
-          <table className="w-full text-sm text-left relative">
-            <thead className="sticky top-0 z-10 bg-slate-950 text-slate-400 font-medium border-b border-slate-800 uppercase text-[11px] tracking-wider shadow-md">
-              <tr>
-                <th className="w-10 px-6 py-4 pl-4 text-center">#</th>
-                <th className="px-4 py-4 min-w-[140px]">{t.headers.timestamp}</th>
-                <th className="px-4 py-4 w-24 text-center">{t.headers.protocol}</th>
-                <th className="px-4 py-4 min-w-[180px]">{t.headers.source}</th>
-                <th className="px-2 py-4 w-8"></th>
-                <th className="px-4 py-4 min-w-[180px]">{t.headers.destination}</th>
-                <th className="px-4 py-4 w-28 text-center">{t.headers.status}</th>
-                <th className="px-6 py-4 pr-4 text-right">{t.headers.size}</th>
-              </tr>
-            </thead>
-            
-            <tbody className="divide-y divide-slate-800/50">
-              {currentEvents.length > 0 ? (
-                currentEvents.map((event) => (
-                <Fragment key={event.id}>
-                  <tr 
-                    onClick={() => toggleRow(event.id)}
-                    className={`cursor-pointer transition-all duration-200 border-l-2 ${
-                      expandedRow === event.id 
-                        ? "bg-slate-800/60 border-l-blue-500" 
-                        : "hover:bg-slate-800/40 border-l-transparent hover:border-l-blue-500/50"
-                    }`}
-                  >
-                    <td className="px-6 py-4 pl-4 text-slate-500 text-center">
-                      {expandedRow === event.id ? <ChevronDown className="w-4 h-4 mx-auto" /> : <ChevronRight className="w-4 h-4 mx-auto" />}
-                    </td>
-                    
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {(() => {
-                        const { timeStr, ms, dateStr } = formatDetailedTime(event.time);
-                        return (
-                          <div className="flex flex-col">
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-slate-200 font-mono font-medium">{timeStr}</span>
-                              <span className="text-slate-500 font-mono text-xs">.{ms}</span>
-                            </div>
-                            <span className="text-slate-500 text-xs">{dateStr}</span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-
-                    <td className="px-4 py-4 text-center">
-                      <span className={`inline-flex items-center justify-center w-16 px-2 py-1 rounded text-[10px] font-bold border font-mono tracking-wide shadow-sm ${
-                        event.proto === "TCP" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                        event.proto === "UDP" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
-                        "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                      }`}>
-                        {event.proto}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-slate-300 font-medium">{event.srcIp}</span>
-                            <span className="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-400 font-bold">{event.srcCountry}</span>
-                          </div>
-                          {event.srcPort !== 0 && (
-                            <span className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                              <Monitor className="w-3 h-3" /> Port: {event.srcPort}
-                            </span>
-                          )}
-                      </div>
-                    </td>
-
-                    <td className="px-2 py-4 text-slate-600">
-                      <ArrowRight className="w-4 h-4" />
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-slate-300 font-medium">{event.dstIp}</span>
-                            <span className="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-400 font-bold">{event.dstCountry}</span>
-                          </div>
-                          {event.dstPort !== 0 && (
-                               <span className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                  <Monitor className="w-3 h-3" /> Port: {event.dstPort}
-                               </span>
-                          )}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-4 text-center">
-                      {event.action === "ALLOW" ? (
-                        <div className="inline-flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md shadow-sm">
-                          <ShieldCheck className="w-3 h-3" /> ALLOW
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-1.5 text-red-400 font-bold text-[10px] bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-md shadow-sm">
-                          <ShieldBan className="w-3 h-3" /> BLOCK
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4 pr-4 text-right text-slate-400 font-mono text-xs">{event.size}</td>
-                  </tr>
-
-                  {expandedRow === event.id && (
-                    <tr className="bg-slate-900/40 border-t border-slate-800/50">
-                        <td colSpan={8} className="px-0 py-0">
-                            <div className="p-6 bg-slate-950/40 shadow-inner grid grid-cols-1 md:grid-cols-2 gap-8 text-sm border-b border-slate-800/50 relative overflow-hidden px-16">
-                                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500/30"></div>
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-                                        <Network className="w-3.5 h-3.5 text-blue-500" /> {t.details.packetDetails}
-                                    </h4>
-                                    <div className="grid grid-cols-2 gap-3 text-xs">
-                                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                                            <span className="text-slate-500 block mb-1">{t.details.tcpFlags}</span>
-                                            <div className="flex gap-1.5 flex-wrap">
-                                                {event.flags && event.flags.length > 0 ? (
-                                                    event.flags.map(f => (
-                                                        <span key={f} className="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-mono border border-slate-700">{f}</span>
-                                                    ))
-                                                ) : <span className="text-slate-600 italic">None</span>}
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                                            <span className="text-slate-500 block mb-1">{t.details.ttl}</span>
-                                            <span className="font-mono text-slate-200 font-bold">{event.ttl || "-"}</span>
-                                        </div>
-                                        <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 col-span-2">
-                                            <span className="text-slate-500 block mb-1">{t.details.networkInterface}</span>
-                                            <span className="font-mono text-slate-200 flex items-center gap-2">
-                                                <Activity className="w-3 h-3 text-slate-400" /> {event.interface || "eth0"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-800 pb-2">
-                                        <Info className="w-3.5 h-3.5 text-emerald-500" /> {t.details.contextInfo}
-                                    </h4>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between border-b border-slate-800 pb-2">
-                                            <span className="text-slate-500 text-xs">{t.details.sourceAsn}</span>
-                                            <span className="text-slate-300 font-mono text-xs">{event.srcAsn || "Unknown"}</span>
-                                        </div>
-                                        <div className="flex justify-between border-b border-slate-800 pb-2">
-                                            <span className="text-slate-500 text-xs">{t.details.destAsn}</span>
-                                            <span className="text-slate-300 font-mono text-xs">{event.dstAsn || "Unknown"}</span>
-                                        </div>
-                                        <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg text-slate-400 text-xs italic mt-2">
-                                            {t.details.note}: <span className="text-slate-300 not-italic">{event.info}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                  )}
-                </Fragment>
-              ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500 text-sm">
-                    <div className="flex flex-col items-center gap-2">
-                        <Search className="w-8 h-8 opacity-20" />
-                        <span>{t.noData.message.replace("{term}", searchTerm)}</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex-none flex flex-col sm:flex-row items-center justify-end px-4 py-4 border-t border-slate-800 bg-slate-950/50 z-20 gap-6">
-            
-            {/* Rows per page */}
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-                <span>{t.rowsPerPage}</span>
-                <div className="relative">
-                    <select 
-                        value={itemsPerPage}
-                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        className="appearance-none bg-slate-900 border border-slate-700 text-slate-200 rounded px-2 py-1 pr-8 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                    >
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                        <option value={200}>200</option>
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2 top-1.5 pointer-events-none" />
-                </div>
+        {activeFilters.length > 0 && (
+          <div className="flex-none px-4 py-2 bg-slate-900/40 border-b border-slate-800 flex flex-wrap gap-2 items-center z-20">
+            <div className="flex items-center gap-1.5 mr-1 text-slate-500">
+              <Filter className="w-3 h-3" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">
+                Filters
+              </span>
             </div>
+            {activeFilters.map((f) => (
+              <div
+                key={f.id}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] border transition-all",
+                  f.operator === "=="
+                    ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-400",
+                )}
+              >
+                <span className="font-bold opacity-70">
+                  {f.key} {f.operator}
+                </span>
+                <span className="font-mono">
+                  {needsQuotes(f.key, f.value)
+                    ? `"${String(f.value)}"`
+                    : String(f.value)}
+                </span>
+                <button
+                  onClick={() =>
+                    setActiveFilters((prev) =>
+                      prev.filter((i) => i.id !== f.id),
+                    )
+                  }
+                  className="ml-1 hover:bg-white/10 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                setActiveFilters([]);
+                setPage(1);
+              }}
+              className="text-[10px] text-slate-500 hover:text-white flex items-center gap-1 ml-2 transition-colors"
+            >
+              <Trash2 className="w-3 h-3" /> Clear all
+            </button>
+          </div>
+        )}
 
-            {/* Info & Buttons */}
-            <div className="flex items-center gap-4">
-                <div className="text-xs text-slate-500 font-medium">
-                    {totalItems > 0 ? (
-                        <>
-                            <span className="text-slate-200">{startIndex + 1}-{Math.min(endIndex, totalItems)}</span> {t.of} <span className="text-slate-200">{totalItems}</span>
-                        </>
-                    ) : (
-                        `0-0 ${t.of} 0`
-                    )}
-                </div>
-
-                <div className="flex items-center gap-1">
-                    <button 
-                        onClick={() => goToPage(1)}
-                        disabled={currentPage === 1 || totalItems === 0}
-                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        <ChevronsLeft className="w-5 h-5" />
-                    </button>
-                    <button 
-                        onClick={() => goToPage(currentPage - 1)}
-                        disabled={currentPage === 1 || totalItems === 0}
-                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button 
-                        onClick={() => goToPage(currentPage + 1)}
-                        disabled={currentPage === totalPages || totalItems === 0}
-                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        <ChevronRight className="w-5 h-5" />
-                    </button>
-                    <button 
-                        onClick={() => goToPage(totalPages)}
-                        disabled={currentPage === totalPages || totalItems === 0}
-                        className="p-1 rounded hover:bg-slate-800 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        <ChevronsRight className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
+        <div className="relative flex-none w-full">
+          <Layer3Histogram
+            data={histogramData}
+            totalHits={totalHits}
+            interval={currentInterval}
+            maxDocCount={maxDocCount}
+            isLoading={isLoading}
+          />
         </div>
+
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <Layer3Table
+            sessions={sessions}
+            totalHits={totalHits}
+            isLoading={isLoading}
+            page={page}
+            itemsPerPage={itemsPerPage}
+            selectedId={highlightedId}
+            onSelect={(session: any) => setHighlightedId(session.id)}
+            onRowClick={(session: any) => {
+              setHighlightedId(session.id);
+              setDetailSession(session);
+            }}
+            onPageChange={setPage}
+            onItemsPerPageChange={setItemsPerPage}
+            t={dict.table}
+            onAddFilter={handleAddFilter}
+          />
+        </div>
+
+        <Layer3Flyout
+          data={detailSession}
+          events={sessions}
+          currentIndex={sessions.findIndex((s) => s.id === detailSession?.id)}
+          onNavigate={(idx) => {
+            setDetailSession(sessions[idx]);
+            setHighlightedId(sessions[idx].id);
+          }}
+          onClose={() => setDetailSession(null)}
+          onAddFilter={handleAddFilter}
+          t={dict} 
+        />
       </div>
     </div>
   );

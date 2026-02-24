@@ -1,6 +1,44 @@
+"use client";
+
 import { client } from "@/lib/axios";
 
 // --- 1. Interfaces ---
+export interface ArkimeSession {
+  id: string;
+  firstPacket: number;
+  lastPacket: number;
+  protocol: string;
+  srcIp: string;
+  srcPort: number;
+  dstIp: string;
+  dstPort: number;
+  totPackets: number;
+  totBytes: number;
+  communityId?: string;
+  tags?: string[];
+  [key: string]: any;
+}
+
+export interface ArkimeResponse<T> {
+  data: T[];
+  recordsTotal: number;
+  recordsFiltered: number;
+  graph?: any; 
+  map?: any;   
+  [key: string]: any;
+}
+
+export interface ArkimeQuery {
+  expression?: string;
+  startTime: number; 
+  stopTime: number;  
+  length?: number;   
+  start?: number;    
+  fields?: string;   
+  order?: string; 
+  sort?: string;
+}
+
 export interface Layer7EventDocument {
   "@timestamp": string;
   community_id: string;
@@ -52,11 +90,9 @@ export interface EsSearchPayload {
 }
 
 // --- 2. Helper Functions ---
-
 const calculateDynamicInterval = (query: any): string => {
   try {
     let range: any = null;
-    
     if (query?.bool?.must) {
       const rangeObj = query.bool.must.find((m: any) => m.range?.["@timestamp"]);
       range = rangeObj?.range?.["@timestamp"];
@@ -81,28 +117,32 @@ const calculateDynamicInterval = (query: any): string => {
   }
 };
 
+const calculateMainChartInterval = (start: number, end: number): string => {
+  const diffHours = (end - start) / 3600;
+
+  if (diffHours <= 1) return "1m";      
+  if (diffHours <= 6) return "5m";      
+  if (diffHours <= 24) return "30m";    
+  if (diffHours <= 168) return "3h";    
+  if (diffHours <= 720) return "12h";   
+  return "1d";                          
+};
+
 const sanitizeQuery = (query: any): any => {
   if (!query || typeof query !== "object") return query;
-
-  if (Array.isArray(query)) {
-    return query.map(sanitizeQuery);
-  }
-
+  if (Array.isArray(query)) return query.map(sanitizeQuery);
   const sanitized: Record<string, any> = {}; 
-
   for (const [key, value] of Object.entries(query)) {
     if (key === "term" && typeof value === "object" && value !== null) {
       const entries = Object.entries(value);
       if (entries.length > 0) {
         const [fieldName, fieldValue] = entries[0];
-
         if (typeof fieldValue === "object" && fieldValue !== null) {
           sanitized["match"] = { [fieldName]: JSON.stringify(fieldValue) };
           continue;
         }
       }
     }
-
     sanitized[key] = sanitizeQuery(value);
   }
   return sanitized;
@@ -129,7 +169,66 @@ const flattenMapping = (mapping: any, prefix = ""): string[] => {
   return fields;
 };
 
-// --- 3. Service Logic ---
+// --- 3. Arkime Service Logic ---
+export const arkimeService = {
+  getSessions: async (orgId: string, query: ArkimeQuery): Promise<ArkimeResponse<ArkimeSession>> => {
+    if (!orgId) throw new Error("Organization ID is required.");
+
+    const defaultFields = [
+      "firstPacket", "lastPacket", "ipProtocol", "node", "totDataBytes",
+      "source.ip", "source.port", "destination.ip", "destination.port",
+      "totPackets", "totBytes", "network.packets", "network.bytes", 
+      "source.packets", "source.bytes", "destination.packets", "destination.bytes",
+      "client.bytes", "server.bytes", "communityId", "network.community_id",
+      "source.mac", "destination.mac", "srcMac", "dstMac", "mac1-term", "mac2-term",
+      
+      "tcpseqSrc", "tcpseqDst", "tcpseq.src", "tcpseq.dst", "source.tcp_seq", "destination.tcp_seq",
+      "srcTTL", "dstTTL", "source.ttl", "destination.ttl", 
+
+      "ethertype", "etherType", "tags", "tag", "protocols",
+      "payload8.src.hex", "payload8.src.utf8", "payload8.dst.hex", "payload8.dst.utf8", "srcPayload8", "dstPayload8", "payload8",
+      "tcpflags.syn", "tcpflags.syn-ack", "tcpflags.ack", "tcpflags.psh", "tcpflags.rst", "tcpflags.fin", "tcpflags.urg", "tcpflags",
+
+      "http.host", "host.http", "tls.version", "tls.cipher", "tls.sessionid", "tls.session_id", "tls.ja3", "tls.ja3s", "tls.ja4", "ja3", "ja3s", "ja4"
+    ].join(",");
+
+    const params: Record<string, any> = {
+      date: "-2", 
+      startTime: query.startTime,
+      stopTime: query.stopTime,
+      length: query.length || 100,
+      start: query.start || 0,
+      fields: query.fields || defaultFields, 
+      facets: 1, 
+      desc: true 
+    };
+
+    if (query.expression && query.expression.trim() !== "") {
+      params.expression = query.expression;
+    }
+
+    if (query.order) {
+      params.order = query.order;
+    } else if (query.sort) {
+      params.sort = query.sort;
+    } else {
+      params.order = "firstPacket:desc"; 
+    }
+
+    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/sessions`;
+    const response = await client.get(endpoint, { params });
+    return response.data;
+  },
+
+  getFields: async (orgId: string) => {
+    if (!orgId) throw new Error("Organization ID is required.");
+    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/fields`;
+    const response = await client.get(endpoint);
+    return response.data;
+  }
+};
+
+// --- 4. ElasticSearch Service Logic ---
 export const esService = {
   search: async <T>(endpoint: string, payload: EsSearchPayload): Promise<EsResponse<T>> => {
     const cleanPayload = {
@@ -214,30 +313,27 @@ export const esService = {
     }
   },
 
-  getLayer7ChartData: async (orgId: string, start: number, end: number, step: string = "1m", query?: any) => {
+  getLayer7ChartData: async (orgId: string, start: number, end: number, step?: string, query?: any) => {
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/censor-events-*/_search`;
     
-    let finalQuery: any;
+    const diffHours = (end - start) / 3600;
+    
+    let dynamicStep = step;
+    if (!step || step === "1m" || diffHours > 24) {
+      dynamicStep = calculateMainChartInterval(start, end);
+    }
 
+    let finalQuery: any;
     if (query && typeof query === 'object') {
       finalQuery = query;
     } else {
       const mustQueries: any[] = [
-        { 
-          range: { 
-            "@timestamp": { 
-              gte: new Date(start * 1000).toISOString(), 
-              lte: new Date(end * 1000).toISOString() 
-            } 
-          } 
-        },
+        { range: { "@timestamp": { gte: new Date(start * 1000).toISOString(), lte: new Date(end * 1000).toISOString() } } },
         { wildcard: { "event.dataset": "zeek.*" } }
       ];
-
       if (typeof query === "string" && query.trim() !== "") {
         mustQueries.push({ query_string: { query: query } });
       }
-
       finalQuery = { bool: { must: mustQueries } };
     }
 
@@ -249,7 +345,7 @@ export const esService = {
         events_over_time: {
           date_histogram: {
             field: "@timestamp",
-            fixed_interval: step,
+            fixed_interval: dynamicStep, 
             min_doc_count: 0,
             extended_bounds: {
               min: new Date(start * 1000).toISOString(),
@@ -265,7 +361,6 @@ export const esService = {
       const res = await esService.search(endpoint, payload);
       return res.aggregations?.events_over_time?.buckets || [];
     } catch (e) { 
-      console.error("Chart Data Error:", e);
       return []; 
     }
   },

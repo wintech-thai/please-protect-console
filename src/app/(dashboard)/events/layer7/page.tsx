@@ -243,7 +243,11 @@ export default function Layer7Page() {
           onQuerySubmit={handleSearchSubmit}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
-          onRefresh={() => setRefreshKey(k => k + 1)}
+          onRefresh={() => {
+            setLuceneQuery(searchInput); 
+            setPage(1);                 
+            setRefreshKey((k) => k + 1); 
+          }}
           isLoading={isLoading}
           availableFields={allIndexFields}
           currentLang={langKey}
