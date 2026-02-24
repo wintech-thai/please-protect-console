@@ -113,6 +113,19 @@ export function Layer3Flyout({
       fields.push({ label: "SSH HASSH SERVER", value: data.ssh.hasshServer, fieldKey: "ssh.hasshServer" });
     }
 
+    if (data.http?.host) {
+      fields.push({ label: "HTTP HOST", value: data.http.host, fieldKey: "host.http" });
+    }
+
+    if (data.tls) {
+      if (data.tls.version) fields.push({ label: "TLS VERSION", value: data.tls.version, fieldKey: "tls.version" });
+      if (data.tls.cipher) fields.push({ label: "TLS CIPHER", value: data.tls.cipher, fieldKey: "tls.cipher" });
+      if (data.tls.srcSessionId) fields.push({ label: "TLS SRC SESSION ID", value: data.tls.srcSessionId, fieldKey: "tls.sessionid" });
+      if (data.tls.ja3) fields.push({ label: "TLS JA3", value: data.tls.ja3, fieldKey: "tls.ja3" });
+      if (data.tls.ja3s) fields.push({ label: "TLS JA3S", value: data.tls.ja3s, fieldKey: "tls.ja3s" });
+      if (data.tls.ja4) fields.push({ label: "TLS JA4", value: data.tls.ja4, fieldKey: "tls.ja4" });
+    }
+
     return fields;
   }, [data]);
 

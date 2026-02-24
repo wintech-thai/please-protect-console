@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, MoreVertical, Tag as TagIcon } from "lucide-react";
+import { ChevronRight, MoreVertical, Tag as TagIcon } from "lucide-react";
 
 interface Layer3TableProps {
   sessions: any[];
@@ -53,24 +53,24 @@ export function Layer3Table({
       </div>
 
       <div className="flex-1 overflow-auto relative min-h-0 custom-scrollbar">
-        <table className="w-full text-left border-collapse whitespace-nowrap">
+        <table className="w-full text-left border-collapse whitespace-nowrap table-fixed min-w-[1200px]">
           <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm shadow-[0_1px_0_0_rgba(30,41,59,1)]">
             <tr>
               <th className="px-4 py-3 w-10"></th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.startTime || "START TIME"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.stopTime || "STOP TIME"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-center">{t?.protocol || "PROTOCOL"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.sourceIp || "SOURCE IP"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.sourcePort || "SOURCE PORT"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.destinationIp || "DESTINATION IP"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.destinationPort || "DESTINATION PORT"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.communityId || "COMMUNITY ID"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest w-[140px]">{t?.startTime || "START TIME"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest w-[140px]">{t?.stopTime || "STOP TIME"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-center w-[100px]">{t?.protocol || "PROTOCOL"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest w-[130px]">{t?.sourceIp || "SOURCE IP"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest w-[100px]">{t?.sourcePort || "SOURCE PORT"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest w-[130px]">{t?.destinationIp || "DESTINATION IP"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest w-[140px]">{t?.destinationPort || "DESTINATION PORT"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest w-[150px]">{t?.communityId || "COMMUNITY ID"}</th>
               
               <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest">{t?.info || "INFO"}</th>
               
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-right">{t?.package || "PACKAGE"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-right">{t?.databytes || "DATABYTES"}</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-center">{t?.actions || "ACTIONS"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-right w-[100px]">{t?.package || "PACKAGE"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-right w-[100px]">{t?.databytes || "DATABYTES"}</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 uppercase tracking-widest text-center w-[80px]">{t?.actions || "ACTIONS"}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
@@ -111,12 +111,12 @@ export function Layer3Table({
                         onClick={(e) => { e.stopPropagation(); onRowClick?.(session); }}
                         className="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-700 transition-colors"
                       >
-                          {isSelected ? <ChevronDown className="w-4 h-4 text-blue-400" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                          <ChevronRight className={cn("w-4 h-4", isSelected ? "text-blue-400" : "text-slate-500")} />
                       </button>
                     </td>
 
-                    <td className="px-4 py-2.5 text-[12.5px] font-medium text-slate-200">{session.startTime}</td>
-                    <td className="px-4 py-2.5 text-[12.5px] font-medium text-slate-200">{session.stopTime}</td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-medium text-slate-200 truncate">{session.startTime}</td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-medium text-slate-200 truncate">{session.stopTime}</td>
 
                     <td className="px-4 py-2.5 text-center">
                       <div className="inline-flex items-center gap-2">
@@ -125,14 +125,14 @@ export function Layer3Table({
                       </div>
                     </td>
 
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-blue-400">{session.srcIp}</td>
-                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-400">{session.srcPort}</td>
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-blue-400">{session.dstIp}</td>
-                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-400">{session.dstPort}</td>
-                    <td className="px-4 py-2.5 text-[12px] font-mono text-slate-400 truncate max-w-[120px]" title={session.communityId}>{session.communityId}</td>
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-blue-400 truncate">{session.srcIp}</td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-400 truncate">{session.srcPort}</td>
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-blue-400 truncate">{session.dstIp}</td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-400 truncate">{session.dstPort}</td>
+                    <td className="px-4 py-2.5 text-[12px] font-mono text-slate-400 truncate" title={session.communityId}>{session.communityId}</td>
 
-                    <td className="px-4 py-2.5 min-w-[180px]">
-                      <div className="flex flex-wrap gap-1.5 items-center">
+                    <td className="px-4 py-2.5">
+                      <div className="flex flex-wrap gap-1.5 items-center w-full max-w-[300px]">
                         {/* Protocols Badges */}
                         {displayProtos.map((p: string, i: number) => (
                           <span 
@@ -147,10 +147,11 @@ export function Layer3Table({
                         {session.tags && session.tags.length > 0 && session.tags.map((tag: string, i: number) => (
                           <div 
                             key={`t-${i}`}
-                            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[10px]"
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400 text-[10px] truncate max-w-[150px]"
+                            title={tag}
                           >
-                            <TagIcon size={10} className="opacity-50" />
-                            {tag}
+                            <TagIcon size={10} className="opacity-50 flex-shrink-0" />
+                            <span className="truncate">{tag}</span>
                           </div>
                         ))}
 
@@ -160,11 +161,11 @@ export function Layer3Table({
                       </div>
                     </td>
 
-                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-300 text-right">{session.packets}</td>
-                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-emerald-400 font-medium text-right">{session.databytes}</td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-300 text-right truncate">{session.packets}</td>
+                    <td className="px-4 py-2.5 text-[12.5px] font-mono text-emerald-400 font-medium text-right truncate">{session.databytes}</td>
 
                     <td className="px-4 py-2.5 text-center">
-                      <button className="p-1 rounded text-slate-500 hover:bg-slate-700">
+                      <button className="p-1 rounded text-slate-500 hover:bg-slate-700 mx-auto block">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>

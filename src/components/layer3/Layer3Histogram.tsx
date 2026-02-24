@@ -28,7 +28,7 @@ const getDynamicProtocolColor = (proto: string) => {
 export function Layer3Histogram({ data = [], totalHits, interval, maxDocCount, isLoading }: HistogramProps) {
   const axisLabelStep = Math.max(Math.floor(data.length / 8), 1);
   
-  const safeMax = Math.max(maxDocCount, 10);
+  const safeMax = Math.max(maxDocCount, 3);
 
   return (
     <div className="flex-none h-56 bg-slate-900/50 border-b border-slate-800 p-6 pb-12 flex flex-col backdrop-blur-sm relative z-0 select-none">

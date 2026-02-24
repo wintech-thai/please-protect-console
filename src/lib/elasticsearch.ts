@@ -184,10 +184,12 @@ export const arkimeService = {
       
       "tcpseqSrc", "tcpseqDst", "tcpseq.src", "tcpseq.dst", "source.tcp_seq", "destination.tcp_seq",
       "srcTTL", "dstTTL", "source.ttl", "destination.ttl", 
-      
+
       "ethertype", "etherType", "tags", "tag", "protocols",
       "payload8.src.hex", "payload8.src.utf8", "payload8.dst.hex", "payload8.dst.utf8", "srcPayload8", "dstPayload8", "payload8",
-      "tcpflags.syn", "tcpflags.syn-ack", "tcpflags.ack", "tcpflags.psh", "tcpflags.rst", "tcpflags.fin", "tcpflags.urg", "tcpflags"
+      "tcpflags.syn", "tcpflags.syn-ack", "tcpflags.ack", "tcpflags.psh", "tcpflags.rst", "tcpflags.fin", "tcpflags.urg", "tcpflags",
+
+      "http.host", "host.http", "tls.version", "tls.cipher", "tls.sessionid", "tls.session_id", "tls.ja3", "tls.ja3s", "tls.ja4", "ja3", "ja3s", "ja4"
     ].join(",");
 
     const params: Record<string, any> = {

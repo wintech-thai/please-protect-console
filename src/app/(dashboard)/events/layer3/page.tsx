@@ -394,6 +394,19 @@ export default function Layer3Page() {
             hasshServer: item.ssh.hasshServer || "-",
           } : null,
           etherType: item.ethertype || item.etherType || "2,048 (IPv4)",
+          
+          http: {
+            host: item["host.http"] ?? item.host?.http ?? item["http.host"] ?? item.http?.host,
+          },
+          
+          tls: {
+            version: item["tls.version"] ?? item.tls?.version,
+            cipher: item["tls.cipher"] ?? item.tls?.cipher,
+            srcSessionId: item["tls.sessionid"] ?? item.tls?.sessionid ?? item["tls.session_id"] ?? item.tls?.session_id ?? item["tls.sessionId"] ?? item.tls?.sessionId,
+            ja3: item["tls.ja3"] ?? item.tls?.ja3 ?? item.ja3,
+            ja3s: item["tls.ja3s"] ?? item.tls?.ja3s ?? item.ja3s,
+            ja4: item["tls.ja4"] ?? item.tls?.ja4 ?? item.ja4,
+          },
         };
       });
 
@@ -411,13 +424,31 @@ export default function Layer3Page() {
       const ratioUdp = udpCount / dataTotal;
 
       if (response.graph && response.graph.sessionsHisto) {
-        const intervalSec = response.graph.interval || 60;
-        const intervalMs = intervalSec * 1000;
-        const displayInterval = intervalSec >= 60 ? `${Math.floor(intervalSec / 60)}m` : `${intervalSec}s`;
+        const diffSec = bounds.end.unix() - bounds.start.unix();
+        const originalIntervalSec = response.graph.interval || 60;
+        
+        let targetIntervalSec = Math.ceil(diffSec / 60); 
+        
+        if (targetIntervalSec <= 1) targetIntervalSec = 1;
+        else if (targetIntervalSec <= 5) targetIntervalSec = 5;
+        else if (targetIntervalSec <= 10) targetIntervalSec = 10;
+        else if (targetIntervalSec <= 15) targetIntervalSec = 15;
+        else if (targetIntervalSec <= 30) targetIntervalSec = 30;
+        else if (targetIntervalSec <= 60) targetIntervalSec = 60;
+        else if (targetIntervalSec <= 5 * 60) targetIntervalSec = 5 * 60;
+        else if (targetIntervalSec <= 10 * 60) targetIntervalSec = 10 * 60;
+        else if (targetIntervalSec <= 30 * 60) targetIntervalSec = 30 * 60;
+        else if (targetIntervalSec <= 60 * 60) targetIntervalSec = 60 * 60;
+        
+        targetIntervalSec = Math.max(originalIntervalSec, targetIntervalSec);
+        
+        const intervalMs = targetIntervalSec * 1000;
+        const displayInterval = targetIntervalSec >= 60 ? `${Math.floor(targetIntervalSec / 60)}m` : `${targetIntervalSec}s`;
 
         const dataMap = new Map();
         response.graph.sessionsHisto.forEach((bucket: [number, number]) => {
-          dataMap.set(bucket[0], bucket[1]);
+          const snappedMs = Math.floor(bucket[0] / intervalMs) * intervalMs;
+          dataMap.set(snappedMs, (dataMap.get(snappedMs) || 0) + bucket[1]);
         });
 
         const startMs = Math.floor(bounds.start.valueOf() / intervalMs) * intervalMs;
