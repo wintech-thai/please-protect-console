@@ -12,6 +12,7 @@ import {
   Cpu,
   MemoryStick,
   HardDrive,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -134,14 +135,13 @@ function formatTimeLabel(ms: number, durationSeconds: number): string {
 // ──────────────────────────────────────────────
 
 function MetricCard({
-  title, icon, data, format, color, loading, durationSeconds,
+  title, icon, data, format, color, durationSeconds,
 }: {
   title: string;
   icon: React.ReactNode;
   data: MetricPoint[];
   format: (v: number) => string;
   color: string;
-  loading: boolean;
   durationSeconds: number;
 }) {
   const latest = data.length > 0 ? data[data.length - 1].value : null;
@@ -164,9 +164,7 @@ function MetricCard({
           {icon}
           <span className="font-medium">{title}</span>
         </div>
-        {loading ? (
-          <div className="w-4 h-4 border-2 border-slate-700 border-t-orange-500 rounded-full animate-spin" />
-        ) : latest !== null ? (
+        {latest !== null ? (
           <span className="text-2xl font-mono font-bold text-slate-100">{format(latest)}</span>
         ) : (
           <span className="text-sm text-slate-600">—</span>
@@ -175,12 +173,7 @@ function MetricCard({
 
       {/* Chart */}
       <div className="h-44">
-        {loading ? (
-          <div className="h-full flex items-center justify-center text-xs text-slate-600">
-            <div className="w-4 h-4 border-2 border-slate-700 border-t-orange-500/60 rounded-full animate-spin mr-2" />
-            Loading…
-          </div>
-        ) : data.length < 2 ? (
+        {data.length < 2 ? (
           <div className="h-full flex items-center justify-center text-xs text-slate-600">No data</div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -235,7 +228,7 @@ function MetricCard({
       </div>
 
       {/* Footer stats */}
-      {!loading && (max !== null || avg !== null) && (
+      {(max !== null || avg !== null) && (
         <div className="flex items-center gap-5 text-xs text-slate-600 border-t border-slate-800 pt-2">
           {max !== null && (
             <span>Max: <span className="text-slate-400 font-mono">{format(max)}</span></span>
@@ -337,21 +330,18 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
   const [fetchKey, setFetchKey] = useState(0);
 
   const isAnyLoading = podsLoading || metricsLoading || infoLoading || revisionsLoading;
+  const isInitialLoad = fetchKey === 0 && isAnyLoading;
 
   const fetchAll = useCallback(() => {
     setFetchKey((k) => k + 1);
   }, []);
 
   useEffect(() => {
-    const reset = () => {
-      setPods([]);
-      setInfo(EMPTY_INFO);
-      setRevisions([]);
+    if (fetchKey > 0) {
       setPodsLoading(true);
       setInfoLoading(true);
       setRevisionsLoading(true);
-    };
-    if (fetchKey > 0) reset();
+    }
 
     workloadDetailApi.getWorkloadInfo(namespace, name, type)
       .then(setInfo).catch(() => setInfo(EMPTY_INFO)).finally(() => setInfoLoading(false));
@@ -367,7 +357,6 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setMetrics(EMPTY_METRICS);
       setMetricsLoading(true);
       try {
         const { durationSeconds, step, start, end } = getTimeParams(timeRange);
@@ -393,6 +382,17 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
     return "Warning";
   })();
   const statusDisplay = STATUS_CFG[derivedStatus];
+
+  if (isInitialLoad) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-slate-400">
+          <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
+          <span className="text-sm font-medium">Loading workload…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
@@ -459,7 +459,6 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 data={metrics.cpu}
                 format={formatCpu}
                 color="#f97316"
-                loading={metricsLoading}
                 durationSeconds={getTimeParams(timeRange).durationSeconds}
               />
               <MetricCard
@@ -468,7 +467,6 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 data={metrics.memory}
                 format={formatBytes}
                 color="#3b82f6"
-                loading={metricsLoading}
                 durationSeconds={getTimeParams(timeRange).durationSeconds}
               />
               <MetricCard
@@ -477,7 +475,6 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 data={metrics.disk}
                 format={formatBytes}
                 color="#8b5cf6"
-                loading={metricsLoading}
                 durationSeconds={getTimeParams(timeRange).durationSeconds}
               />
             </div>
@@ -488,12 +485,12 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
             <div className="bg-slate-900 border border-slate-800 rounded-xl divide-y divide-slate-800">
               <Row label="Namespace">{namespace}</Row>
               <Row label="Created">
-                {infoLoading ? <Skeleton /> : info.createdAt ? new Date(info.createdAt).toLocaleString() : "—"}
+                {info.createdAt ? new Date(info.createdAt).toLocaleString() : "—"}
               </Row>
 
-              {(infoLoading || info.replicas) && (
+              {info.replicas && (
                 <Row label="Replicas">
-                  {infoLoading ? <Skeleton /> : info.replicas ? (
+                  {info.replicas ? (
                     <span>
                       <span className="text-slate-200">{info.replicas.desired} desired</span>
                       <span className="text-slate-600 mx-2">·</span>
@@ -508,7 +505,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
               )}
 
               <Row label="Containers">
-                {infoLoading ? <Skeleton /> : info.containers.length === 0 ? "—" : (
+                {info.containers.length === 0 ? "—" : (
                   <div className="flex flex-col gap-2">
                     {info.containers.map((c) => (
                       <div key={c.name} className="flex flex-col gap-0.5">
@@ -521,7 +518,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
               </Row>
 
               <Row label="Labels">
-                {infoLoading ? <Skeleton /> : Object.keys(info.labels).length === 0 ? "—" : (
+                {Object.keys(info.labels).length === 0 ? "—" : (
                   <div className="flex flex-wrap gap-1.5">
                     {Object.entries(info.labels).map(([k, v]) => (
                       <span
@@ -539,13 +536,10 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
           </Section>
 
           {/* ── Revisions ── */}
-          {(revisionsLoading || revisions.length > 0) && (
+          {revisions.length > 0 && (
             <Section title="Active Revisions">
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-                {revisionsLoading ? (
-                  <LoadingRow text="Loading revisions…" />
-                ) : (
-                  <div className="overflow-x-auto">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse min-w-120">
                     <thead>
                       <tr className="border-b border-slate-800 bg-slate-900">
@@ -587,18 +581,15 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                       ))}
                     </tbody>
                   </table>
-                  </div>
-                )}
+                </div>
               </div>
             </Section>
           )}
 
           {/* ── Pods ── */}
-          <Section title={`Managed Pods${!podsLoading ? ` (${pods.length})` : ""}`}>
+          <Section title={`Managed Pods (${pods.length})`}>
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              {podsLoading ? (
-                <LoadingRow text="Loading pods…" />
-              ) : pods.length === 0 ? (
+              {pods.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-slate-600 text-sm">No pods found</div>
               ) : (
                 <div className="overflow-x-auto">
@@ -666,15 +657,4 @@ function Th({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Skeleton() {
-  return <span className="inline-block h-3 w-36 bg-slate-800 rounded animate-pulse" />;
-}
 
-function LoadingRow({ text }: { text: string }) {
-  return (
-    <div className="flex items-center justify-center py-10 text-slate-500 text-sm gap-2">
-      <div className="w-4 h-4 border-2 border-slate-700 border-t-orange-500 rounded-full animate-spin" />
-      {text}
-    </div>
-  );
-}
