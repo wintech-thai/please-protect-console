@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
+  ChevronLeft,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
@@ -396,32 +396,30 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
-      {/* ── Top bar ── */}
-      <div className="shrink-0 border-b border-slate-800">
-        {/* Row 1: back + breadcrumb + refresh */}
-        <div className="px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+      {/* ── Header ── */}
+      <div className="flex-none pt-6 px-4 md:px-8 mb-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => router.back()}
-              className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors shrink-0"
-              title="Back"
+              className="p-2 hover:bg-slate-800 rounded-full transition-colors border border-slate-700/50 text-slate-400 hover:text-white shrink-0"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className="h-4 w-px bg-slate-800 shrink-0" />
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 min-w-0">
-              <span className="hidden sm:inline shrink-0">Workloads</span>
-              <span className="hidden sm:inline shrink-0">/</span>
-              <span className="text-slate-400 truncate max-w-30 sm:max-w-none">{namespace}</span>
-              <span className="shrink-0">/</span>
-              <span
-                className={cn(
-                  "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border shrink-0",
-                  TYPE_COLORS[type]
-                )}
-              >
-                {type}
-              </span>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2 flex-wrap">
+                <span className="truncate">{name}</span>
+                <span className={cn("flex items-center gap-1 text-base font-medium shrink-0", statusDisplay.cls)}>
+                  {statusDisplay.icon}
+                  {statusDisplay.label}
+                </span>
+              </h1>
+              <p className="text-slate-400 text-sm mt-0.5">
+                Workloads / 
+                <span className="text-slate-300">{namespace}</span>
+                 / 
+                <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border", TYPE_COLORS[type])}>{type}</span>
+              </p>
             </div>
           </div>
           <button
@@ -433,18 +431,10 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
             <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
-        {/* Row 2: workload name + status */}
-        <div className="px-3 sm:px-6 pb-2.5 flex items-center gap-2 min-w-0">
-          <h1 className="text-sm font-semibold text-slate-100 font-mono truncate">{name}</h1>
-          <span className={cn("flex items-center gap-1 text-xs font-medium shrink-0", statusDisplay.cls)}>
-            {statusDisplay.icon}
-            {statusDisplay.label}
-          </span>
-        </div>
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto flex flex-col gap-6 sm:gap-8">
 
            {/* ── Metrics ── */}
