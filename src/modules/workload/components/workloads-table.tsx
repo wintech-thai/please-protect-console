@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, HelpCircle } from "lucide-react";
 import type { Workload, WorkloadStatus, WorkloadType } from "../api/workloads.api";
+import type { translations } from "@/locales/dict";
 
 // ──────────────────────────────────────────────
 // Status badge
@@ -139,11 +140,12 @@ function Pagination({ page, totalPages, pageSize, totalItems, onPageChange, onPa
 interface WorkloadsTableProps {
   workloads: Workload[];
   isLoading: boolean;
+  t: typeof translations.workloads.EN;
 }
 
 const PAGE_SIZE_DEFAULT = 20;
 
-export function WorkloadsTable({ workloads, isLoading }: WorkloadsTableProps) {
+export function WorkloadsTable({ workloads, isLoading, t }: WorkloadsTableProps) {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
@@ -161,7 +163,7 @@ export function WorkloadsTable({ workloads, isLoading }: WorkloadsTableProps) {
       <div className="flex-1 flex items-center justify-center text-slate-500 text-sm py-20">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 border-2 border-slate-600 border-t-orange-500 rounded-full animate-spin" />
-          <span>Loading workloads…</span>
+          <span>{t.loading}</span>
         </div>
       </div>
     );
@@ -170,7 +172,7 @@ export function WorkloadsTable({ workloads, isLoading }: WorkloadsTableProps) {
   if (workloads.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-500 text-sm py-20">
-        No workloads found.
+        {t.noWorkloads}
       </div>
     );
   }
@@ -182,11 +184,11 @@ export function WorkloadsTable({ workloads, isLoading }: WorkloadsTableProps) {
         <table className="w-full text-sm border-collapse">
           <thead className="sticky top-0 z-10 bg-slate-900">
             <tr className="border-b border-slate-800">
-              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">Name</th>
-              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">Status</th>
-              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">Type</th>
-              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">Pods</th>
-              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">Namespace</th>
+              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.name}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.status}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.type}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.pods}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.namespace}</th>
             </tr>
           </thead>
           <tbody>

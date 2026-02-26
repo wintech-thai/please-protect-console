@@ -292,6 +292,9 @@ const EMPTY_INFO: WorkloadInfo = { labels: {}, createdAt: "", containers: [] };
 export default function WorkloadDetailView({ namespace, type, name }: WorkloadDetailViewProps) {
   const router = useRouter();
   const { language } = useLanguage();
+  const t =
+    translations.workloads[language as keyof typeof translations.workloads] ||
+    translations.workloads.EN;
   const timePicker =
     translations.timePicker[language as keyof typeof translations.timePicker] ||
     translations.timePicker.EN;
@@ -374,7 +377,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
       <div className="w-full h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-slate-400">
           <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
-          <span className="text-sm font-medium">Loading workload…</span>
+          <span className="text-sm font-medium">{t.detail.loading}</span>
         </div>
       </div>
     );
@@ -401,7 +404,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 </span>
               </h1>
               <p className="text-slate-400 text-sm mt-0.5">
-                Workloads / 
+                {t.detail.breadcrumb} / 
                 <span className="text-slate-300">{namespace}</span>
                  / 
                 <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border", TYPE_COLORS[type])}>{type}</span>
@@ -414,7 +417,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 disabled:opacity-50 transition-colors shrink-0"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", isAnyLoading && "animate-spin")} />
-            <span className="hidden sm:inline">Refresh</span>
+            <span className="hidden sm:inline">{t.refresh}</span>
           </button>
         </div>
       </div>
@@ -427,7 +430,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
           <section>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-                Metrics
+                {t.detail.sections.metrics}
               </h3>
               <div className="w-full sm:w-auto">
                 <AdvancedTimeRangeSelector
@@ -467,30 +470,30 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
           </section>
 
           {/* ── Details ── */}
-          <Section title="Details">
+          <Section title={t.detail.sections.details}>
             <div className="bg-slate-900 border border-slate-800 rounded-xl divide-y divide-slate-800">
-              <Row label="Namespace">{namespace}</Row>
-              <Row label="Created">
+              <Row label={t.detail.details.namespace}>{namespace}</Row>
+              <Row label={t.detail.details.created}>
                 {info.createdAt ? new Date(info.createdAt).toLocaleString() : "—"}
               </Row>
 
               {info.replicas && (
-                <Row label="Replicas">
+                <Row label={t.detail.details.replicas}>
                   {info.replicas ? (
                     <span>
-                      <span className="text-slate-200">{info.replicas.desired} desired</span>
+                      <span className="text-slate-200">{info.replicas.desired} {t.detail.replicas.desired}</span>
                       <span className="text-slate-600 mx-2">·</span>
-                      <span className="text-emerald-400">{info.replicas.ready} ready</span>
+                      <span className="text-emerald-400">{info.replicas.ready} {t.detail.replicas.ready}</span>
                       <span className="text-slate-600 mx-2">·</span>
                       <span className={info.replicas.unavailable > 0 ? "text-red-400" : "text-slate-500"}>
-                        {info.replicas.unavailable} unavailable
+                        {info.replicas.unavailable} {t.detail.replicas.unavailable}
                       </span>
                     </span>
                   ) : null}
                 </Row>
               )}
 
-              <Row label="Containers">
+              <Row label={t.detail.details.containers}>
                 {info.containers.length === 0 ? "—" : (
                   <div className="flex flex-col gap-2">
                     {info.containers.map((c) => (
@@ -503,7 +506,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 )}
               </Row>
 
-              <Row label="Labels">
+              <Row label={t.detail.details.labels}>
                 {Object.keys(info.labels).length === 0 ? "—" : (
                   <div className="flex flex-wrap gap-1.5">
                     {Object.entries(info.labels).map(([k, v]) => (
@@ -523,17 +526,17 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
 
           {/* ── Revisions ── */}
           {revisions.length > 0 && (
-            <Section title="Active Revisions">
+            <Section title={t.detail.sections.revisions}>
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse min-w-120">
                     <thead>
                       <tr className="border-b border-slate-800 bg-slate-900">
-                        <Th>Revision</Th>
-                        <Th>Name</Th>
-                        <Th>Pods</Th>
-                        <Th>Images</Th>
-                        <Th>Created</Th>
+                        <Th>{t.detail.revisionColumns.revision}</Th>
+                        <Th>{t.detail.revisionColumns.name}</Th>
+                        <Th>{t.detail.revisionColumns.pods}</Th>
+                        <Th>{t.detail.revisionColumns.images}</Th>
+                        <Th>{t.detail.revisionColumns.created}</Th>
                       </tr>
                     </thead>
                     <tbody>
@@ -573,21 +576,21 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
           )}
 
           {/* ── Pods ── */}
-          <Section title={`Managed Pods (${pods.length})`}>
+          <Section title={`${t.detail.sections.pods} (${pods.length})`}>
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
               {pods.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-slate-600 text-sm">No pods found</div>
+                <div className="flex items-center justify-center py-12 text-slate-600 text-sm">{t.detail.noPodsFound}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse min-w-120">
                   <thead>
                     <tr className="border-b border-slate-800 bg-slate-900">
-                      <Th>Pod Name</Th>
-                      <Th>Status</Th>
-                      <Th>Ready</Th>
-                      <Th>Restarts</Th>
-                      <Th>Node</Th>
-                      <Th>Age</Th>
+                      <Th>{t.detail.podColumns.name}</Th>
+                      <Th>{t.detail.podColumns.status}</Th>
+                      <Th>{t.detail.podColumns.ready}</Th>
+                      <Th>{t.detail.podColumns.restarts}</Th>
+                      <Th>{t.detail.podColumns.node}</Th>
+                      <Th>{t.detail.podColumns.age}</Th>
                     </tr>
                   </thead>
                   <tbody>

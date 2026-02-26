@@ -5,6 +5,8 @@ import { RefreshCw, Search, X, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { workloadsApi, type Workload } from "../api/workloads.api";
 import { WorkloadsTable } from "../components/workloads-table";
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 
 
 // ──────────────────────────────────────────────
@@ -18,9 +20,10 @@ interface NamespaceDropdownProps {
   selected: string[];
   onChange: (selected: string[]) => void;
   disabled?: boolean;
+  t: typeof translations.workloads.EN;
 }
 
-function NamespaceDropdown({ namespaces, selected, onChange, disabled }: NamespaceDropdownProps) {
+function NamespaceDropdown({ namespaces, selected, onChange, disabled, t }: NamespaceDropdownProps) {
   const [open, setOpen] = useState(false);
   const [nsSearch, setNsSearch] = useState("");
 
@@ -48,10 +51,10 @@ function NamespaceDropdown({ namespaces, selected, onChange, disabled }: Namespa
   };
 
   const label = allSelected
-    ? "All namespaces"
+    ? t.allNamespaces
     : selected.length === 1
     ? selected[0]
-    : `${selected.length} namespaces`;
+    : t.namespaces(selected.length);
 
   return (
     <div className="relative">
@@ -76,7 +79,7 @@ function NamespaceDropdown({ namespaces, selected, onChange, disabled }: Namespa
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Search namespace…"
+                  placeholder={t.searchNamespace}
                   value={nsSearch}
                   onChange={(e) => setNsSearch(e.target.value)}
                   className="w-full pl-6 pr-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-orange-500"
@@ -102,7 +105,7 @@ function NamespaceDropdown({ namespaces, selected, onChange, disabled }: Namespa
                 >
                   {allSelected && <span className="text-white text-[8px] font-bold">✓</span>}
                 </span>
-                All namespaces
+                {t.allNamespaces}
               </button>
 
               <div className="border-t border-slate-800 my-1" />
@@ -139,6 +142,8 @@ function NamespaceDropdown({ namespaces, selected, onChange, disabled }: Namespa
 // ──────────────────────────────────────────────
 
 export default function WorkloadsView() {
+  const { language } = useLanguage();
+  const t = translations.workloads[language as keyof typeof translations.workloads] || translations.workloads.EN;
   const [workloads, setWorkloads] = useState<Workload[]>([]);
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -158,10 +163,11 @@ export default function WorkloadsView() {
       setNamespaces(allNamespaces);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load workloads.");
+      toast.error(t.loadError);
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -200,7 +206,7 @@ export default function WorkloadsView() {
       <div className="shrink-0 border-b border-slate-800 px-4 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-orange-500" />
-          <h1 className="text-sm font-semibold text-slate-100">Workloads</h1>
+          <h1 className="text-sm font-semibold text-slate-100">{t.title}</h1>
           {!isLoading && (
             <span className="text-xs text-slate-500">
               ({filtered.length.toLocaleString()} / {workloads.length.toLocaleString()})
@@ -214,7 +220,7 @@ export default function WorkloadsView() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
+          {t.refresh}
         </button>
       </div>
 
@@ -228,6 +234,7 @@ export default function WorkloadsView() {
             setSelectedNamespaces(ns);
           }}
           disabled={isLoading}
+          t={t}
         />
 
         {/* Name freetext search */}
@@ -235,7 +242,7 @@ export default function WorkloadsView() {
           <Search className="absolute left-2.5 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
           <input
             type="text"
-            placeholder="Filter workloads…"
+            placeholder={t.filterWorkloads}
             value={nameSearch}
             onChange={(e) => setNameSearch(e.target.value)}
             className="pl-8 pr-8 py-1.5 rounded-md border border-slate-700 bg-slate-800 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-orange-500 w-56"
@@ -256,7 +263,7 @@ export default function WorkloadsView() {
             onClick={clearFilters}
             className="text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2 transition-colors"
           >
-            Clear filters
+          {t.clearFilters}
           </button>
         )}
       </div>
@@ -266,6 +273,7 @@ export default function WorkloadsView() {
         <WorkloadsTable
           workloads={filtered}
           isLoading={isLoading}
+          t={t}
         />
       </div>
 
