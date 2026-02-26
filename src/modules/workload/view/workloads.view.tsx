@@ -22,8 +22,20 @@ interface NamespaceDropdownProps {
 
 function NamespaceDropdown({ namespaces, selected, onChange, disabled }: NamespaceDropdownProps) {
   const [open, setOpen] = useState(false);
+  const [nsSearch, setNsSearch] = useState("");
 
   const allSelected = selected.length === 0 || selected.length === namespaces.length;
+
+  const filteredNs = (nsSearch.trim()
+    ? namespaces.filter((ns) => ns.toLowerCase().includes(nsSearch.toLowerCase()))
+    : namespaces
+  ).sort((a, b) => {
+    const aSelected = selected.includes(a);
+    const bSelected = selected.includes(b);
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    return 0;
+  });
 
   const toggleNs = (ns: string) => {
     if (ns === ALL_NS) {
@@ -44,7 +56,7 @@ function NamespaceDropdown({ namespaces, selected, onChange, disabled }: Namespa
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => !v); setNsSearch(""); }}
         disabled={disabled}
         className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-slate-700 bg-slate-800 text-sm text-slate-200 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed min-w-45 justify-between"
       >
@@ -57,12 +69,27 @@ function NamespaceDropdown({ namespaces, selected, onChange, disabled }: Namespa
           {/* backdrop */}
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full mt-1 z-20 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
-            <div className="max-h-64 overflow-y-auto py-1">
+            {/* Search inside dropdown */}
+            <div className="px-2 pt-2 pb-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search namespace…"
+                  value={nsSearch}
+                  onChange={(e) => setNsSearch(e.target.value)}
+                  className="w-full pl-6 pr-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+            <div className="max-h-56 overflow-y-auto py-1">
               {/* All option */}
               <button
                 onClick={() => {
                   toggleNs(ALL_NS);
                   setOpen(false);
+                  setNsSearch("");
                 }}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-slate-800 transition-colors text-left ${
                   allSelected ? "text-orange-400" : "text-slate-300"
@@ -80,7 +107,7 @@ function NamespaceDropdown({ namespaces, selected, onChange, disabled }: Namespa
 
               <div className="border-t border-slate-800 my-1" />
 
-              {namespaces.map((ns) => {
+              {filteredNs.map((ns) => {
                 const checked = selected.includes(ns);
                 return (
                   <button

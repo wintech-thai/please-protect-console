@@ -37,6 +37,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { translations } from "@/locales/dict";
+import { useLanguage } from "@/context/LanguageContext";
 
 // ──────────────────────────────────────────────
 // Time range helpers
@@ -65,26 +67,6 @@ function getTimeParams(range: TimeRangeValue): { durationSeconds: number; step: 
   const seconds = RELATIVE_SECONDS[range.value] ?? 3600;
   return { durationSeconds: seconds, step: stepForDuration(seconds) };
 }
-
-const WORKLOAD_TIME_TRANSLATIONS = {
-  absoluteTitle: "Absolute range",
-  from: "From",
-  to: "To",
-  apply: "Apply",
-  searchPlaceholder: "Search ranges…",
-  customRange: "Custom range",
-  last5m: "Last 5 minutes",
-  last15m: "Last 15 minutes",
-  last30m: "Last 30 minutes",
-  last1h: "Last 1 hour",
-  last3h: "Last 3 hours",
-  last6h: "Last 6 hours",
-  last12h: "Last 12 hours",
-  last24h: "Last 24 hours",
-  last2d: "Last 2 days",
-  last7d: "Last 7 days",
-  last30d: "Last 30 days",
-} as const;
 
 // ──────────────────────────────────────────────
 // Utilities
@@ -309,6 +291,10 @@ const EMPTY_INFO: WorkloadInfo = { labels: {}, createdAt: "", containers: [] };
 
 export default function WorkloadDetailView({ namespace, type, name }: WorkloadDetailViewProps) {
   const router = useRouter();
+  const { language } = useLanguage();
+  const timePicker =
+    translations.timePicker[language as keyof typeof translations.timePicker] ||
+    translations.timePicker.EN;
 
   const [pods, setPods] = useState<PodDetail[]>([]);
   const [metrics, setMetrics] = useState<WorkloadMetrics>(EMPTY_METRICS);
@@ -448,7 +434,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                   value={timeRange}
                   onChange={setTimeRange}
                   disabled={metricsLoading}
-                  translations={WORKLOAD_TIME_TRANSLATIONS}
+                  translations={timePicker}
                 />
               </div>
             </div>
