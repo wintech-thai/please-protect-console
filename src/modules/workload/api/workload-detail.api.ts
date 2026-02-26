@@ -436,14 +436,8 @@ export const workloadDetailApi = {
         durationSeconds, step, absStart, absEnd
       ),
       queryRangeWithFallbacks([
-        // 1st choice: ephemeral container filesystem usage
         `sum(container_fs_usage_bytes{namespace="${namespace}",pod=~"${podRegex}",container!="",container!="POD"})`,
-        // 2nd choice: container-level disk I/O rate
         `sum(rate(container_fs_reads_bytes_total{namespace="${namespace}",pod=~"${podRegex}",container!="",container!="POD"}[5m])) + sum(rate(container_fs_writes_bytes_total{namespace="${namespace}",pod=~"${podRegex}",container!="",container!="POD"}[5m]))`,
-        // 3rd choice: kubelet PVC volume stats
-        `sum(kubelet_volume_stats_used_bytes{namespace="${namespace}"})`,
-        // 4th choice: node-level disk I/O (same as overview) — always available via node-exporter
-        `sum(rate(node_disk_read_bytes_total{job="node-exporter"}[5m])) + sum(rate(node_disk_written_bytes_total{job="node-exporter"}[5m]))`,
       ], durationSeconds, step, absStart, absEnd),
     ]);
 
