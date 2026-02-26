@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Hash, Globe, Clock, Type, X, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function Layer3Sidebar({ isOpen }: { isOpen: boolean }) {
+export function Layer4Sidebar({ isOpen }: { isOpen: boolean }) {
   if (!isOpen) return null;
 
   const sections = [

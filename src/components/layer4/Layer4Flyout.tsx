@@ -25,7 +25,7 @@ interface FlyoutProps {
   t: any; 
 }
 
-export function Layer3Flyout({
+export function Layer4Flyout({
   data,
   events = [],
   currentIndex = -1,

@@ -38,7 +38,7 @@ interface Layer3TopNavProps {
 
 const OPERATORS = ["==", "!=", ">", ">=", "<", "<=", "exists"];
 
-export function Layer3TopNav({
+export function Layer4TopNav({
   luceneQuery,
   onQueryChange,
   onQuerySubmit,

@@ -44,10 +44,11 @@ import { ChangePasswordModal } from "@/components/modals/change-password-modal";
 import { translations } from "@/locales/dict";
 import { AppVersionDisplay } from "@/components/layout/app-version-display";
 
+// 🌟 เพิ่ม isDivider สำหรับทำเส้นคั่นเมนู
 interface NavItem {
   label: string;
   href: string;
-  children?: { label: string; href: string; icon?: React.ReactNode }[];
+  children?: { label?: string; href?: string; icon?: React.ReactNode; isDivider?: boolean }[];
 }
 
 interface NavbarProps {
@@ -111,11 +112,21 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
       label: t.events,
       href: "/events/layer7",
       children: [
-        { label: t.layer7, href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-        { label: t.layer3, href: "/events/layer3", icon: <Activity className="w-4 h-4 mr-2" /> },
-        { label: t.alerts, href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
-        { label: t.eventIoc, href: "#", icon: <Target className="w-4 h-4 mr-2" /> },
-        { label: t.subnetMapping, href: "#", icon: <Network className="w-4 h-4 mr-2" /> },
+        // 🌟 กลุ่ม Layer 7 และ Layer 4
+        { label: t.layer7 || "Layer 7", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
+        { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> }, // 🌟 เปลี่ยนเป็น Layer 4
+        
+        // 🌟 เส้นคั่น
+        { isDivider: true },
+        
+        // 🌟 กลุ่ม Events 
+        { label: t.alerts || "Event Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
+        { label: t.eventIoc || "Event IoC", href: "#", icon: <Target className="w-4 h-4 mr-2" /> },
+        
+        // 🌟 เส้นคั่น
+        { isDivider: true },
+        
+        { label: t.subnetMapping || "Subnet Mapping", href: "#", icon: <Network className="w-4 h-4 mr-2" /> },
       ]
     },
     {
@@ -144,7 +155,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
   const isParentActive = (item: NavItem) => {
     if (isActive(item.href)) return true;
     if (item.children) {
-      return item.children.some(child => pathname.startsWith(child.href));
+      return item.children.some(child => child.href && pathname.startsWith(child.href));
     }
     return false;
   };
@@ -202,25 +213,32 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent align="start" className="bg-[#0B1120] border border-blue-900/30 shadow-xl shadow-black/50 rounded-lg mt-2 min-w-[220px] p-1 text-blue-100">
-                      {item.children.map((subItem) => (
-                        <DropdownMenuItem key={subItem.label} asChild>
-                          <Link
-                            href={subItem.href}
-                            onClick={(e) => {
-                                if (subItem.href === "#") e.preventDefault();
-                            }}
-                            className={cn(
-                              "flex items-center px-3 py-3 text-base rounded-md cursor-pointer outline-none transition-colors w-full",
-                              pathname === subItem.href
-                                ? "bg-blue-500/20 text-cyan-400 font-medium"
-                                : "text-slate-400 hover:bg-blue-900/30 hover:text-blue-200 focus:bg-blue-900/30"
-                            )}
-                          >
-                            {subItem.icon}
-                            {subItem.label}
-                          </Link>
-                        </DropdownMenuItem>
-                      ))}
+                      {item.children.map((subItem, idx) => {
+                        // 🌟 แทรกเส้นคั่น
+                        if (subItem.isDivider) {
+                          return <div key={`div-${idx}`} className="h-[1px] bg-slate-800 my-2 mx-3" />;
+                        }
+                        
+                        return (
+                          <DropdownMenuItem key={subItem.label || idx} asChild>
+                            <Link
+                              href={subItem.href!}
+                              onClick={(e) => {
+                                  if (subItem.href === "#") e.preventDefault();
+                              }}
+                              className={cn(
+                                "flex items-center px-3 py-3 text-base rounded-md cursor-pointer outline-none transition-colors w-full",
+                                pathname === subItem.href
+                                  ? "bg-blue-500/20 text-cyan-400 font-medium"
+                                  : "text-slate-400 hover:bg-blue-900/30 hover:text-blue-200 focus:bg-blue-900/30"
+                              )}
+                            >
+                              {subItem.icon}
+                              {subItem.label}
+                            </Link>
+                          </DropdownMenuItem>
+                        );
+                      })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 );
@@ -376,20 +394,26 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
                 </Link>
                 {item.children && (
                   <div className="bg-[#020617]/50 pl-4 border-b border-blue-900/30">
-                    {item.children.map((subItem) => (
-                      <Link
-                        key={subItem.label}
-                        href={subItem.href}
-                        className="flex items-center gap-2 px-4 py-3 text-base text-slate-400 hover:text-cyan-400"
-                        onClick={(e) => {
-                          if (subItem.href === "#") e.preventDefault();
-                          else setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        {subItem.icon}
-                        {subItem.label}
-                      </Link>
-                    ))}
+                    {item.children.map((subItem, idx) => {
+                      // 🌟 แทรกเส้นคั่นในโหมด Mobile
+                      if (subItem.isDivider) {
+                        return <div key={`mob-div-${idx}`} className="h-[1px] bg-slate-800/80 my-3 mx-4" />;
+                      }
+                      return (
+                        <Link
+                          key={subItem.label || idx}
+                          href={subItem.href!}
+                          className="flex items-center gap-2 px-4 py-3 text-base text-slate-400 hover:text-cyan-400"
+                          onClick={(e) => {
+                            if (subItem.href === "#") e.preventDefault();
+                            else setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          {subItem.icon}
+                          {subItem.label}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
