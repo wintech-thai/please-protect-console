@@ -28,15 +28,29 @@ export function AlertsTable({ sessions, selectedFields, totalHits, isLoading, pa
   const tableMinWidth = Math.max(1200, selectedFields.length * 200 + 100);
 
   const headerLabelMap: Record<string, string> = {
-    "@timestamp": t?.time || "TIMESTAMP",
-    "alert.category": t?.category || "CATEGORY",
-    "alert.severity": t?.severity || "SEVERITY",
-    "alert.signature": t?.signature || "SIGNATURE",
-    "alert.signature_id": t?.signatureId || "SIGNATURE ID",
-    "network.community_id": t?.communityId || "COMMUNITY ID",
-    "source.ip": "SRC IP",
-    "destination.ip": "DST IP",
-    "network.protocol": "PROTOCOL"
+    "@timestamp": t?.time || "Timestamp",
+    "alert.category": t?.category || "Category",
+    "alert.severity": t?.severity || "Severity",
+    "alert.signature": t?.signature || "Signature",
+    "alert.signature_id": t?.signatureId || "Signature ID",
+    "network.community_id": t?.communityId || "Community ID",
+    "source.ip": "Src IP",
+    "destination.ip": "Dst IP",
+    "network.protocol": "Protocol"
+  };
+
+  const getColumnWidthClass = (field: string) => {
+    if (field === "@timestamp") return "w-[180px]"; 
+    if (field === "alert.severity") return "w-[100px]"; 
+    if (field === "alert.signature_id") return "w-[120px]"; 
+    if (field === "network.protocol") return "w-[100px]";
+    return ""; 
+  };
+
+  const getColumnAlignClass = (field: string) => {
+    const centerFields = ["alert.severity", "alert.signature_id", "network.community_id", "network.protocol", "@timestamp"];
+    if (centerFields.includes(field)) return "text-center";
+    return "text-left"; 
   };
 
   const getFieldStyle = (field: string, isSelected: boolean) => {
@@ -78,7 +92,6 @@ export function AlertsTable({ sessions, selectedFields, totalHits, isLoading, pa
   return (
     <div className="flex-1 overflow-hidden flex flex-col bg-slate-950 border-t border-slate-800">
       
-      {/* Header Log Title */}
       <div className="flex-none px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
         <div className="text-sm font-bold text-white tracking-tight opacity-80">
           {t?.logTitle || "Documents"} 
@@ -96,21 +109,24 @@ export function AlertsTable({ sessions, selectedFields, totalHits, isLoading, pa
           </div>
         ) : (
           <table 
-            className="w-full text-left border-collapse table-fixed"
+            className="w-full border-collapse table-fixed"
             style={{ minWidth: `${tableMinWidth}px` }} 
           >
             <thead className="bg-slate-950 sticky top-0 z-10 border-b border-slate-800">
               <tr>
                 <th className="w-10 px-4 py-5"></th>
                 {selectedFields.map(f => (
-                  <th key={f} className="px-4 py-5 whitespace-nowrap">
+                  <th 
+                    key={f} 
+                    className={cn("px-4 py-5 whitespace-nowrap", getColumnWidthClass(f), getColumnAlignClass(f))}
+                  >
                     <span className="text-blue-400 font-semibold tracking-normal text-sm">
                       {headerLabelMap[f] || f.replace('.', ' ')}
                     </span>
                   </th>
                 ))}
                 <th className="px-4 py-5 text-center w-[80px] text-blue-400 font-semibold text-sm">
-                  {t?.actions || "ACTIONS"}
+                  {t?.actions || "Actions"}
                 </th>
               </tr>
             </thead>
@@ -152,7 +168,7 @@ export function AlertsTable({ sessions, selectedFields, totalHits, isLoading, pa
                          if (f === "alert.severity") {
                             const severityData = getSeverityBadge(session.alert?.severity);
                             return (
-                               <td key={f} className="p-4 whitespace-nowrap">
+                               <td key={f} className={cn("p-4 whitespace-nowrap", getColumnAlignClass(f))}>
                                  <span className={cn("inline-flex items-center justify-center px-2 py-[1px] text-[10px] font-bold uppercase border rounded tracking-wider", severityData.styles)}>
                                    {severityData.label}
                                  </span>
@@ -164,9 +180,9 @@ export function AlertsTable({ sessions, selectedFields, totalHits, isLoading, pa
                          const cellStyle = getFieldStyle(f, isSelected);
 
                          return (
-                            <td key={f} className="p-4 whitespace-nowrap">
+                            <td key={f} className={cn("p-4 whitespace-nowrap", getColumnAlignClass(f))}>
                               <div 
-                                className="truncate font-mono text-sm max-w-[500px]" 
+                                className="truncate font-mono text-sm w-full transition-colors" 
                                 style={cellStyle} 
                                 title={String(val)}
                               >
@@ -190,7 +206,6 @@ export function AlertsTable({ sessions, selectedFields, totalHits, isLoading, pa
         )}
       </div>
 
-      {/* Pagination Section */}
       <div className="flex-none flex items-center justify-between sm:justify-end px-6 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-8">
         <div className="flex items-center gap-3 text-xs text-slate-500 font-bold">
           <span className="opacity-70">{t?.rowsPerPage || "Rows per page"}</span>

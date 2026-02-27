@@ -205,7 +205,7 @@ export function Layer4TopNav({
         >
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
           <span className="hidden sm:inline">
-            {isLoading ? "Refreshing..." : (dict?.refresh || "Refresh")} 
+            {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
           </span>
         </button>
 

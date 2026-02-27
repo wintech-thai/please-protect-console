@@ -5,6 +5,7 @@ export const alertDict = {
       subtitle: "SURICATA THREAT DETECTION",
       hits: "alerts",
       refresh: "Refresh",
+      refreshing: "Refreshing...",
       export: "EXPORT",
       searchPlaceholder: "Filter your data using KQL syntax",
       loadingChart: "Loading chart data..."
@@ -47,6 +48,7 @@ export const alertDict = {
       subtitle: "ระบบตรวจจับภัยคุกคาม SURICATA",
       hits: "รายการ",
       refresh: "รีเฟรช",
+      refreshing: "กำลังรีเฟรช...",
       export: "ส่งออก",
       searchPlaceholder: "ค้นหาข้อมูลด้วยไวยากรณ์ KQL...",
       loadingChart: "กำลังโหลดข้อมูลกราฟ..."

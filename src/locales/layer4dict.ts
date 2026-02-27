@@ -5,6 +5,7 @@ export const layer4Dict = {
       subtitle: "NETWORK LAYER MONITORING",
       hits: "hits",
       refresh: "Refresh",
+      refreshing: "Refreshing...",
       downloadPcap: "DOWNLOAD PCAP",
       export: "EXPORT"
     },
@@ -68,6 +69,7 @@ export const layer4Dict = {
       subtitle: "การตรวจสอบระดับเครือข่าย",
       hits: "รายการ",
       refresh: "รีเฟรช",
+      refreshing: "กำลังรีเฟรช...",
       downloadPcap: "ดาวน์โหลด PCAP",
       export: "ส่งออก"
     },

@@ -41,8 +41,19 @@ export function AlertsSidebar({ fields, selectedFields, expandedField, onToggleF
   };
 
   const availableFields = fields
-    .map(f => f.exp)
-    .filter(f => !selectedFields.includes(f) && !popularFields.includes(f));
+    .map(f => f.exp || f)
+    .filter(f => !selectedFields.includes(f) && !popularFields.includes(f))
+    .filter(f => {
+      const suricataAllowedPrefixes = [
+        "@timestamp", 
+        "alert.", "source.", "destination.", "network.", "event.", 
+        "suricata.", "http.", "dns.", "tls.", "file.", "url.", "rule.",
+        "app_proto", "flow.", "payload", "vlan", "community_id",
+        "src_ip", "src_port", "dest_ip", "dest_port", "proto"
+      ];
+      
+      return suricataAllowedPrefixes.some(prefix => f === prefix || f.startsWith(prefix));
+    });
 
   const searchFilter = (f: string) => f.toLowerCase().includes(appliedSearch.toLowerCase());
 
