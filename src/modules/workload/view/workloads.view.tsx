@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useQueryState, parseAsString, parseAsJson } from "nuqs";
 import { RefreshCw, Search, X, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { workloadsApi, type Workload } from "../api/workloads.api";
@@ -147,9 +148,49 @@ export default function WorkloadsView() {
   const [workloads, setWorkloads] = useState<Workload[]>([]);
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  // Filters
-  const [selectedNamespaces, setSelectedNamespaces] = useState<string[]>([]);
-  const [nameSearch, setNameSearch] = useState("");
+  const [isRestored, setIsRestored] = useState(false);
+
+  // Filters — persisted in URL params
+  const [selectedNamespaces, setSelectedNamespaces] = useQueryState<string[]>(
+    "wl_ns",
+    parseAsJson<string[]>((v) => v as string[]).withDefault([]),
+  );
+  const [nameSearch, setNameSearch] = useQueryState(
+    "wl_search",
+    parseAsString.withDefault(""),
+  );
+
+  // On mount: restore filters from localStorage if URL params are absent
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const timer = setTimeout(() => {
+      if (!searchParams.has("wl_ns")) {
+        const saved = localStorage.getItem("wl_ns");
+        if (saved) {
+          try { setSelectedNamespaces(JSON.parse(saved), { history: "replace" }); } catch { /* ignore */ }
+        }
+      }
+      if (!searchParams.has("wl_search")) {
+        const saved = localStorage.getItem("wl_search");
+        if (saved) setNameSearch(saved, { history: "replace" });
+      }
+      setIsRestored(true);
+    }, 50);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist filters to localStorage whenever they change
+  useEffect(() => {
+    if (!isRestored) return;
+    localStorage.setItem("wl_ns", JSON.stringify(selectedNamespaces));
+  }, [selectedNamespaces, isRestored]);
+
+  useEffect(() => {
+    if (!isRestored) return;
+    localStorage.setItem("wl_search", nameSearch);
+  }, [nameSearch, isRestored]);
 
   // ── Fetch ──
   const fetchData = useCallback(async () => {
@@ -194,8 +235,8 @@ export default function WorkloadsView() {
   }, [workloads, selectedNamespaces, nameSearch]);
 
   const clearFilters = () => {
-    setSelectedNamespaces([]);
-    setNameSearch("");
+    setSelectedNamespaces(null);
+    setNameSearch(null);
   };
 
   const hasFilters = selectedNamespaces.length > 0 || nameSearch.trim().length > 0;
