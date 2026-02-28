@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryState, parseAsString, parseAsJson } from "nuqs";
 import { RefreshCw, Search, X, Layers } from "lucide-react";
 import { toast } from "sonner";
-import { workloadsApi, type Workload, type WorkloadType } from "../api/workloads.api";
+import { type WorkloadType } from "../api/workloads.api";
 import { WorkloadsTable } from "../components/workloads-table";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
+import { useWorkloads, useNamespaces } from "../hooks/use-workloads";
 
 
 // ──────────────────────────────────────────────
@@ -241,9 +242,38 @@ function TypeDropdown({ selected, onChange, disabled, t }: TypeDropdownProps) {
 export default function WorkloadsView() {
   const { language } = useLanguage();
   const t = translations.workloads[language as keyof typeof translations.workloads] || translations.workloads.EN;
-  const [workloads, setWorkloads] = useState<Workload[]>([]);
-  const [namespaces, setNamespaces] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // ── Data fetching via TanStack Query ──
+  const {
+    data: workloads = [],
+    isLoading: workloadsLoading,
+    error: workloadsError,
+    refetch: refetchWorkloads,
+    isFetching: workloadsFetching,
+  } = useWorkloads();
+
+  const {
+    data: namespaces = [],
+    refetch: refetchNamespaces,
+  } = useNamespaces();
+
+  const isLoading = workloadsLoading;
+  const isFetching = workloadsFetching;
+
+  // Show error toast
+  useEffect(() => {
+    if (workloadsError) {
+      console.error(workloadsError);
+      toast.error(t.loadError);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workloadsError]);
+
+  const refetchAll = () => {
+    refetchWorkloads();
+    refetchNamespaces();
+  };
+
   const [isRestored, setIsRestored] = useState(false);
 
   // Filters — persisted in URL params
@@ -303,29 +333,6 @@ export default function WorkloadsView() {
     localStorage.setItem("wl_type", JSON.stringify(selectedTypes));
   }, [selectedTypes, isRestored]);
 
-  // ── Fetch ──
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [allWorkloads, allNamespaces] = await Promise.all([
-        workloadsApi.getAllWorkloads(),
-        workloadsApi.getNamespaces(),
-      ]);
-      setWorkloads(allWorkloads);
-      setNamespaces(allNamespaces);
-    } catch (err) {
-      console.error(err);
-      toast.error(t.loadError);
-    } finally {
-      setIsLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   // ── Client-side filter ──
   const filtered = useMemo(() => {
     let result = workloads;
@@ -372,11 +379,11 @@ export default function WorkloadsView() {
         </div>
 
         <button
-          onClick={fetchData}
-          disabled={isLoading}
+          onClick={refetchAll}
+          disabled={isFetching}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
           {t.refresh}
         </button>
       </div>
@@ -387,10 +394,8 @@ export default function WorkloadsView() {
         <NamespaceDropdown
           namespaces={namespaces}
           selected={selectedNamespaces}
-          onChange={(ns) => {
-            setSelectedNamespaces(ns);
-          }}
-          disabled={isLoading}
+          onChange={(ns) => setSelectedNamespaces(ns)}
+          disabled={isFetching}
           t={t}
         />
 
@@ -398,7 +403,7 @@ export default function WorkloadsView() {
         <TypeDropdown
           selected={selectedTypes}
           onChange={(types) => setSelectedTypes(types)}
-          disabled={isLoading}
+          disabled={isFetching}
           t={t}
         />
 

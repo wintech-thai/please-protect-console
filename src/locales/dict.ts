@@ -1802,6 +1802,8 @@ export const translations = {
     EN: {
       title: "Workloads",
       refresh: "Refresh",
+      refreshOff: "Off",
+      lastUpdated: "Last updated",
       allNamespaces: "All namespaces",
       namespaces: (n: number) => `${n} namespaces`,
       searchNamespace: "Search namespace…",
@@ -1863,6 +1865,8 @@ export const translations = {
     TH: {
       title: "เวิร์กโหลด",
       refresh: "รีเฟรช",
+      refreshOff: "ปิด",
+      lastUpdated: "อัปเดตล่าสุด",
       allNamespaces: "ทุก namespace",
       namespaces: (n: number) => `${n} namespace`,
       searchNamespace: "ค้นหา namespace…",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -15,16 +15,20 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { keepPreviousData } from "@tanstack/react-query";
 import {
-  workloadDetailApi,
-  type PodDetail,
   type MetricPoint,
-  type WorkloadMetrics,
-  type WorkloadInfo,
-  type RevisionInfo,
   type ResourceLimits,
 } from "../api/workload-detail.api";
 import type { WorkloadStatus, WorkloadType } from "../api/workloads.api";
+import {
+  useWorkloadInfo,
+  useWorkloadPods,
+  useWorkloadRevisions,
+  useResourceLimits,
+  useWorkloadMetrics,
+} from "../hooks/use-workload-detail";
+import { REFRESH_OPTIONS } from "@/modules/dashboard/components/overview-types";
 import {
   AdvancedTimeRangeSelector,
   type TimeRangeValue,
@@ -250,8 +254,6 @@ export interface WorkloadDetailViewProps {
   name: string;
 }
 
-const EMPTY_METRICS: WorkloadMetrics = { cpu: [], memory: [], disk: [] };
-const EMPTY_INFO: WorkloadInfo = { labels: {}, createdAt: "", containers: [] };
 const EMPTY_LIMITS: ResourceLimits = {};
 
 // ──────────────────────────────────────────────
@@ -268,71 +270,76 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
     translations.timePicker[language as keyof typeof translations.timePicker] ||
     translations.timePicker.EN;
 
-  const [pods, setPods] = useState<PodDetail[]>([]);
-  const [metrics, setMetrics] = useState<WorkloadMetrics>(EMPTY_METRICS);
-  const [info, setInfo] = useState<WorkloadInfo>(EMPTY_INFO);
-  const [revisions, setRevisions] = useState<RevisionInfo[]>([]);
-  const [resourceLimits, setResourceLimits] = useState<ResourceLimits>(EMPTY_LIMITS);
-
-  const [podsLoading, setPodsLoading] = useState(true);
-  const [metricsLoading, setMetricsLoading] = useState(true);
-  const [infoLoading, setInfoLoading] = useState(true);
-  const [revisionsLoading, setRevisionsLoading] = useState(true);
-
   const [timeRange, setTimeRange] = useState<TimeRangeValue>({
     type: "relative",
     value: "1h",
     label: "Last 1 hour",
   });
 
-  // fetchKey triggers re-fetch of info/pods/revisions; also resets metrics
-  const [fetchKey, setFetchKey] = useState(0);
+  // ── Derive time params (memoised to stabilise query keys) ──
+  const timeParams = useMemo(() => getTimeParams(timeRange), [timeRange]);
+
+  // ── Auto-refresh interval ──
+  const [refreshInterval, setRefreshInterval] = useState(30_000);
+  const activeRefetchInterval = refreshInterval > 0 ? refreshInterval : false as const;
+
+  // ── TanStack Query hooks ──
+  const keepPrev = { placeholderData: keepPreviousData };
+
+  const {
+    data: info = { labels: {}, createdAt: "", containers: [] },
+    isLoading: infoLoading,
+    refetch: refetchInfo,
+    dataUpdatedAt: infoUpdatedAt,
+  } = useWorkloadInfo(namespace, name, type, { refetchInterval: activeRefetchInterval, ...keepPrev });
+
+  const {
+    data: pods = [],
+    isLoading: podsLoading,
+    refetch: refetchPods,
+    dataUpdatedAt: podsUpdatedAt,
+  } = useWorkloadPods(namespace, name, type, { refetchInterval: activeRefetchInterval, ...keepPrev });
+
+  const {
+    data: revisions = [],
+    isLoading: revisionsLoading,
+    refetch: refetchRevisions,
+    dataUpdatedAt: revisionsUpdatedAt,
+  } = useWorkloadRevisions(namespace, name, type, { refetchInterval: activeRefetchInterval, ...keepPrev });
+
+  const {
+    data: resourceLimits = EMPTY_LIMITS,
+  } = useResourceLimits(namespace, name, type, { refetchInterval: activeRefetchInterval, ...keepPrev });
+
+  const {
+    data: metrics = { cpu: [], memory: [], disk: [] },
+    isLoading: metricsLoading,
+    isFetching: metricsFetching,
+    refetch: refetchMetrics,
+    dataUpdatedAt: metricsUpdatedAt,
+  } = useWorkloadMetrics(
+    namespace,
+    name,
+    timeParams.durationSeconds,
+    timeParams.step,
+    timeParams.start,
+    timeParams.end,
+    { refetchInterval: activeRefetchInterval, ...keepPrev },
+  );
+
+  // Last updated = most recent dataUpdatedAt across all queries
+  const latestUpdatedAt = Math.max(infoUpdatedAt, podsUpdatedAt, revisionsUpdatedAt, metricsUpdatedAt);
+  const lastUpdated = latestUpdatedAt > 0 ? new Date(latestUpdatedAt) : null;
 
   const isAnyLoading = podsLoading || metricsLoading || infoLoading || revisionsLoading;
-  const isInitialLoad = fetchKey === 0 && isAnyLoading;
+  const isInitialLoad = podsLoading && infoLoading && revisionsLoading && metricsLoading;
 
-  const fetchAll = useCallback(() => {
-    setFetchKey((k) => k + 1);
-  }, []);
-
-  useEffect(() => {
-    if (fetchKey > 0) {
-      setPodsLoading(true);
-      setInfoLoading(true);
-      setRevisionsLoading(true);
-    }
-
-    workloadDetailApi.getWorkloadInfo(namespace, name, type)
-      .then(setInfo).catch(() => setInfo(EMPTY_INFO)).finally(() => setInfoLoading(false));
-
-    workloadDetailApi.getRevisions(namespace, name, type)
-      .then(setRevisions).catch(() => setRevisions([])).finally(() => setRevisionsLoading(false));
-
-    workloadDetailApi.getPods(namespace, name, type)
-      .then(setPods).catch(() => setPods([])).finally(() => setPodsLoading(false));
-
-    workloadDetailApi.getResourceLimits(namespace, name, type)
-      .then(setResourceLimits).catch(() => setResourceLimits(EMPTY_LIMITS));
-  }, [namespace, name, type, fetchKey]);
-
-  // Metrics re-fetched independently when timeRange or fetchKey changes
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setMetricsLoading(true);
-      try {
-        const { durationSeconds, step, start, end } = getTimeParams(timeRange);
-        const m = await workloadDetailApi.getMetrics(namespace, name, durationSeconds, step, start, end);
-        if (!cancelled) setMetrics(m);
-      } catch {
-        if (!cancelled) setMetrics(EMPTY_METRICS);
-      } finally {
-        if (!cancelled) setMetricsLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(timeRange), fetchKey, namespace, name]);
+  const refetchAll = () => {
+    refetchInfo();
+    refetchPods();
+    refetchRevisions();
+    refetchMetrics();
+  };
 
   const derivedStatus: WorkloadStatus = (() => {
     if (podsLoading) return "Unknown";
@@ -394,14 +401,37 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
               </p>
             </div>
           </div>
-          <button
-            onClick={fetchAll}
-            disabled={isAnyLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 disabled:opacity-50 transition-colors shrink-0"
-          >
-            <RefreshCw className={cn("w-3.5 h-3.5", isAnyLoading && "animate-spin")} />
-            <span className="hidden sm:inline">{t.refresh}</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {lastUpdated && (
+              <span className="text-xs text-slate-500 hidden md:inline">
+                {t.lastUpdated}: {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+            <button
+              onClick={refetchAll}
+              disabled={isAnyLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", isAnyLoading && "animate-spin")} />
+              <span className="hidden sm:inline">{t.refresh}</span>
+            </button>
+            <select
+              value={refreshInterval}
+              onChange={(e) => setRefreshInterval(Number(e.target.value))}
+              className="text-xs bg-slate-800 text-slate-400 pl-2 pr-6 py-1.5 rounded-md border border-slate-700 hover:border-slate-600 focus:border-orange-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 6px center",
+              }}
+            >
+              {REFRESH_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.value === 0 ? (t.refreshOff ?? "Off") : opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -419,7 +449,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 <AdvancedTimeRangeSelector
                   value={timeRange}
                   onChange={setTimeRange}
-                  disabled={metricsLoading}
+                  disabled={metricsFetching}
                   translations={timePicker}
                 />
               </div>
@@ -431,7 +461,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 data={metrics.cpu}
                 format={formatCpu}
                 color="#f97316"
-                durationSeconds={getTimeParams(timeRange).durationSeconds}
+                durationSeconds={timeParams.durationSeconds}
                 refLines={cpuRefLines.length > 0 ? cpuRefLines : undefined}
               />
               <MetricCard
@@ -440,7 +470,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 data={metrics.memory}
                 format={formatBytes}
                 color="#3b82f6"
-                durationSeconds={getTimeParams(timeRange).durationSeconds}
+                durationSeconds={timeParams.durationSeconds}
                 refLines={memoryRefLines.length > 0 ? memoryRefLines : undefined}
               />
               <MetricCard
@@ -449,7 +479,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 data={metrics.disk}
                 format={formatBytes}
                 color="#8b5cf6"
-                durationSeconds={getTimeParams(timeRange).durationSeconds}
+                durationSeconds={timeParams.durationSeconds}
               />
             </div>
           </section>
