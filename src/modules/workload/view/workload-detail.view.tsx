@@ -22,6 +22,7 @@ import {
   type WorkloadMetrics,
   type WorkloadInfo,
   type RevisionInfo,
+  type ResourceLimits,
 } from "../api/workload-detail.api";
 import type { WorkloadStatus, WorkloadType } from "../api/workloads.api";
 import {
@@ -36,6 +37,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 import { translations } from "@/locales/dict";
 import { useLanguage } from "@/context/LanguageContext";
@@ -51,11 +53,21 @@ import {
 } from "../utils/workload-helpers";
 
 // ──────────────────────────────────────────────
+// Reference line type
+// ──────────────────────────────────────────────
+
+export interface RefLine {
+  value: number;
+  label: string;
+  color: string;
+}
+
+// ──────────────────────────────────────────────
 // Metric chart card
 // ──────────────────────────────────────────────
 
 function MetricCard({
-  title, icon, data, format, color, durationSeconds,
+  title, icon, data, format, color, durationSeconds, refLines,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -63,6 +75,7 @@ function MetricCard({
   format: (v: number) => string;
   color: string;
   durationSeconds: number;
+  refLines?: RefLine[];
 }) {
   const latest = data.length > 0 ? data[data.length - 1].value : null;
   const max = data.length > 0 ? Math.max(...data.map((d) => d.value)) : null;
@@ -75,6 +88,11 @@ function MetricCard({
   }));
 
   const gradId = `grad-${color.replace("#", "")}`;
+
+  // Compute Y-axis domain so reference lines are always visible
+  const dataMax = data.length > 0 ? Math.max(...data.map((d) => d.value)) : 0;
+  const refMax = (refLines ?? []).reduce((m, r) => Math.max(m, r.value), 0);
+  const yMax = Math.max(dataMax, refMax) * 1.1 || undefined; // 10% padding above highest line
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
@@ -119,7 +137,7 @@ function MetricCard({
                 tickLine={false}
                 axisLine={false}
                 width={56}
-                domain={[0, "auto"]}
+                domain={[0, yMax ?? "auto"]}
               />
               <Tooltip
                 contentStyle={{
@@ -142,6 +160,23 @@ function MetricCard({
                 dot={false}
                 activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
               />
+              {(refLines ?? []).map((rl) => (
+                <ReferenceLine
+                  key={rl.label}
+                  y={rl.value}
+                  stroke={rl.color}
+                  strokeDasharray="6 3"
+                  strokeWidth={1.5}
+                  ifOverflow="extendDomain"
+                  label={{
+                    value: `${rl.label}: ${format(rl.value)}`,
+                    position: "insideTopRight",
+                    fill: rl.color,
+                    fontSize: 10,
+                    fontWeight: 600,
+                  }}
+                />
+              ))}
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -217,6 +252,7 @@ export interface WorkloadDetailViewProps {
 
 const EMPTY_METRICS: WorkloadMetrics = { cpu: [], memory: [], disk: [] };
 const EMPTY_INFO: WorkloadInfo = { labels: {}, createdAt: "", containers: [] };
+const EMPTY_LIMITS: ResourceLimits = {};
 
 // ──────────────────────────────────────────────
 // Main page view
@@ -236,6 +272,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
   const [metrics, setMetrics] = useState<WorkloadMetrics>(EMPTY_METRICS);
   const [info, setInfo] = useState<WorkloadInfo>(EMPTY_INFO);
   const [revisions, setRevisions] = useState<RevisionInfo[]>([]);
+  const [resourceLimits, setResourceLimits] = useState<ResourceLimits>(EMPTY_LIMITS);
 
   const [podsLoading, setPodsLoading] = useState(true);
   const [metricsLoading, setMetricsLoading] = useState(true);
@@ -273,6 +310,9 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
 
     workloadDetailApi.getPods(namespace, name, type)
       .then(setPods).catch(() => setPods([])).finally(() => setPodsLoading(false));
+
+    workloadDetailApi.getResourceLimits(namespace, name, type)
+      .then(setResourceLimits).catch(() => setResourceLimits(EMPTY_LIMITS));
   }, [namespace, name, type, fetchKey]);
 
   // Metrics re-fetched independently when timeRange or fetchKey changes
@@ -305,6 +345,15 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
   })();
   const statusDisplay = STATUS_CFG[derivedStatus];
   const statusIcon = STATUS_ICONS[derivedStatus];
+
+  // Build reference lines from resource limits
+  const cpuRefLines: RefLine[] = [];
+  if (resourceLimits.cpuLimit != null) cpuRefLines.push({ value: resourceLimits.cpuLimit, label: "Limit", color: "#ef4444" });
+  if (resourceLimits.cpuRequest != null) cpuRefLines.push({ value: resourceLimits.cpuRequest, label: "Request", color: "#eab308" });
+
+  const memoryRefLines: RefLine[] = [];
+  if (resourceLimits.memoryLimit != null) memoryRefLines.push({ value: resourceLimits.memoryLimit, label: "Limit", color: "#ef4444" });
+  if (resourceLimits.memoryRequest != null) memoryRefLines.push({ value: resourceLimits.memoryRequest, label: "Request", color: "#eab308" });
 
   if (isInitialLoad) {
     return (
@@ -383,6 +432,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 format={formatCpu}
                 color="#f97316"
                 durationSeconds={getTimeParams(timeRange).durationSeconds}
+                refLines={cpuRefLines.length > 0 ? cpuRefLines : undefined}
               />
               <MetricCard
                 title="Memory"
@@ -391,6 +441,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                 format={formatBytes}
                 color="#3b82f6"
                 durationSeconds={getTimeParams(timeRange).durationSeconds}
+                refLines={memoryRefLines.length > 0 ? memoryRefLines : undefined}
               />
               <MetricCard
                 title="Disk"

@@ -63,6 +63,14 @@ export interface WorkloadMetrics {
   disk: MetricPoint[];   // bytes (may be empty if unavailable)
 }
 
+/** Aggregated resource limits/requests (summed across all containers in a pod) */
+export interface ResourceLimits {
+  cpuRequest?: number;    // cores
+  cpuLimit?: number;      // cores
+  memoryRequest?: number; // bytes
+  memoryLimit?: number;   // bytes
+}
+
 // ──────────────────────────────────────────────
 // Raw Kube response helpers
 // ──────────────────────────────────────────────
@@ -107,7 +115,14 @@ interface RawPod {
   };
   spec: {
     nodeName?: string;
-    containers?: Array<{ name: string; image: string }>;
+    containers?: Array<{
+      name: string;
+      image: string;
+      resources?: {
+        limits?: Record<string, string>;
+        requests?: Record<string, string>;
+      };
+    }>;
   };
   status: {
     phase?: string;
@@ -214,6 +229,48 @@ async function queryRangeWithFallbacks(
     if (result.length > 0) return result;
   }
   return [];
+}
+
+// ──────────────────────────────────────────────
+// Resource quantity parsing (Kubernetes format)
+// ──────────────────────────────────────────────
+
+/**
+ * Parse a Kubernetes CPU resource string to number of cores.
+ * e.g. "100m" → 0.1, "2" → 2, "500m" → 0.5
+ */
+function parseCpuQuantity(val: string): number | undefined {
+  if (!val) return undefined;
+  if (val.endsWith("m")) return parseFloat(val) / 1000;
+  const n = parseFloat(val);
+  return isNaN(n) ? undefined : n;
+}
+
+/**
+ * Parse a Kubernetes memory resource string to bytes.
+ * e.g. "128Mi" → 134217728, "1Gi" → 1073741824, "500M" → 500000000
+ */
+function parseMemoryQuantity(val: string): number | undefined {
+  if (!val) return undefined;
+  const units: Record<string, number> = {
+    "Ki": 1024,
+    "Mi": 1024 ** 2,
+    "Gi": 1024 ** 3,
+    "Ti": 1024 ** 4,
+    "K": 1000,
+    "M": 1000 ** 2,
+    "G": 1000 ** 3,
+    "T": 1000 ** 4,
+  };
+  for (const [suffix, multiplier] of Object.entries(units)) {
+    if (val.endsWith(suffix)) {
+      const n = parseFloat(val.slice(0, -suffix.length));
+      return isNaN(n) ? undefined : n * multiplier;
+    }
+  }
+  // Plain number = bytes
+  const n = parseFloat(val);
+  return isNaN(n) ? undefined : n;
 }
 
 // ──────────────────────────────────────────────
@@ -442,5 +499,56 @@ export const workloadDetailApi = {
     ]);
 
     return { cpu, memory, disk };
+  },
+
+  /**
+   * Extract resource limits & requests from pod specs.
+   * Sums across all containers in a representative pod.
+   * For Deployment/StatefulSet/DaemonSet, all pods share the same pod template,
+   * so we just pick the first matching pod.
+   */
+  getResourceLimits: async (
+    namespace: string,
+    workloadName: string,
+    workloadType: WorkloadType,
+  ): Promise<ResourceLimits> => {
+    const orgId = getOrgId();
+    const url = `${KUBE_BASE(orgId)}/api/v1/namespaces/${namespace}/pods`;
+    const res = await client.get<KubeList<RawPod>>(url);
+    const items = res.data?.items ?? [];
+
+    const matchingPods =
+      workloadType === "Pod"
+        ? items.filter((p) => p.metadata.name === workloadName)
+        : items.filter((p) => p.metadata.name.startsWith(workloadName));
+
+    const refPod = matchingPods[0];
+    if (!refPod) return {};
+
+    const containers = refPod.spec.containers ?? [];
+
+    let cpuRequest: number | undefined;
+    let cpuLimit: number | undefined;
+    let memoryRequest: number | undefined;
+    let memoryLimit: number | undefined;
+
+    for (const c of containers) {
+      const res = c.resources;
+      if (!res) continue;
+
+      const cr = parseCpuQuantity(res.requests?.cpu ?? "");
+      if (cr != null) cpuRequest = (cpuRequest ?? 0) + cr;
+
+      const cl = parseCpuQuantity(res.limits?.cpu ?? "");
+      if (cl != null) cpuLimit = (cpuLimit ?? 0) + cl;
+
+      const mr = parseMemoryQuantity(res.requests?.memory ?? "");
+      if (mr != null) memoryRequest = (memoryRequest ?? 0) + mr;
+
+      const ml = parseMemoryQuantity(res.limits?.memory ?? "");
+      if (ml != null) memoryLimit = (memoryLimit ?? 0) + ml;
+    }
+
+    return { cpuRequest, cpuLimit, memoryRequest, memoryLimit };
   },
 };
