@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, HelpCircle } from "lucide-react";
 import type { Workload, WorkloadStatus, WorkloadType } from "../api/workloads.api";
 import type { translations } from "@/locales/dict";
+import { TYPE_COLORS, STATUS_CFG, PHASE_CFG, relativeAge } from "../utils/workload-helpers";
 
 // ──────────────────────────────────────────────
 // Status badge
@@ -16,35 +17,47 @@ const STATUS_CONFIG: Record<
   { label: string; icon: React.ReactNode; className: string }
 > = {
   OK: {
-    label: "OK",
+    label: STATUS_CFG.OK.label,
     icon: <CheckCircle2 className="w-3.5 h-3.5" />,
-    className: "text-emerald-400",
+    className: STATUS_CFG.OK.cls,
   },
   Warning: {
-    label: "Warning",
+    label: STATUS_CFG.Warning.label,
     icon: <AlertTriangle className="w-3.5 h-3.5" />,
-    className: "text-amber-400",
+    className: STATUS_CFG.Warning.cls,
   },
   Error: {
-    label: "Error",
+    label: STATUS_CFG.Error.label,
     icon: <XCircle className="w-3.5 h-3.5" />,
-    className: "text-red-400",
+    className: STATUS_CFG.Error.cls,
   },
   Unknown: {
-    label: "Unknown",
+    label: STATUS_CFG.Unknown.label,
     icon: <HelpCircle className="w-3.5 h-3.5" />,
-    className: "text-slate-400",
+    className: STATUS_CFG.Unknown.cls,
   },
 };
 
-const TYPE_COLORS: Record<WorkloadType, string> = {
-  Deployment: "text-blue-300 bg-blue-500/10 border-blue-500/20",
-  StatefulSet: "text-purple-300 bg-purple-500/10 border-purple-500/20",
-  DaemonSet: "text-cyan-300 bg-cyan-500/10 border-cyan-500/20",
-  Pod: "text-orange-300 bg-orange-500/10 border-orange-500/20",
-};
+const TYPE_COLORS_LOCAL = TYPE_COLORS;
 
-function StatusBadge({ status }: { status: WorkloadStatus }) {
+function StatusBadge({ status, podPhase }: { status: WorkloadStatus; podPhase?: string }) {
+  // For Pods, show the real phase (Running, Succeeded, Failed, etc.)
+  if (podPhase) {
+    const phaseCfg = PHASE_CFG[podPhase] ?? PHASE_CFG.Unknown;
+    const icon = podPhase === "Running" || podPhase === "Succeeded" || podPhase === "Completed"
+      ? <CheckCircle2 className="w-3.5 h-3.5" />
+      : podPhase === "Pending"
+      ? <AlertTriangle className="w-3.5 h-3.5" />
+      : podPhase === "Failed"
+      ? <XCircle className="w-3.5 h-3.5" />
+      : <HelpCircle className="w-3.5 h-3.5" />;
+    return (
+      <span className={cn("flex items-center gap-1 text-xs font-medium", phaseCfg.cls)}>
+        {icon}
+        {podPhase}
+      </span>
+    );
+  }
   const cfg = STATUS_CONFIG[status];
   return (
     <span className={cn("flex items-center gap-1 text-xs font-medium", cfg.className)}>
@@ -59,7 +72,7 @@ function TypeBadge({ type }: { type: WorkloadType }) {
     <span
       className={cn(
         "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border",
-        TYPE_COLORS[type]
+        TYPE_COLORS_LOCAL[type]
       )}
     >
       {type}
@@ -189,6 +202,7 @@ export function WorkloadsTable({ workloads, isLoading, t }: WorkloadsTableProps)
               <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.type}</th>
               <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.pods}</th>
               <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.namespace}</th>
+              <th className="text-left px-4 py-2.5 font-medium text-slate-400 whitespace-nowrap">{t.columns.age}</th>
             </tr>
           </thead>
           <tbody>
@@ -206,7 +220,7 @@ export function WorkloadsTable({ workloads, isLoading, t }: WorkloadsTableProps)
                   {w.name}
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap">
-                  <StatusBadge status={w.status} />
+                  <StatusBadge status={w.status} podPhase={w.type === "Pod" ? w.podPhase : undefined} />
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   <TypeBadge type={w.type} />
@@ -215,6 +229,7 @@ export function WorkloadsTable({ workloads, isLoading, t }: WorkloadsTableProps)
                   {w.podsReady}/{w.podsDesired}
                 </td>
                 <td className="px-4 py-2.5 text-slate-400 text-xs whitespace-nowrap">{w.namespace}</td>
+                <td className="px-4 py-2.5 text-slate-400 text-xs whitespace-nowrap">{relativeAge(w.createdAt)}</td>
               </tr>
               );
             })}

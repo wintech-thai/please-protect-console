@@ -1816,6 +1816,7 @@ export const translations = {
         type: "Type",
         pods: "Pods",
         namespace: "Namespace",
+        age: "Age",
       },
       rowsPerPage: "Rows per page:",
       detail: {
@@ -1875,6 +1876,7 @@ export const translations = {
         type: "ประเภท",
         pods: "Pods",
         namespace: "Namespace",
+        age: "อายุ",
       },
       rowsPerPage: "แถวต่อหน้า:",
       detail: {

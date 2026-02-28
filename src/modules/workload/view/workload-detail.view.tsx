@@ -39,78 +39,16 @@ import {
 } from "recharts";
 import { translations } from "@/locales/dict";
 import { useLanguage } from "@/context/LanguageContext";
-
-// ──────────────────────────────────────────────
-// Time range helpers
-// ──────────────────────────────────────────────
-
-const RELATIVE_SECONDS: Record<string, number> = {
-  "5m": 300, "15m": 900, "30m": 1800,
-  "1h": 3600, "3h": 10800, "6h": 21600,
-  "12h": 43200, "24h": 86400, "2d": 172800,
-  "7d": 604800, "30d": 2592000,
-};
-
-function stepForDuration(seconds: number): number {
-  if (seconds <=    300) return 15;
-  if (seconds <=   3600) return 60;
-  if (seconds <=  21600) return 180;
-  if (seconds <=  86400) return 600;
-  return 1200;
-}
-
-function getTimeParams(range: TimeRangeValue): { durationSeconds: number; step: number; start?: number; end?: number } {
-  if (range.type === "absolute" && range.start && range.end) {
-    const duration = range.end - range.start;
-    return { durationSeconds: duration, step: stepForDuration(duration), start: range.start, end: range.end };
-  }
-  const seconds = RELATIVE_SECONDS[range.value] ?? 3600;
-  return { durationSeconds: seconds, step: stepForDuration(seconds) };
-}
-
-// ──────────────────────────────────────────────
-// Utilities
-// ──────────────────────────────────────────────
-
-function formatCpu(cores: number): string {
-  if (cores < 1) return `${(cores * 1000).toFixed(0)}m`;
-  return `${cores.toFixed(3)} cores`;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes <= 0) return "0 B";
-  if (bytes < 1024) return `${bytes.toFixed(0)} B`;
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
-  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
-  return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
-}
-
-function relativeAge(isoString: string): string {
-  if (!isoString) return "—";
-  const diff = Date.now() - new Date(isoString).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
-
-function formatTimeLabel(ms: number, durationSeconds: number): string {
-  const d = new Date(ms);
-  if (durationSeconds <= 3600) {
-    // ≤ 1h → HH:mm:ss
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  }
-  if (durationSeconds <= 86400) {
-    // ≤ 24h → HH:mm
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-  }
-  // > 24h → MMM d HH:mm
-  return d.toLocaleDateString([], { month: "short", day: "numeric" }) + " " +
-    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-}
+import {
+  relativeAge,
+  formatCpu,
+  formatBytes,
+  formatTimeLabel,
+  TYPE_COLORS,
+  STATUS_CFG,
+  PHASE_CFG,
+  getTimeParams,
+} from "../utils/workload-helpers";
 
 // ──────────────────────────────────────────────
 // Metric chart card
@@ -225,36 +163,31 @@ function MetricCard({
 }
 
 // ──────────────────────────────────────────────
-// Badges
+// Badges (using shared configs)
 // ──────────────────────────────────────────────
 
-const PHASE_CFG: Record<string, { icon: React.ReactNode; cls: string }> = {
-  Running:   { icon: <CheckCircle2 className="w-3.5 h-3.5" />, cls: "text-emerald-400" },
-  Succeeded: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, cls: "text-emerald-400" },
-  Pending:   { icon: <AlertTriangle className="w-3.5 h-3.5" />, cls: "text-amber-400" },
-  Failed:    { icon: <XCircle className="w-3.5 h-3.5" />, cls: "text-red-400" },
-  Unknown:   { icon: <HelpCircle className="w-3.5 h-3.5" />, cls: "text-slate-400" },
+const PHASE_ICONS: Record<string, React.ReactNode> = {
+  Running:   <CheckCircle2 className="w-3.5 h-3.5" />,
+  Succeeded: <CheckCircle2 className="w-3.5 h-3.5" />,
+  Completed: <CheckCircle2 className="w-3.5 h-3.5" />,
+  Pending:   <AlertTriangle className="w-3.5 h-3.5" />,
+  Failed:    <XCircle className="w-3.5 h-3.5" />,
+  Unknown:   <HelpCircle className="w-3.5 h-3.5" />,
 };
 
-const STATUS_CFG: Record<WorkloadStatus, { icon: React.ReactNode; cls: string; label: string }> = {
-  OK:      { icon: <CheckCircle2 className="w-4 h-4" />, cls: "text-emerald-400", label: "OK" },
-  Warning: { icon: <AlertTriangle className="w-4 h-4" />, cls: "text-amber-400", label: "Warning" },
-  Error:   { icon: <XCircle className="w-4 h-4" />, cls: "text-red-400", label: "Error" },
-  Unknown: { icon: <HelpCircle className="w-4 h-4" />, cls: "text-slate-400", label: "Unknown" },
-};
-
-const TYPE_COLORS: Record<WorkloadType, string> = {
-  Deployment:  "text-blue-300 bg-blue-500/10 border-blue-500/20",
-  StatefulSet: "text-purple-300 bg-purple-500/10 border-purple-500/20",
-  DaemonSet:   "text-cyan-300 bg-cyan-500/10 border-cyan-500/20",
-  Pod:         "text-orange-300 bg-orange-500/10 border-orange-500/20",
+const STATUS_ICONS: Record<WorkloadStatus, React.ReactNode> = {
+  OK:      <CheckCircle2 className="w-4 h-4" />,
+  Warning: <AlertTriangle className="w-4 h-4" />,
+  Error:   <XCircle className="w-4 h-4" />,
+  Unknown: <HelpCircle className="w-4 h-4" />,
 };
 
 function PhaseBadge({ phase }: { phase: string }) {
   const cfg = PHASE_CFG[phase] ?? PHASE_CFG.Unknown;
+  const icon = PHASE_ICONS[phase] ?? PHASE_ICONS.Unknown;
   return (
     <span className={cn("flex items-center gap-1 text-xs font-medium", cfg.cls)}>
-      {cfg.icon}{phase}
+      {icon}{phase}
     </span>
   );
 }
@@ -371,6 +304,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
     return "Warning";
   })();
   const statusDisplay = STATUS_CFG[derivedStatus];
+  const statusIcon = STATUS_ICONS[derivedStatus];
 
   if (isInitialLoad) {
     return (
@@ -399,7 +333,7 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
               <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2 flex-wrap">
                 <span className="truncate">{name}</span>
                 <span className={cn("flex items-center gap-1 text-base font-medium shrink-0", statusDisplay.cls)}>
-                  {statusDisplay.icon}
+                  {statusIcon}
                   {statusDisplay.label}
                 </span>
               </h1>

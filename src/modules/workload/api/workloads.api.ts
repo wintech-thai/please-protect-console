@@ -81,6 +81,8 @@ export interface Workload {
   status: WorkloadStatus;
   podsReady: number;
   podsDesired: number;
+  createdAt: string;       // ISO timestamp from metadata.creationTimestamp
+  podPhase?: string;       // Pod-only: raw phase (Running, Succeeded, Failed, etc.)
 }
 
 // ──────────────────────────────────────────────
@@ -163,6 +165,7 @@ export const workloadsApi = {
           status: deploymentStatus(d),
           podsReady: d.status.readyReplicas ?? 0,
           podsDesired: d.spec.replicas ?? 1,
+          createdAt: d.metadata.creationTimestamp ?? "",
         })
       ),
       ...statefulsets.map(
@@ -173,6 +176,7 @@ export const workloadsApi = {
           status: statefulSetStatus(s),
           podsReady: s.status.readyReplicas ?? 0,
           podsDesired: s.spec.replicas ?? 1,
+          createdAt: s.metadata.creationTimestamp ?? "",
         })
       ),
       ...daemonsets.map(
@@ -183,6 +187,7 @@ export const workloadsApi = {
           status: daemonSetStatus(d),
           podsReady: d.status.numberReady ?? 0,
           podsDesired: d.status.desiredNumberScheduled ?? 0,
+          createdAt: d.metadata.creationTimestamp ?? "",
         })
       ),
       ...pods.map(
@@ -193,6 +198,8 @@ export const workloadsApi = {
           status: podStatus(p),
           podsReady: (p.status.containerStatuses ?? []).filter((c) => c.ready).length,
           podsDesired: (p.status.containerStatuses ?? []).length,
+          createdAt: p.metadata.creationTimestamp ?? "",
+          podPhase: p.status.phase ?? "Unknown",
         })
       ),
     ];
