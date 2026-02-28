@@ -22,15 +22,12 @@ export interface StatCardData {
 interface StatCardProps {
   stat: StatCardData;
   index: number;
-  mounted: boolean;
 }
 
-export function StatCard({ stat, index, mounted }: StatCardProps) {
+export function StatCard({ stat, index }: StatCardProps) {
   return (
     <div
-      className={`p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg hover:border-slate-700 hover:shadow-xl transition-all duration-300 transform group cursor-default hover:-translate-y-1 ${
-        mounted ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-      }`}
+      className={`p-5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg hover:border-slate-700 hover:shadow-xl transition-all duration-300 transform group cursor-default hover:-translate-y-1`}
       style={{ transitionDelay: `${index * 100}ms` }}
     >
       <div className="flex items-center justify-between">

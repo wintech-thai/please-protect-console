@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useState, Suspense } from "react";
 import {
   Cpu,
   MemoryStick,
@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
-import { prometheusApi } from "@/modules/dashboard/api/prometheus.api";
 
 import type {
   Metrics,
@@ -33,13 +32,7 @@ import {
 } from "@/modules/dashboard/components/dashboard-charts";
 
 import { useTimeRange } from "@/modules/dashboard/hooks/use-time-range";
-import { getTimeParams } from "@/modules/dashboard/utils/time-params";
-import { processAllCharts } from "@/modules/dashboard/utils/chart-processors";
-import {
-  EMPTY_METRICS,
-  fetchCurrentMetrics,
-  metricsFromHistory,
-} from "@/modules/dashboard/utils/metrics-helpers";
+import { useOverviewHistory, useCurrentMetrics } from "@/modules/dashboard/hooks/use-overview";
 
 export default function OverviewView() {
   return (
@@ -77,77 +70,52 @@ function OverviewContent() {
     translations.overview.EN;
 
   // Time range (persisted in URL via nuqs)
-  const { timeRange, setTimeRange, timeRangeKey, isRelative } = useTimeRange();
+  const { timeRange, setTimeRange, isRelative } = useTimeRange();
 
   // Data state
-  const [mounted, setMounted] = useState(false);
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [charts, setCharts] = useState<ChartsState>(EMPTY_CHARTS);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshInterval, setRefreshInterval] = useState(30_000);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const activeRefetchInterval = refreshInterval > 0 ? refreshInterval : (false as const);
 
-  const fetchMetrics = useCallback(async () => {
-    try {
-      setError(null);
-      const { start, end, step } = getTimeParams(timeRange);
+  // ── TanStack Query hooks ──
+  const {
+    data: historyData,
+    isLoading: historyLoading,
+    isFetching: historyFetching,
+    error: historyError,
+    refetch: refetchHistory,
+    dataUpdatedAt: historyUpdatedAt,
+  } = useOverviewHistory(timeRange, {
+    refetchInterval: activeRefetchInterval,
+  });
 
-      // 1. History data (for charts)
-      const [cpuHist, memHist, netHist, diskIoHist] = await Promise.all([
-        prometheusApi.getCpuHistory(start, end, step),
-        prometheusApi.getMemoryHistory(start, end, step),
-        prometheusApi.getNetworkHistory(start, end, step),
-        prometheusApi.getDiskIoHistory(start, end, step),
-      ]);
+  const {
+    data: currentMetrics,
+    isLoading: currentLoading,
+    refetch: refetchCurrent,
+    dataUpdatedAt: currentUpdatedAt,
+  } = useCurrentMetrics({
+    enabled: isRelative,
+    refetchInterval: isRelative ? activeRefetchInterval : false,
+  });
 
-      const hasData = (cpuHist?.[0]?.values?.length ?? 0) > 0;
+  // ── Derived state ──
+  const loading = historyLoading || (isRelative && currentLoading);
+  const charts = historyData?.charts ?? EMPTY_CHARTS;
+  const hasData = historyData?.hasData ?? false;
 
-      // 2. Stat-card metrics
-      if (isRelative) {
-        setMetrics(await fetchCurrentMetrics());
-      } else {
-        setMetrics(
-          hasData
-            ? metricsFromHistory(cpuHist, memHist, netHist)
-            : EMPTY_METRICS,
-        );
-      }
+  // For stat cards: use current instant metrics when relative, history-derived when absolute
+  const metrics: Metrics | null = isRelative
+    ? (currentMetrics ?? null)
+    : (historyData?.historyMetrics ?? null);
 
-      // 3. Chart data
-      setCharts(
-        hasData
-          ? processAllCharts(cpuHist, memHist, netHist, diskIoHist)
-          : EMPTY_CHARTS,
-      );
+  const latestUpdatedAt = Math.max(historyUpdatedAt, currentUpdatedAt);
+  const lastUpdated = latestUpdatedAt > 0 ? new Date(latestUpdatedAt) : null;
+  const error = historyError ? (historyError instanceof Error ? historyError.message : "Unknown error") : null;
 
-      setLastUpdated(new Date());
-    } catch (err: unknown) {
-      console.error("Failed to fetch Prometheus metrics:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRangeKey]);
-
-  useEffect(() => {
-    setMounted(true);
-    fetchMetrics();
-  }, [fetchMetrics]);
-
-  useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    if (refreshInterval > 0 && isRelative) {
-      intervalRef.current = setInterval(fetchMetrics, refreshInterval);
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [refreshInterval, fetchMetrics, isRelative]);
+  const refetchAll = () => {
+    refetchHistory();
+    if (isRelative) refetchCurrent();
+  };
 
   if (loading && !metrics) {
     return (
@@ -167,10 +135,7 @@ function OverviewContent() {
           <AlertTriangle className="w-10 h-10 text-red-500" />
           <span className="text-sm font-medium">{t.error}</span>
           <button
-            onClick={() => {
-              setLoading(true);
-              fetchMetrics();
-            }}
+            onClick={refetchAll}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition-colors border border-slate-700"
           >
             {t.retry}
@@ -181,14 +146,12 @@ function OverviewContent() {
   }
 
   const m = metrics!;
-  const hasData =
-    charts.cpu.chartData.length > 0 || charts.memory.chartData.length > 0;
   const memPercent = m.memTotal > 0 ? (m.memUsed / m.memTotal) * 100 : 0;
   const diskPercent =
     m.diskTotalAll > 0 ? (m.diskUsedAll / m.diskTotalAll) * 100 : 0;
 
   return (
-    <div className="w-full h-full flex flex-col gap-6 pt-6 px-4 md:px-12 pb-10 overflow-y-auto overflow-x-hidden custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="w-full h-full flex flex-col gap-6 pt-6 px-4 md:px-12 pb-10 overflow-y-auto overflow-x-hidden custom-scrollbar">
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
@@ -213,20 +176,19 @@ function OverviewContent() {
           subtitle={t.subtitle}
           lastUpdatedLabel={t.lastUpdated}
           lastUpdated={lastUpdated}
-          loading={loading}
+          loading={historyFetching}
           refreshInterval={refreshInterval}
           language={language}
-          mounted={mounted}
           refreshLabel={t.refresh}
           refreshOff={t.refreshOff}
-          onRefresh={fetchMetrics}
+          onRefresh={refetchAll}
           onIntervalChange={setRefreshInterval}
         />
         <div className="flex justify-end">
           <AdvancedTimeRangeSelector
             value={timeRange}
             onChange={setTimeRange}
-            disabled={loading}
+            disabled={historyFetching}
             translations={t.timePicker}
           />
         </div>
@@ -236,7 +198,7 @@ function OverviewContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 shrink-0">
         {buildStatCards(m, hasData, memPercent, diskPercent, charts, t).map(
           (stat, i) => (
-            <StatCard key={i} stat={stat} index={i} mounted={mounted} />
+            <StatCard key={i} stat={stat} index={i} />
           ),
         )}
       </div>
@@ -283,7 +245,6 @@ function OverviewContent() {
             used: t.used,
             total: t.total,
           }}
-          mounted={mounted}
         />
       </div>
     </div>
