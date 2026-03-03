@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { TriangleAlert } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 
 interface TerminalExitConfirmDialogProps {
   isOpen: boolean;
@@ -14,11 +16,14 @@ export function TerminalExitConfirmDialog({
   onConfirm,
   onCancel,
 }: TerminalExitConfirmDialogProps) {
+  const { language } = useLanguage();
+  const t = translations.terminalExit[language];
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-[400px] bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-100 bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl p-6 animate-in zoom-in-95 duration-200">
         <div className="flex items-start gap-4">
           <div className="p-2 bg-yellow-500/10 rounded-full shrink-0">
             <TriangleAlert className="size-6 text-yellow-500" />
@@ -26,10 +31,10 @@ export function TerminalExitConfirmDialog({
 
           <div className="space-y-2">
             <h3 className="text-lg font-medium text-slate-100 leading-none">
-              Terminate session?
+              {t.title}
             </h3>
             <p className="text-sm text-slate-400">
-              Leaving this page will disconnect your terminal session. Any running processes may be terminated.
+              {t.description}
             </p>
           </div>
         </div>
@@ -39,13 +44,13 @@ export function TerminalExitConfirmDialog({
             onClick={onCancel}
             className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-md transition-colors"
           >
-            Cancel
+            {t.cancel}
           </button>
           <button
             onClick={onConfirm}
             className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-md shadow-sm transition-colors"
           >
-            Disconnect & Leave
+            {t.confirm}
           </button>
         </div>
       </div>

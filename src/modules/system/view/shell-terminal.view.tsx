@@ -13,6 +13,8 @@ import {
 } from "@/modules/system/hooks/use-terminal-websocket";
 import { TerminalExitConfirmDialog, useTerminalExitConfirm } from "@/modules/system/components/terminal-exit-confirm";
 import { TerminalSquare, RefreshCw, Power, PowerOff, Loader2 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 
 /**
  * Full-screen web-based shell terminal (like Google Cloud Shell).
@@ -21,6 +23,9 @@ import { TerminalSquare, RefreshCw, Power, PowerOff, Loader2 } from "lucide-reac
  *   xterm.js  ──ws──►  Next.js server  ──wss──►  Backend API
  */
 export default function ShellTerminalView() {
+  const { language } = useLanguage();
+  const t = translations.shellTerminal[language];
+
   const router = useRouter();
   const terminalContainerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
@@ -113,10 +118,10 @@ export default function ShellTerminalView() {
 
     // Write welcome message
     term.writeln("\x1b[1;36m╔══════════════════════════════════════╗\x1b[0m");
-    term.writeln("\x1b[1;36m║\x1b[0m   \x1b[1;37mPlease Protect — Shell Terminal\x1b[0m   \x1b[1;36m║\x1b[0m");
+    term.writeln(`\x1b[1;36m║\x1b[0m   \x1b[1;37m${t.messages.welcomeHeader}\x1b[0m   \x1b[1;36m║\x1b[0m`);
     term.writeln("\x1b[1;36m╚══════════════════════════════════════╝\x1b[0m");
     term.writeln("");
-    term.writeln('\x1b[90mClick "Connect" to start a terminal session.\x1b[0m');
+    term.writeln(`\x1b[90m${t.messages.welcomeHint}\x1b[0m`);
     term.writeln("");
 
     // Resize handler
@@ -142,10 +147,10 @@ export default function ShellTerminalView() {
       requestAnimationFrame(() => {
         fitAddonRef.current?.fit();
       });
-      xtermRef.current?.writeln("\r\n\x1b[1;32m✔ Connected to terminal\x1b[0m\r\n");
+      xtermRef.current?.writeln(`\r\n\x1b[1;32m${t.messages.connected}\x1b[0m\r\n`);
       xtermRef.current?.focus();
     } else if (termStatus === "error") {
-      xtermRef.current?.writeln("\r\n\x1b[1;31m✘ Connection error\x1b[0m\r\n");
+      xtermRef.current?.writeln(`\r\n\x1b[1;31m${t.messages.error}\x1b[0m\r\n`);
     } else if (termStatus === "disconnected") {
       // Only write if terminal is initialised and we previously had a connection
     }
@@ -154,28 +159,28 @@ export default function ShellTerminalView() {
   // ── Action handlers ───────────────────────────────────────────────────────
   const handleConnect = () => {
     xtermRef.current?.clear();
-    xtermRef.current?.writeln("\x1b[90mConnecting…\x1b[0m\r\n");
+    xtermRef.current?.writeln(`\x1b[90m${t.messages.connecting}\x1b[0m\r\n`);
     connect();
   };
 
   const handleDisconnect = () => {
     disconnect();
-    xtermRef.current?.writeln("\r\n\x1b[33m⏻ Disconnected\x1b[0m\r\n");
+    xtermRef.current?.writeln(`\r\n\x1b[33m${t.messages.disconnected}\x1b[0m\r\n`);
   };
 
   const handleReconnect = () => {
     disconnect();
     xtermRef.current?.clear();
-    xtermRef.current?.writeln("\x1b[90mReconnecting…\x1b[0m\r\n");
+    xtermRef.current?.writeln(`\x1b[90m${t.messages.reconnecting}\x1b[0m\r\n`);
     setTimeout(() => connect(), 300);
   };
 
   // ── Status badge ──────────────────────────────────────────────────────────
   const statusConfig: Record<TerminalStatus, { label: string; color: string }> = {
-    disconnected: { label: "Disconnected", color: "bg-gray-500" },
-    connecting:   { label: "Connecting",   color: "bg-yellow-500 animate-pulse" },
-    connected:    { label: "Connected",    color: "bg-emerald-500" },
-    error:        { label: "Error",        color: "bg-red-500" },
+    disconnected: { label: t.status.disconnected, color: "bg-gray-500" },
+    connecting:   { label: t.status.connecting,   color: "bg-yellow-500 animate-pulse" },
+    connected:    { label: t.status.connected,    color: "bg-emerald-500" },
+    error:        { label: t.status.error,        color: "bg-red-500" },
   };
 
   const { label: statusLabel, color: statusColor } = statusConfig[termStatus];
@@ -183,53 +188,53 @@ export default function ShellTerminalView() {
   return (
     <div className="flex flex-col h-full bg-[#0d1117]">
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-[#30363d]">
-        <div className="flex items-center gap-3">
-          <TerminalSquare className="size-5 text-cyan-400" />
-          <span className="text-sm font-semibold text-slate-200 tracking-wide">
-            Shell Terminal
+      <div className="flex items-center justify-between px-3 sm:px-4 py-3 sm:py-4 bg-[#161b22] border-b border-[#30363d] gap-2 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <TerminalSquare className="size-5 text-cyan-400 shrink-0" />
+          <span className="text-sm font-semibold text-slate-200 tracking-wide whitespace-nowrap">
+            {t.title}
           </span>
 
           {/* Status badge */}
-          <div className="flex items-center gap-1.5 ml-2">
-            <span className={`inline-block size-2 rounded-full ${statusColor}`} />
-            <span className="text-xs text-slate-400">{statusLabel}</span>
+          <div className="flex items-center gap-1.5 sm:ml-2">
+            <span className={`inline-block size-2 rounded-full shrink-0 ${statusColor}`} />
+            <span className="text-xs text-slate-400 whitespace-nowrap hidden sm:inline">{statusLabel}</span>
           </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {termStatus === "disconnected" || termStatus === "error" ? (
             <button
               onClick={handleConnect}
-              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 px-2 sm:px-3 py-2 text-xs font-medium text-white transition-colors"
             >
               <Power className="size-3.5" />
-              Connect
+              <span className="hidden sm:inline">{t.actions.connect}</span>
             </button>
           ) : termStatus === "connecting" ? (
             <button
               disabled
-              className="inline-flex items-center gap-1.5 rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 rounded-md bg-slate-700 px-2 sm:px-3 py-2 text-xs font-medium text-slate-400 cursor-not-allowed"
             >
               <Loader2 className="size-3.5 animate-spin" />
-              Connecting…
+              <span className="hidden sm:inline">{t.actions.connecting}</span>
             </button>
           ) : (
             <>
               <button
                 onClick={handleReconnect}
-                className="inline-flex items-center gap-1.5 rounded-md bg-slate-700 hover:bg-slate-600 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md bg-slate-700 hover:bg-slate-600 px-2 sm:px-3 py-2 text-xs font-medium text-slate-200 transition-colors"
               >
                 <RefreshCw className="size-3.5" />
-                Reconnect
+                <span className="hidden sm:inline">{t.actions.reconnect}</span>
               </button>
               <button
                 onClick={handleDisconnect}
-                className="inline-flex items-center gap-1.5 rounded-md bg-red-600/80 hover:bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md bg-red-600/80 hover:bg-red-500 px-2 sm:px-3 py-2 text-xs font-medium text-white transition-colors"
               >
                 <PowerOff className="size-3.5" />
-                Disconnect
+                <span className="hidden sm:inline">{t.actions.disconnect}</span>
               </button>
             </>
           )}
