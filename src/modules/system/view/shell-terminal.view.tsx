@@ -1,14 +1,17 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import {
-    useTerminalWebSocket,
-    type TerminalStatus,
+  useTerminalWebSocket,
+  type TerminalStatus,
 } from "@/modules/system/hooks/use-terminal-websocket";
+import { TerminalExitConfirmDialog, useTerminalExitConfirm } from "@/modules/system/components/terminal-exit-confirm";
 import { TerminalSquare, RefreshCw, Power, PowerOff, Loader2 } from "lucide-react";
 
 /**
@@ -18,6 +21,7 @@ import { TerminalSquare, RefreshCw, Power, PowerOff, Loader2 } from "lucide-reac
  *   xterm.js  ──ws──►  Next.js server  ──wss──►  Backend API
  */
 export default function ShellTerminalView() {
+  const router = useRouter();
   const terminalContainerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -33,6 +37,14 @@ export default function ShellTerminalView() {
     onData: handleTerminalData,
     onStatusChange: setTermStatus,
   });
+
+  // ── Navigation Interceptor (Dialog) ───────────────────────────────────────
+  const { showConfirm, confirmExit, cancelExit } = useTerminalExitConfirm(
+    termStatus === "connected" || termStatus === "connecting",
+    () => {
+      disconnect();
+    }
+  );
 
   // ── Initialise xterm.js ───────────────────────────────────────────────────
   useEffect(() => {
@@ -70,9 +82,15 @@ export default function ShellTerminalView() {
 
     const fitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
+    const unicode11Addon = new Unicode11Addon();
 
     term.loadAddon(fitAddon);
     term.loadAddon(webLinksAddon);
+    term.loadAddon(unicode11Addon);
+
+    // Activate Unicode 11 for better wide character support (Thai, CJK)
+    term.unicode.activeVersion = "11";
+
     term.open(terminalContainerRef.current);
 
     // Fit to container
@@ -220,6 +238,13 @@ export default function ShellTerminalView() {
 
       {/* ── Terminal area ─────────────────────────────────────────────────── */}
       <div ref={terminalContainerRef} className="flex-1 p-1" />
+
+      {/* ── Exit Confirmation Dialog ──────────────────────────────────────── */}
+      <TerminalExitConfirmDialog
+        isOpen={showConfirm}
+        onConfirm={confirmExit}
+        onCancel={cancelExit}
+      />
     </div>
   );
 }
