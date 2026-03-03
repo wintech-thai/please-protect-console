@@ -44,7 +44,6 @@ import { ChangePasswordModal } from "@/components/modals/change-password-modal";
 import { translations } from "@/locales/dict";
 import { AppVersionDisplay } from "@/components/layout/app-version-display";
 
-// 🌟 เพิ่ม isDivider สำหรับทำเส้นคั่นเมนู
 interface NavItem {
   label: string;
   href: string;
@@ -112,18 +111,18 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
       label: t.events,
       href: "/events/layer7",
       children: [
-        // 🌟 กลุ่ม Layer 7 และ Layer 4
+        //  กลุ่ม Layer 7 และ Layer 4
         { label: t.layer7 || "Layer 7", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
         { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> }, // 🌟 เปลี่ยนเป็น Layer 4
         
-        // 🌟 เส้นคั่น
+        // เส้นคั่น
         { isDivider: true },
         
-        // 🌟 กลุ่ม Events 
+        // กลุ่ม Events 
         { label: t.alerts || "Event Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
-        { label: t.eventIoc || "Event IoC", href: "#", icon: <Target className="w-4 h-4 mr-2" /> },
+        { label: t.eventIoc || "Event IoC", href: "/events/ioc", icon: <Target className="w-4 h-4 mr-2" /> },
         
-        // 🌟 เส้นคั่น
+        // เส้นคั่น
         { isDivider: true },
         
         { label: t.subnetMapping || "Subnet Mapping", href: "#", icon: <Network className="w-4 h-4 mr-2" /> },
@@ -214,7 +213,6 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
 
                     <DropdownMenuContent align="start" className="bg-[#0B1120] border border-blue-900/30 shadow-xl shadow-black/50 rounded-lg mt-2 min-w-[220px] p-1 text-blue-100">
                       {item.children.map((subItem, idx) => {
-                        // 🌟 แทรกเส้นคั่น
                         if (subItem.isDivider) {
                           return <div key={`div-${idx}`} className="h-[1px] bg-slate-800 my-2 mx-3" />;
                         }
@@ -395,7 +393,6 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
                 {item.children && (
                   <div className="bg-[#020617]/50 pl-4 border-b border-blue-900/30">
                     {item.children.map((subItem, idx) => {
-                      // 🌟 แทรกเส้นคั่นในโหมด Mobile
                       if (subItem.isDivider) {
                         return <div key={`mob-div-${idx}`} className="h-[1px] bg-slate-800/80 my-3 mx-4" />;
                       }

@@ -1,0 +1,183 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import { ChevronRight, MoreVertical, Trash2 } from "lucide-react";
+
+interface IocTableProps {
+  data: any[];
+  totalHits: number;
+  isLoading?: boolean;
+  page: number;
+  itemsPerPage: number;
+  selectedId?: string | null;
+  onSelect?: (ioc: any) => void;
+  onRowClick?: (ioc: any) => void;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (limit: number) => void;
+  onDelete?: (id: string, e: React.MouseEvent) => void;
+  t?: any;
+}
+
+export function IocTable({
+  data,
+  totalHits,
+  isLoading,
+  page,
+  itemsPerPage,
+  selectedId,
+  onSelect,
+  onRowClick,
+  onPageChange,
+  onItemsPerPageChange,
+  onDelete,
+  t,
+}: IocTableProps) {
+  
+  const getTypeColor = (type: string) => {
+    const t = type?.toLowerCase() || "";
+    if (t.includes("ip")) return "bg-blue-500/10 border-blue-500/30 text-blue-400";
+    if (t.includes("domain") || t.includes("url")) return "bg-purple-500/10 border-purple-500/30 text-purple-400";
+    if (t.includes("hash") || t.includes("sha") || t.includes("md5")) return "bg-rose-500/10 border-rose-500/30 text-rose-400";
+    return "bg-slate-500/10 border-slate-500/30 text-slate-400";
+  };
+
+  return (
+    <div className="flex flex-col h-full w-full bg-slate-950/50">
+      
+      <div className="flex-none px-6 py-4 border-b border-slate-800/60 bg-slate-900/20">
+        <h2 className="text-sm font-bold text-white tracking-wider flex items-center gap-2">
+          {t?.logTitle || "Indicators List"}
+          <span className="text-slate-500 font-medium normal-case">
+            ({totalHits.toLocaleString()})
+          </span>
+        </h2>
+      </div>
+
+      <div className="flex-1 overflow-auto relative min-h-0 custom-scrollbar">
+        <table className="w-full text-left border-collapse whitespace-nowrap table-fixed min-w-[1200px]">
+          <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm shadow-[0_1px_0_0_rgba(30,41,59,1)]">
+            <tr>
+              <th className="px-4 py-3 w-10"></th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-left w-[250px]">IoC Value</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[140px]">Type</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-left w-[180px]">Dataset Source</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[180px]">LastSeenDate</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[180px]">System Added</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[60px]">Actions</th>
+              <th className="px-4 py-3 text-[11px] font-bold text-rose-500/80 tracking-widest text-center w-[60px]">Delete</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/50">
+            {isLoading ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    Loading Indicators...
+                  </div>
+                </td>
+              </tr>
+            ) : data.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
+                  No indicators found
+                </td>
+              </tr>
+            ) : (
+              data.map((ioc, index) => {
+                const isSelected = selectedId === ioc.id;
+                return (
+                  <tr
+                    key={ioc.id || `ioc-${index}`}
+                    onClick={() => onSelect?.(ioc)}
+                    className={cn(
+                      "group cursor-pointer transition-colors border-l-4",
+                      isSelected ? "bg-blue-900/40 border-l-blue-500" : "hover:bg-slate-800/40 border-l-transparent"
+                    )}
+                  >
+                    <td className="px-4 py-2.5 text-center">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onRowClick?.(ioc); }}
+                        className="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-700 transition-colors"
+                      >
+                          <ChevronRight className={cn("w-4 h-4", isSelected ? "text-blue-400" : "text-slate-500")} />
+                      </button>
+                    </td>
+
+                    <td className="px-4 py-2.5 text-[13px] font-mono text-blue-400 truncate">
+                      {ioc.value}
+                    </td>
+
+                    <td className="px-4 py-2.5 text-center">
+                      <span className={cn(
+                        "inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold uppercase border rounded tracking-wider",
+                        getTypeColor(ioc.type)
+                      )}>
+                        {ioc.type}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-2.5 text-[12px] font-medium text-emerald-400 truncate">
+                      {ioc.source}
+                    </td>
+
+                    <td className="px-4 py-2.5 text-[11.5px] font-mono text-slate-200 text-center truncate">
+                      {ioc.lastSeenDate}
+                    </td>
+
+                    <td className="px-4 py-2.5 text-[11.5px] font-mono text-slate-500 text-center truncate">
+                      {ioc.createdDate}
+                    </td>
+
+                    <td className="px-4 py-2.5 text-center">
+                      <button className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700 rounded transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </td>
+
+                    <td className="px-4 py-2.5 text-center">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onDelete?.(ioc.id, e); }} 
+                        className="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded transition-colors" 
+                        title="Delete Indicator"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex-none flex items-center justify-between px-6 py-3 border-t border-slate-800 bg-slate-950 text-xs text-slate-400">
+        <div className="w-8"></div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span>Rows per page</span>
+            <select
+              className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 outline-none"
+              value={itemsPerPage}
+              onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+            >
+              {[25, 50, 100, 200].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <span className="font-mono">
+            {totalHits === 0 ? "0" : ((page - 1) * itemsPerPage + 1).toLocaleString()} - {Math.min(page * itemsPerPage, totalHits).toLocaleString()} of {totalHits.toLocaleString()}
+          </span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1 || isLoading} className="p-1 disabled:opacity-30 hover:bg-slate-800 rounded">
+              <ChevronRight className="w-4 h-4 rotate-180" />
+            </button>
+            <button onClick={() => onPageChange(page + 1)} disabled={page * itemsPerPage >= totalHits || isLoading || totalHits === 0} className="p-1 disabled:opacity-30 hover:bg-slate-800 rounded">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
