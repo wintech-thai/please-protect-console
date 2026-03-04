@@ -9,16 +9,18 @@ interface HistogramProps {
   interval: string;
   maxDocCount: number;
   isLoading?: boolean;
+  t?: any; 
 }
 
 const FIXED_TYPE_COLORS: Record<string, string> = {
-  ip: "#3b82f6",       // Blue-500
-  domain: "#a855f7",   // Purple-500
-  url: "#a855f7",      // Purple-500
-  hash: "#f43f5e",     // Rose-500
-  sha256: "#f43f5e",   // Rose-500
-  md5: "#f43f5e",      // Rose-500
-  email: "#10b981",    // Emerald-500
+  sourceip: "#3b82f6",       // Blue-500
+  destinationip: "#f43f5e",  // Rose-500
+  domain: "#a855f7",         // Purple-500
+  ip: "#3b82f6",             // Blue-500
+  url: "#a855f7",            // Purple-500
+  hash: "#f59e0b",           // Amber-500
+  sha256: "#f59e0b",         // Amber-500
+  email: "#10b981",          // Emerald-500
 };
 
 const getDynamicTypeColor = (type: string) => {
@@ -26,7 +28,7 @@ const getDynamicTypeColor = (type: string) => {
   return FIXED_TYPE_COLORS[val] || `hsl(${Math.abs(val.split('').reduce((a,b)=>(((a<<5)-a)+b.charCodeAt(0))|0,0) % 360)}, 60%, 55%)`;
 };
 
-export function IocHistogram({ data = [], totalHits, interval, maxDocCount, isLoading }: HistogramProps) {
+export function IocHistogram({ data = [], totalHits, interval, maxDocCount, isLoading, t }: HistogramProps) {
   const axisLabelStep = Math.max(Math.floor(data.length / 8), 1);
   const safeMax = Math.max(maxDocCount, 3);
 
@@ -41,25 +43,18 @@ export function IocHistogram({ data = [], totalHits, interval, maxDocCount, isLo
 
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm font-bold text-white tracking-tight">
-          {totalHits.toLocaleString()} <span className="text-slate-500 font-normal ml-1 lowercase">detections</span>
+          {totalHits.toLocaleString()} <span className="text-slate-500 font-normal ml-1 lowercase">
+            {t?.detections || "detections"}
+          </span>
         </div>
         <div className="text-[10px] font-mono text-slate-400 bg-slate-950/50 px-2 py-0.5 rounded border border-slate-800">
-          {data.length > 0 && `Interval: ${interval}`}
+          {data.length > 0 && `${t?.interval || "Interval"}: ${interval}`}
         </div>
       </div>
 
       <div className={cn("flex-1 flex items-end", data.length > 80 ? "gap-0" : "gap-[1px]")}>
         {data.map((bucket, i) => {
           const startTime = dayjs(bucket.key);
-          const intervalMatch = interval.match(/(\d+)([smhd])/);
-          const intervalVal = intervalMatch ? parseInt(intervalMatch[1]) : 1;
-          const intervalUnit = intervalMatch ? (
-            intervalMatch[2] === 's' ? 'second' : 
-            intervalMatch[2] === 'm' ? 'minute' : 
-            intervalMatch[2] === 'h' ? 'hour' : 'day'
-          ) : 'minute';
-          const endTime = startTime.add(intervalVal, intervalUnit as any);
-
           const allBuckets = bucket.by_type?.buckets || [];
           const sortedBuckets = [...allBuckets].sort((a: any, b: any) => b.doc_count - a.doc_count);
           const showLabel = i % axisLabelStep === 0;
@@ -100,14 +95,14 @@ export function IocHistogram({ data = [], totalHits, interval, maxDocCount, isLo
                 </div>
               )}
 
-              {/* Tooltip (Flyout) On Hover */}
+              {/* Tooltip On Hover */}
               <div className={cn(
                 "absolute top-0 hidden group-hover:block z-50 pointer-events-none w-max transition-all duration-200",
                 !isRightHalf ? "left-full ml-4" : "right-full mr-4"
               )}>
                 <div className="bg-slate-950/95 border border-slate-700 rounded shadow-2xl p-3 backdrop-blur-md min-w-[200px]">
                   <div className="text-[10px] text-rose-400 font-bold font-mono text-center border-b border-slate-800 pb-2 mb-2">
-                    {startTime.format("D MMM YYYY HH:mm:ss")} - {endTime.format("HH:mm:ss")}
+                    {startTime.format("MMM D, YYYY HH:mm:ss")}
                   </div>
                   
                   <div className="max-h-[180px] overflow-y-auto no-scrollbar space-y-1.5">
@@ -123,7 +118,7 @@ export function IocHistogram({ data = [], totalHits, interval, maxDocCount, isLo
                   </div>
                   
                   <div className="mt-3 pt-2 border-t border-slate-800 flex justify-between items-center text-[10px]">
-                    <span className="text-slate-500 font-bold uppercase tracking-widest">Total Detections</span>
+                    <span className="text-slate-500 font-bold uppercase tracking-widest">{t?.totalHits || "Total Hits"}</span>
                     <span className="text-emerald-400 font-bold font-mono text-sm">
                       {bucket.doc_count?.toLocaleString()}
                     </span>

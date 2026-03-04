@@ -10,9 +10,10 @@ import {
   ChevronRight,
   Copy,
   Check,
-  Link as LinkIcon
+  Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import dayjs from "dayjs";
 
 interface IocFlyoutProps {
   data: any | null;
@@ -20,7 +21,7 @@ interface IocFlyoutProps {
   currentIndex?: number;
   onNavigate?: (index: number) => void;
   onClose: () => void;
-  onTypeClick?: (type: string, e: React.MouseEvent) => void; // 🌟 รับฟังก์ชันเวลาคลิกที่ IocType
+  onTypeClick?: (type: string, e: React.MouseEvent) => void;
   t?: any; 
 }
 
@@ -39,25 +40,21 @@ export function IocFlyout({
   const [isCopied, setIsCopied] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // 🌟 แมพฟิลด์ข้อมูลให้ตรงกับ Context ของ IoC
   const displayFields = useMemo(() => {
     if (!data) return [];
     
-    // โครงสร้างฟิลด์สำหรับ IoC
-    const fields = [
-      { label: "IOC VALUE", value: data.value, fieldKey: "ioc.value" },
-      { label: "IOC TYPE", value: data.type, fieldKey: "ioc.type", isClickableType: true }, // 🌟 แฟล็กบอกว่าเป็น Type ให้คลิกได้
-      { label: "SOURCE PROVIDER", value: data.source, fieldKey: "source.provider" },
-      { label: "LAST SEEN", value: data.lastSeenDate?.replace('T', ' ').replace('Z', ''), fieldKey: "@last_seen" },
+    const item = data.raw || data;
+
+    return [
+      { label: "ioc.id", value: item.iocId, fieldKey: "ioc.id" },
+      { label: "ioc.value", value: item.iocValue || data.value, fieldKey: "ioc.value" },
+      { label: "ioc.type", value: item.iocType || data.type, fieldKey: "ioc.type", isClickableType: true }, 
+      { label: "ioc.sub_type", value: item.iocSubType || "-", fieldKey: "ioc.sub_type" },
+      { label: "source.provider", value: item.dataSet || data.source, fieldKey: "source.provider" },
+      { label: "tags", value: item.tags || "-", fieldKey: "tags" },
+      { label: "@created", value: item.createdDate ? dayjs(item.createdDate).format("MMM D, YYYY HH:mm:ss") : "-", fieldKey: "@created" },
+      { label: "@last_seen", value: item.lastSeenDate ? dayjs(item.lastSeenDate).format("MMM D, YYYY HH:mm:ss") : data.lastSeenDate, fieldKey: "@last_seen" },
     ];
-
-    // เผื่ออนาคต Backend ส่งฟิลด์เสริมมา
-    if (data.tags) fields.push({ label: "TAGS", value: data.tags, fieldKey: "tags" });
-    if (data.threatActor) fields.push({ label: "THREAT ACTOR", value: data.threatActor, fieldKey: "threat.actor" });
-    if (data.description) fields.push({ label: "DESCRIPTION", value: data.description, fieldKey: "description" });
-    if (data.confidence) fields.push({ label: "CONFIDENCE SCORE", value: data.confidence, fieldKey: "confidence" });
-
-    return fields;
   }, [data]);
 
   useEffect(() => {
@@ -83,7 +80,7 @@ export function IocFlyout({
   };
   
   const handleCopyJson = () => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    navigator.clipboard.writeText(JSON.stringify(data.raw || data, null, 2));
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
@@ -113,72 +110,84 @@ export function IocFlyout({
     );
   };
 
-  const getValueColorClass = (value: any, isClickable: boolean = false) => {
-    if (isClickable) return "text-blue-400 font-bold"; // 🌟 สีพิเศษสำหรับ Clickable Type
+  const getTypeColor = (type: string) => {
+    const t = (type || "").toLowerCase().trim();
+    switch (t) {
+      case "sourceip":
+      case "ip":
+        return "bg-blue-500/10 border-blue-500/30 text-blue-400";
+      case "destinationip":
+        return "bg-rose-500/10 border-rose-500/30 text-rose-400";
+      case "domain":
+      case "url":
+        return "bg-purple-500/10 border-purple-500/30 text-purple-400";
+      case "hash":
+      case "sha256":
+      case "md5":
+        return "bg-amber-500/10 border-amber-500/30 text-amber-400";
+      default:
+        return "bg-slate-500/10 border-slate-500/30 text-slate-400";
+    }
+  };
+
+  const getValueColorClass = (fieldKey: string, value: any) => {
+    if (value === null || value === undefined || value === "-") return "text-slate-500 italic";
     if (typeof value === "number") return "text-emerald-300";
     if (typeof value === "boolean") return "text-blue-500 font-bold";
-    if (value === null || value === undefined || value === "-") return "text-slate-500 italic";
-    return "text-rose-300"; // 🌟 ค่า String ทั่วไปใน IoC เน้นสี Rose
+    
+    switch (fieldKey) {
+      case "ioc.id":
+        return "text-amber-400"; 
+      case "ioc.value":
+        return "text-cyan-400 font-bold"; 
+      case "source.provider":
+        return "text-emerald-400"; 
+      case "tags":
+        return "text-orange-400"; 
+      case "@created":
+      case "@last_seen":
+        return "text-indigo-300"; 
+      case "ioc.sub_type":
+        return "text-pink-400"; 
+      default:
+        return "text-slate-200"; 
+    }
   };
 
   const renderValueCell = (f: any) => {
-    if (Array.isArray(f.value)) {
-      return (
-        <div className="flex flex-wrap gap-1.5">
-          {f.value.map((item: string, idx: number) => {
-            const itemId = `${f.fieldKey || f.label}-${idx}`;
-            return (
-              <div
-                key={idx}
-                className="group/item flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded px-2 py-0.5 text-[11px] hover:border-slate-600 transition-colors"
-              >
-                <span className={cn("font-mono select-text cursor-text", getValueColorClass(item))}>
-                  {item}
-                </span>
-                <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity border-l border-slate-700 ml-1 pl-1">
-                  <button onClick={() => handleCopyValue(item, itemId)} className={cn("p-0.5", copiedId === itemId ? "text-green-500" : "text-slate-500")}>
-                    {copiedId === itemId ? <Check size={10} /> : <Copy size={10} />}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-    
-    // 🌟 ถ้าเป็น IocType ให้แสดงเป็นปุ่มคลิกได้
-    if (f.isClickableType) {
-       return (
-          <button 
-            onClick={(e) => onTypeClick?.(f.value, e)}
-            className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs hover:border-blue-500/50 hover:bg-slate-800 transition-colors group/btn"
-          >
-            <span className={cn("font-mono select-text cursor-text", getValueColorClass(f.value, true))}>
-              {f.value}
-            </span>
-            <LinkIcon className="w-3 h-3 text-slate-500 group-hover/btn:text-blue-400 transition-colors" />
-          </button>
-       )
-    }
-
     const valStr = String(f.value);
     const copyId = f.fieldKey || f.label;
     
     return (
-      <div className="relative group/val pr-8 flex items-center justify-between min-h-[24px]">
-        <span className={cn("font-mono text-xs select-text cursor-text break-all", getValueColorClass(f.value))}>
-          {valStr}
-        </span>
-        <button
-          onClick={() => handleCopyValue(valStr, copyId)}
-          className={cn(
-            "absolute right-0 top-0.5 p-1.5 rounded bg-slate-800 border border-slate-700 text-slate-400 opacity-0 group-hover/val:opacity-100 transition-all",
-            copiedId === copyId && "opacity-100 text-green-500 border-green-500/50",
-          )}
-        >
-          {copiedId === copyId ? <Check size={12} /> : <Copy size={12} />}
-        </button>
+      <div className="relative group/val pr-8 flex items-center min-h-[24px] w-full">
+        {f.isClickableType ? (
+          <span className={cn(
+            "inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold border rounded tracking-wider",
+            getTypeColor(valStr)
+          )}>
+            {valStr}
+          </span>
+        ) : (
+          <span className={cn(
+            "font-mono text-xs select-text cursor-text break-all", 
+            getValueColorClass(f.fieldKey, f.value) 
+          )}>
+            {valStr}
+          </span>
+        )}
+
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover/val:opacity-100 transition-all">
+          <button
+            onClick={() => handleCopyValue(valStr, copyId)}
+            className={cn(
+              "p-1 rounded bg-slate-800 border border-slate-700 transition-all",
+              copiedId === copyId ? "text-green-500 border-green-500/50" : "text-slate-400 hover:bg-slate-700 hover:text-white"
+            )}
+            title="Copy"
+          >
+            {copiedId === copyId ? <Check size={12} /> : <Copy size={12} />}
+          </button>
+        </div>
       </div>
     );
   };
@@ -194,7 +203,7 @@ export function IocFlyout({
           <div className="flex items-center gap-4">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest opacity-80 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-              {t?.flyout?.title || "IOC DETAILS"}
+              {t?.title || "IOC DETAILS"}
             </h3>
             
             <div className="flex items-center text-slate-400 text-[11px] font-medium gap-1 bg-slate-900 rounded-md border border-slate-800 p-0.5 select-none">
@@ -207,8 +216,8 @@ export function IocFlyout({
               </button>
               <span className="px-2 min-w-[70px] text-center tracking-tight">
                 {events.length > 0
-                  ? `${currentIndex + 1} ${t?.table?.of || "of"} ${events.length}`
-                  : `0 ${t?.table?.of || "of"} 0`}
+                  ? `${currentIndex + 1} ${t?.of || "of"} ${events.length}`
+                  : `0 ${t?.of || "of"} 0`}
               </span>
               <button
                 disabled={currentIndex >= events.length - 1}
@@ -233,7 +242,7 @@ export function IocFlyout({
               drawerTab === "table" ? "text-blue-500 border-blue-500" : "text-slate-500 border-transparent hover:text-slate-300",
             )}
           >
-            <TableIcon size={14} /> {t?.flyout?.tabTable || "TABLE"}
+            <TableIcon size={14} /> {t?.tabTable || "TABLE"}
           </button>
           <button
             onClick={() => setDrawerTab("json")}
@@ -242,7 +251,7 @@ export function IocFlyout({
               drawerTab === "json" ? "text-blue-500 border-blue-500" : "text-slate-500 border-transparent hover:text-slate-300",
             )}
           >
-            <FileJson size={14} /> {t?.flyout?.tabJson || "JSON"}
+            <FileJson size={14} /> {t?.tabJson || "JSON"}
           </button>
         </div>
 
@@ -255,7 +264,7 @@ export function IocFlyout({
                   <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
                   <input
                     className="w-full bg-slate-900 border border-slate-800 rounded-md py-1.5 pl-9 pr-3 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50"
-                    placeholder={t?.flyout?.searchPlaceholder || "Search fields or values..."}
+                    placeholder={t?.searchPlaceholder || "Search fields or values..."}
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
@@ -264,8 +273,8 @@ export function IocFlyout({
               </div>
 
               <div className="flex-none flex border-b border-slate-800 bg-slate-900/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest select-none">
-                <div className="w-[35%] px-4 py-2 border-r border-slate-800">{t?.flyout?.field || "FIELD"}</div>
-                <div className="w-[65%] px-4 py-2">{t?.flyout?.value || "VALUE"}</div>
+                <div className="w-[35%] px-4 py-2 border-r border-slate-800">{t?.colField || "FIELD"}</div>
+                <div className="w-[65%] px-4 py-2">{t?.colValue || "VALUE"}</div>
               </div>
 
               <div className="flex-1 overflow-auto custom-scrollbar pb-10">
@@ -274,13 +283,23 @@ export function IocFlyout({
                   .map((f, idx) => {
                     return (
                       <div key={idx} className="group flex border-b border-slate-900 hover:bg-slate-900/30 transition-colors text-sm relative">
-                        <div className="w-[35%] px-4 py-2 border-r border-slate-900 flex items-center min-w-0">
+                        <div className="w-[35%] px-4 py-2 border-r border-slate-900 flex items-center justify-between min-w-0">
                           <span className="font-semibold text-blue-400/90 truncate select-text cursor-text" title={f.fieldKey || f.label}>
-                            {f.fieldKey || f.label}
+                            {f.label}
                           </span>
+                          
+                          {f.isClickableType && (
+                            <button
+                              onClick={(e) => onTypeClick?.(String(f.value), e)}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded bg-slate-800 border border-slate-700 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:text-emerald-300 transition-all shrink-0 ml-2"
+                              title="Filter for this value"
+                            >
+                              <Plus size={12} strokeWidth={3} />
+                            </button>
+                          )}
                         </div>
                         
-                        <div className="w-[65%] px-4 py-2 flex items-center min-w-0 break-all">
+                        <div className="w-[65%] px-4 py-2 flex items-center min-w-0">
                           {renderValueCell(f)}
                         </div>
                       </div>
@@ -296,13 +315,13 @@ export function IocFlyout({
                   className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400 hover:text-white bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-800 transition-all"
                 >
                   {isCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                  {isCopied ? (t?.flyout?.copied || "COPIED!") : (t?.flyout?.copyJson || "COPY JSON")}
+                  {isCopied ? (t?.copied || "COPIED!") : (t?.copyJson || "COPY JSON")}
                 </button>
               </div>
               <div className="p-6 overflow-auto h-full custom-scrollbar bg-[#090b10]">
                 <pre
                   className="text-xs font-mono leading-relaxed whitespace-pre-wrap select-text"
-                  dangerouslySetInnerHTML={{ __html: highlightJson(data) }}
+                  dangerouslySetInnerHTML={{ __html: highlightJson(data.raw || data) }}
                 />
               </div>
             </div>

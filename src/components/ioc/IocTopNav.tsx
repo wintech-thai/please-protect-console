@@ -5,7 +5,8 @@ import {
   RefreshCw, 
   ShieldAlert, 
   Search,
-  Info
+  Info,
+  Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -26,6 +27,8 @@ interface IocTopNavProps {
   dict?: any; 
   fields?: any[];
   totalHits?: number; 
+  iocTypeFilter?: string;
+  onIocTypeFilterChange?: (type: string) => void;
 }
 
 const OPERATORS = ["==", "!=", ">", ">=", "<", "<=", "exists"];
@@ -41,7 +44,9 @@ export function IocTopNav({
   isLoading,
   dict,
   fields = [],
-  totalHits = 0
+  totalHits = 0,
+  iocTypeFilter = "All",
+  onIocTypeFilterChange,
 }: IocTopNavProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1); 
@@ -108,6 +113,7 @@ export function IocTopNav({
   return (
     <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md z-30 relative">
       
+      {/* Title & Badge Area */}
       <div className="flex items-center gap-3 px-3 border-r border-slate-800 mr-2 h-9 hidden lg:flex">
         <div className="w-8 h-8 rounded-lg bg-rose-600/10 border border-rose-500/20 flex items-center justify-center">
           <ShieldAlert className="w-4 h-4 text-rose-500" />
@@ -115,7 +121,6 @@ export function IocTopNav({
         <div className="flex flex-col">
           <h1 className="text-[13px] font-bold text-white leading-none tracking-tight flex items-center gap-2">
             {dict?.title || "Indicators of Compromise"}
-            {totalHits > 0 && <span className="text-slate-500 font-normal text-xs font-mono">({totalHits})</span>}
           </h1>
           <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">
             {dict?.subtitle || "THREAT INTELLIGENCE"}
@@ -124,6 +129,7 @@ export function IocTopNav({
       </div>
 
       <div className="flex-1 flex items-stretch gap-2">
+        {/* Search Input Area */}
         <div className="flex-1 relative group flex items-center">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors">
             <Search size={16} />
@@ -140,11 +146,10 @@ export function IocTopNav({
             }}
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
-            placeholder={dict?.searchPlaceholder || "Search IoC value, type, source..."}
-            className="w-full h-10 bg-slate-900 border-slate-700 border rounded-lg pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-blue-500/50 transition-all font-mono"
+            placeholder={dict?.searchPlaceholder || "Search field e.g. ioc.type == domain"}
+            className="w-full h-10 bg-slate-950 border-slate-700 border rounded-lg pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-blue-500/50 transition-all font-mono"
           />
 
-          {/* Autocomplete Dropdown */}
           {showSuggestions && filteredSuggestions.length > 0 && (
             <div 
               ref={suggestionsRef}
@@ -176,7 +181,32 @@ export function IocTopNav({
           )}
         </div>
 
-        {/* Time Selector */}
+
+        {/* IoC Type Dropdown */}
+        {onIocTypeFilterChange && (
+          <div className="relative flex-none hidden sm:flex items-center">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+              <Filter size={14} />
+            </div>
+            <select
+              value={iocTypeFilter}
+              onChange={(e) => onIocTypeFilterChange(e.target.value)}
+              disabled={isLoading}
+              className="h-10 pl-8 pr-8 bg-slate-900 border border-slate-700 hover:border-slate-600 focus:border-blue-500 text-slate-200 text-xs font-bold rounded-lg outline-none cursor-pointer appearance-none transition-colors uppercase tracking-tight"
+            >
+              <option value="All">{dict?.allTypes || "All Types"}</option>
+              <option value="SourceIP">SourceIP</option>
+              <option value="DestinationIP">DestinationIP</option>
+              <option value="Domain">Domain</option>
+              <option value="FileHashSha256">FileHashSha256</option>
+              <option value="FileHashMD5">FileHashMD5</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+              <svg width="8" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+          </div>
+        )}
+
         <div className="flex-none hidden sm:block">
           <AdvancedTimeRangeSelector
             value={timeRange}
@@ -186,13 +216,12 @@ export function IocTopNav({
           />
         </div>
 
-        {/* Refresh Button */}
         <button 
           onClick={onRefresh} 
           disabled={isLoading}
           className={cn(
-            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50",
-            isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95 hover:shadow-blue-500/20"
+            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50 h-10",
+            isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95"
           )}
         >
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
@@ -200,7 +229,6 @@ export function IocTopNav({
             {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
           </span>
         </button>
-
       </div>
     </div>
   );

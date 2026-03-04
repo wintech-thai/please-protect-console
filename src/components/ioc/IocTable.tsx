@@ -34,11 +34,23 @@ export function IocTable({
 }: IocTableProps) {
   
   const getTypeColor = (type: string) => {
-    const t = type?.toLowerCase() || "";
-    if (t.includes("ip")) return "bg-blue-500/10 border-blue-500/30 text-blue-400";
-    if (t.includes("domain") || t.includes("url")) return "bg-purple-500/10 border-purple-500/30 text-purple-400";
-    if (t.includes("hash") || t.includes("sha") || t.includes("md5")) return "bg-rose-500/10 border-rose-500/30 text-rose-400";
-    return "bg-slate-500/10 border-slate-500/30 text-slate-400";
+    const val = (type || "").toLowerCase().trim();
+    switch (val) {
+      case "sourceip":
+      case "ip":
+        return "bg-blue-500/10 border-blue-500/30 text-blue-400";
+      case "destinationip":
+        return "bg-rose-500/10 border-rose-500/30 text-rose-400";
+      case "domain":
+      case "url":
+        return "bg-purple-500/10 border-purple-500/30 text-purple-400";
+      case "hash":
+      case "sha256":
+      case "md5":
+        return "bg-amber-500/10 border-amber-500/30 text-amber-400";
+      default:
+        return "bg-slate-500/10 border-slate-500/30 text-slate-400";
+    }
   };
 
   return (
@@ -54,33 +66,44 @@ export function IocTable({
       </div>
 
       <div className="flex-1 overflow-auto relative min-h-0 custom-scrollbar">
-        <table className="w-full text-left border-collapse whitespace-nowrap table-fixed min-w-[1200px]">
+        <table className="w-full text-left border-collapse whitespace-nowrap table-fixed min-w-[1150px]">
           <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm shadow-[0_1px_0_0_rgba(30,41,59,1)]">
             <tr>
-              <th className="px-4 py-3 w-10"></th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-left w-[250px]">IoC Value</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[140px]">Type</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-left w-[180px]">Dataset Source</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[180px]">LastSeenDate</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[180px]">System Added</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-blue-400 tracking-widest text-center w-[60px]">Actions</th>
-              <th className="px-4 py-3 text-[11px] font-bold text-rose-500/80 tracking-widest text-center w-[60px]">Delete</th>
+              <th className="px-4 py-4 w-12"></th>
+              <th className="px-4 py-4 text-xs font-bold text-blue-400 tracking-widest text-left w-[280px]">
+                {t?.colValue || "IoC Value"}
+              </th>
+              <th className="px-4 py-4 text-xs font-bold text-blue-400 tracking-widest text-left w-[160px]">
+                {t?.colType || "Type"}
+              </th>
+              <th className="px-4 py-4 text-xs font-bold text-blue-400 tracking-widest text-left w-[220px]">
+                {t?.colSource || "Dataset Source"}
+              </th>
+              <th className="px-4 py-4 text-xs font-bold text-blue-400 tracking-widest text-left w-[220px]">
+                {t?.colLastSeen || "LastSeenDate"}
+              </th>
+              <th className="px-4 py-4 text-xs font-bold text-blue-400 tracking-widest text-center w-[80px]">
+                {t?.colActions || "Actions"}
+              </th>
+              <th className="px-4 py-4 text-xs font-bold text-rose-500/80 tracking-widest text-center w-[80px]">
+                {t?.colDelete || "Delete"}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
                   <div className="flex items-center justify-center gap-3">
                     <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    Loading Indicators...
+                    {t?.loading || "Loading Indicators..."}
                   </div>
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
-                  No indicators found
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                  {t?.noData || "No indicators found"}
                 </td>
               </tr>
             ) : (
@@ -95,7 +118,7 @@ export function IocTable({
                       isSelected ? "bg-blue-900/40 border-l-blue-500" : "hover:bg-slate-800/40 border-l-transparent"
                     )}
                   >
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-4 py-3.5 text-center">
                       <button 
                         onClick={(e) => { e.stopPropagation(); onRowClick?.(ioc); }}
                         className="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-700 transition-colors"
@@ -104,38 +127,34 @@ export function IocTable({
                       </button>
                     </td>
 
-                    <td className="px-4 py-2.5 text-[13px] font-mono text-blue-400 truncate">
+                    <td className="px-4 py-3.5 text-sm font-mono font-bold text-cyan-400 truncate">
                       {ioc.value}
                     </td>
 
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-4 py-3.5 text-left">
                       <span className={cn(
-                        "inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold uppercase border rounded tracking-wider",
+                        "inline-flex items-center justify-center px-2.5 py-1 text-[11px] font-bold border rounded tracking-wider",
                         getTypeColor(ioc.type)
                       )}>
                         {ioc.type}
                       </span>
                     </td>
 
-                    <td className="px-4 py-2.5 text-[12px] font-medium text-emerald-400 truncate">
+                    <td className="px-4 py-3.5 text-sm font-semibold text-emerald-400 truncate">
                       {ioc.source}
                     </td>
 
-                    <td className="px-4 py-2.5 text-[11.5px] font-mono text-slate-200 text-center truncate">
+                    <td className="px-4 py-3.5 text-[13px] font-mono font-medium text-slate-300 text-left truncate">
                       {ioc.lastSeenDate}
                     </td>
 
-                    <td className="px-4 py-2.5 text-[11.5px] font-mono text-slate-500 text-center truncate">
-                      {ioc.createdDate}
-                    </td>
-
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-4 py-3.5 text-center">
                       <button className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700 rounded transition-colors">
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     </td>
 
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-4 py-3.5 text-center">
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDelete?.(ioc.id, e); }} 
                         className="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded transition-colors" 
@@ -156,7 +175,7 @@ export function IocTable({
         <div className="w-8"></div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span>Rows per page</span>
+            <span>{t?.rowsPerPage || "Rows per page"}</span>
             <select
               className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 outline-none"
               value={itemsPerPage}
@@ -166,7 +185,7 @@ export function IocTable({
             </select>
           </div>
           <span className="font-mono">
-            {totalHits === 0 ? "0" : ((page - 1) * itemsPerPage + 1).toLocaleString()} - {Math.min(page * itemsPerPage, totalHits).toLocaleString()} of {totalHits.toLocaleString()}
+            {totalHits === 0 ? "0" : ((page - 1) * itemsPerPage + 1).toLocaleString()} - {Math.min(page * itemsPerPage, totalHits).toLocaleString()} {t?.of || "of"} {totalHits.toLocaleString()}
           </span>
           <div className="flex items-center gap-1">
             <button onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1 || isLoading} className="p-1 disabled:opacity-30 hover:bg-slate-800 rounded">
