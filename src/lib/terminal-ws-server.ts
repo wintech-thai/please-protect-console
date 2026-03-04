@@ -10,6 +10,11 @@
  * production server starts after.
  *
  * Flow:  Browser (ws://host:port/ws) ──► This server ──► Backend API (wss)
+ *
+ * Security: token is NOT passed in the URL query string.
+ * Instead the client sends a JSON auth frame as the FIRST message:
+ *   { type: "auth", token: "<jwt>", orgId: "<id>" }
+ * Only after successful auth does this server open the backend WebSocket.
  */
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
@@ -25,20 +30,40 @@ export function startTerminalWsServer() {
   // We handle upgrade requests ourselves via the emit patch below.
   const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
 
-  wss.on("connection", (ws: WebSocket, req: http.IncomingMessage) => {
+  wss.on("connection", (ws: WebSocket) => {
     (ws as unknown as { _socket?: Socket })._socket?.setNoDelay(true);
-
-    const url = new URL(req.url ?? "/", "http://localhost");
-    const token = url.searchParams.get("token");
-    const orgId = url.searchParams.get("orgId");
-
-    if (!token || !orgId) {
-      ws.close(1008, "Missing token or orgId");
-      return;
-    }
-
     console.log("🔌 WebSocket client connected to terminal proxy");
-    handleTerminalProxy(ws, token, orgId);
+
+    // Wait for the first message which must be the auth frame.
+    // Set a short timeout so unauthenticated connections are evicted quickly.
+    const authTimeout = setTimeout(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        console.warn("⚠️  Terminal WS: auth timeout — closing connection");
+        ws.close(1008, "Auth timeout");
+      }
+    }, 10_000); // 10 s to send the auth frame
+
+    ws.once("message", (rawMsg) => {
+      clearTimeout(authTimeout);
+
+      let token: string | undefined;
+      let orgId: string | undefined;
+
+      try {
+        const msg = JSON.parse(rawMsg.toString()) as Record<string, unknown>;
+        if (msg.type !== "auth" || typeof msg.token !== "string" || typeof msg.orgId !== "string") {
+          throw new Error("Invalid auth frame");
+        }
+        token = msg.token;
+        orgId = msg.orgId;
+      } catch {
+        console.warn("⚠️  Terminal WS: invalid auth frame — closing connection");
+        ws.close(1008, "Invalid auth frame");
+        return;
+      }
+
+      handleTerminalProxy(ws, token, orgId);
+    });
   });
 
   // Monkey-patch emit so ANY http.Server instance's 'upgrade' event

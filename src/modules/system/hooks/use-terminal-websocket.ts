@@ -88,14 +88,15 @@ export function useTerminalWebSocket({ onData, onStatusChange }: UseTerminalWebS
     // Step 2: Connect to the WebSocket server (same host:port, path /ws)
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host; // includes port if non-default
-    const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(validToken)}&orgId=${encodeURIComponent(orgId)}`;
+    const wsUrl = `${protocol}//${host}/ws`;
 
-    console.log(`[Terminal] Connecting to ${protocol}//${host}/ws`);
+    console.log(`[Terminal] Connecting to ${wsUrl}`);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log("[Terminal] WebSocket opened");
+      console.log("[Terminal] WebSocket opened — sending auth frame");
+      ws.send(JSON.stringify({ type: "auth", token: validToken, orgId }));
     };
 
     ws.onmessage = (event) => {
