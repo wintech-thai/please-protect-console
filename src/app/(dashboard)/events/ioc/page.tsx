@@ -248,6 +248,38 @@ export default function IocPage() {
       let filteredData = mappedData.filter((item: any) => {
         const itemTime = dayjs(item.raw.lastSeenDate);
         if (itemTime.isBefore(start) || itemTime.isAfter(end)) return false;
+
+        const getVal = (key: string) => {
+          const k = key.toLowerCase();
+          if (k === "ioc.value") return String(item.value || "").toLowerCase();
+          if (k === "ioc.type") return String(item.type || "").toLowerCase();
+          if (k === "source.provider") return String(item.source || "").toLowerCase();
+          if (k === "tags") return String(item.raw?.tags || "").toLowerCase();
+          return "";
+        };
+
+        if (luceneQuery.includes("==") || luceneQuery.includes("!=")) {
+          const match = luceneQuery.match(/(.+?)\s*(==|!=)\s*(.+)/);
+          if (match) {
+            const field = match[1].trim();
+            const operator = match[2];
+            const val = match[3].replace(/^['"](.*)['"]$/, "$1").trim().toLowerCase();
+            const itemVal = getVal(field);
+
+            if (operator === "==" && itemVal !== val) return false;
+            if (operator === "!=" && itemVal === val) return false;
+          }
+        }
+
+        if (activeFilters && activeFilters.length > 0) {
+          for (const f of activeFilters) {
+            const itemVal = getVal(f.key);
+            const filterVal = String(f.value).toLowerCase();
+            if (f.operator === "==" && itemVal !== filterVal) return false;
+            if (f.operator === "!=" && itemVal === filterVal) return false;
+          }
+        }
+
         return true;
       });
 
@@ -281,7 +313,16 @@ export default function IocPage() {
           timeRange={timeRange} 
           onTimeRangeChange={(val) => { setTimeRange(val); setPage(1); }}
           timeDict={timeDict} 
-          onRefresh={fetchData} 
+          
+          onRefresh={() => {
+            if (searchInput !== luceneQuery) {
+              setLuceneQuery(searchInput);
+              setPage(1);
+            } else {
+              fetchData();
+            }
+          }} 
+          
           isLoading={isLoading}
           dict={dict.header} 
           totalHits={totalHits} 
@@ -347,6 +388,7 @@ export default function IocPage() {
           isLoading={isDeleting} 
           onClose={() => setIsDeleteModalOpen(false)} 
           onConfirm={handleConfirmDelete} 
+          t={dict.deleteModal}
         />
       </div>
     </div>

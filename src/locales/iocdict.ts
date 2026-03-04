@@ -18,7 +18,7 @@ export const iocDict = {
       colValue: "IoC Value",
       colType: "Type",
       colSource: "Dataset Source",
-      colLastSeen: "LastSeenDate",
+      colLastSeen: "Last Seen Date",
       colActions: "Actions",
       colDelete: "Delete",
       noData: "No indicators found",
@@ -36,6 +36,14 @@ export const iocDict = {
       copyJson: "COPY JSON",
       copied: "COPIED!",
       of: "of",
+    },
+    deleteModal: {
+      title: "Confirm Deletion",
+      message: "Are you sure you want to delete this indicator?",
+      warning: "This action cannot be undone.",
+      cancel: "Cancel",
+      confirm: "Delete",
+      deleting: "Deleting..."
     },
   },
   TH: {
@@ -75,6 +83,14 @@ export const iocDict = {
       copyJson: "คัดลอก JSON",
       copied: "คัดลอกแล้ว!",
       of: "จาก",            
+    },
+    deleteModal: {
+      title: "ยืนยันการลบข้อมูล",
+      message: "คุณแน่ใจหรือไม่ว่าต้องการลบ Indicator นี้?",
+      warning: "การกระทำนี้ไม่สามารถย้อนกลับได้",
+      cancel: "ยกเลิก",
+      confirm: "ลบ",
+      deleting: "กำลังลบ..."
     },
   },
 };
