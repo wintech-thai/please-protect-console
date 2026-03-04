@@ -1956,6 +1956,7 @@ export const translations = {
         connecting: "Connecting...",
         reconnect: "Reconnect",
         disconnect: "Disconnect",
+        textColor: "Text Color",
       },
       messages: {
         welcomeHeader: "Please Protect — Shell Terminal",
@@ -1980,6 +1981,7 @@ export const translations = {
         connecting: "กำลังเชื่อมต่อ...",
         reconnect: "เชื่อมต่อใหม่",
         disconnect: "ตัดการเชื่อมต่อ",
+        textColor: "สีตัวอักษร",
       },
       messages: {
         welcomeHeader: "Please Protect — Shell Terminal",
