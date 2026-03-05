@@ -193,7 +193,7 @@ export function IocTopNav({
                 value={iocTypeFilter}
                 onChange={(e) => onIocTypeFilterChange(e.target.value)}
                 disabled={isLoading}
-                className="w-full h-10 pl-8 pr-8 bg-slate-900 border border-slate-700 hover:border-slate-600 focus:border-blue-500 text-slate-200 text-xs font-bold rounded-lg outline-none cursor-pointer appearance-none transition-colors uppercase tracking-tight"
+                className="w-full h-10 pl-8 pr-8 bg-slate-900 border border-slate-700 hover:border-slate-600 focus:border-blue-500 text-slate-200 text-xs font-bold rounded-lg outline-none cursor-pointer appearance-none transition-colors tracking-tight"
               >
                 <option value="All">{dict?.allTypes || "All Types"}</option>
                 <option value="SourceIP">SourceIP</option>
