@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { QueryProvider } from "@/lib/query-provider";
 
 const prompt = localFont({
   src: [
@@ -44,9 +45,11 @@ export default function RootLayout({
         `}
       >
         <LanguageProvider>
-          <NuqsAdapter>
-            {children}
-          </NuqsAdapter>
+          <QueryProvider>
+            <NuqsAdapter>
+              {children}
+            </NuqsAdapter>
+          </QueryProvider>
 
           <Toaster
             richColors

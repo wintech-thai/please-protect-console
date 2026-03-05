@@ -21,23 +21,17 @@ interface SystemInfoPanelProps {
   metrics: Metrics;
   memPercent: number;
   t: SystemInfoTranslations;
-  mounted: boolean;
 }
 
 export function SystemInfoPanel({
   metrics: m,
   memPercent,
   t,
-  mounted,
 }: SystemInfoPanelProps) {
   return (
     <div
       className={cn(
         `p-6 bg-slate-900 border border-slate-800 rounded-xl shadow-lg transition-all duration-700 delay-500 transform min-h-100 overflow-hidden flex flex-col`,
-        {
-          "translate-y-0 opacity-100": mounted,
-          "translate-y-8 opacity-0": !mounted,
-        },
       )}
     >
       <div className="flex items-center justify-between mb-5">

@@ -15,16 +15,14 @@ import {
   TimePickerTranslations,
 } from "@/modules/dashboard/components/advanced-time-selector";
 
-// Components
-import { Layer3TopNav } from "@/components/layer3/Layer3TopNav";
-import { Layer3Histogram } from "@/components/layer3/Layer3Histogram";
-import { Layer3Table } from "@/components/layer3/Layer3Table";
-import { Layer3Flyout } from "@/components/layer3/Layer3Flyout";
+import { Layer4TopNav } from "@/components/layer4/Layer4TopNav";
+import { Layer4Histogram } from "@/components/layer4/Layer4Histogram";
+import { Layer4Table } from "@/components/layer4/Layer4Table";
+import { Layer4Flyout } from "@/components/layer4/Layer4Flyout";
 
-// Context & Locales
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
-import { layer3Dict } from "@/locales/layer3dict";
+import { layer4Dict } from "@/locales/layer4dict"; 
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -54,10 +52,10 @@ const needsQuotes = (key: string, val: any) => {
   return true; 
 };
 
-export default function Layer3Page() {
+export default function Layer4Page() {
   const { language, setLanguage } = useLanguage();
   const langKey = (language === "TH" ? "TH" : "EN") as "EN" | "TH";
-  const dict = layer3Dict[langKey];
+  const dict = layer4Dict[langKey]; 
 
   const toggleLanguage = () => {
     const nextLang = language === "EN" ? "TH" : "EN";
@@ -227,7 +225,7 @@ export default function Layer3Page() {
           : combinedFilters;
       }
 
-      console.group("🚀 Layer 3 - Arkime API Request");
+      console.group("🚀 Layer 4 - Arkime API Request"); 
       console.log("📝 Expression:", finalExpression || "(none)");
       console.log("⏰ Time (UTC):", {
         start: bounds.start.format("YYYY-MM-DD HH:mm:ss"),
@@ -501,7 +499,7 @@ export default function Layer3Page() {
   return (
     <div className="flex h-full bg-slate-950 text-slate-200 font-sans overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0 relative">
-        <Layer3TopNav
+        <Layer4TopNav
           luceneQuery={searchInput}
           onQueryChange={setSearchInput}
           onQuerySubmit={() => {
@@ -577,7 +575,7 @@ export default function Layer3Page() {
         )}
 
         <div className="relative flex-none w-full">
-          <Layer3Histogram
+          <Layer4Histogram
             data={histogramData}
             totalHits={totalHits}
             interval={currentInterval}
@@ -587,7 +585,7 @@ export default function Layer3Page() {
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <Layer3Table
+          <Layer4Table
             sessions={sessions}
             totalHits={totalHits}
             isLoading={isLoading}
@@ -606,7 +604,7 @@ export default function Layer3Page() {
           />
         </div>
 
-        <Layer3Flyout
+        <Layer4Flyout
           data={detailSession}
           events={sessions}
           currentIndex={sessions.findIndex((s) => s.id === detailSession?.id)}

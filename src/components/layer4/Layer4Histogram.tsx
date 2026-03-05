@@ -25,7 +25,7 @@ const getDynamicProtocolColor = (proto: string) => {
   return FIXED_PROTOCOL_COLORS[val] || `hsl(${Math.abs(val.split('').reduce((a,b)=>(((a<<5)-a)+b.charCodeAt(0))|0,0) % 360)}, 60%, 55%)`;
 };
 
-export function Layer3Histogram({ data = [], totalHits, interval, maxDocCount, isLoading }: HistogramProps) {
+export function Layer4Histogram({ data = [], totalHits, interval, maxDocCount, isLoading }: HistogramProps) {
   const axisLabelStep = Math.max(Math.floor(data.length / 8), 1);
   
   const safeMax = Math.max(maxDocCount, 3);

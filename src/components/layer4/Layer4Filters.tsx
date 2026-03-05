@@ -3,7 +3,7 @@
 import { Search, X } from "lucide-react";
 import { useState } from "react";
 
-export function Layer3Filters() {
+export function Layer4Filters() {
   const [query, setQuery] = useState("");
 
   return (

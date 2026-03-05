@@ -1,10 +1,11 @@
-export const layer3Dict = {
+export const layer4Dict = {
   EN: {
     header: {
-      title: "Layer 3 Traffic Analysis",
+      title: "Layer 4 Traffic Analysis",
       subtitle: "NETWORK LAYER MONITORING",
       hits: "hits",
       refresh: "Refresh",
+      refreshing: "Refreshing...",
       downloadPcap: "DOWNLOAD PCAP",
       export: "EXPORT"
     },
@@ -19,7 +20,7 @@ export const layer3Dict = {
       communityId: "COMMUNITY ID",
       package: "PACKAGE", 
       databytes: "DATABYTES",
-      logTitle: "Layer 3 Traffic Log", 
+      logTitle: "Layer 4 Traffic Log", 
       loading: "Loading traffic data...", 
       noData: "No data found", 
       actions: "ACTIONS",
@@ -64,10 +65,11 @@ export const layer3Dict = {
   },
   TH: {
     header: {
-      title: "การวิเคราะห์ทราฟฟิก Layer 3",
+      title: "การวิเคราะห์ทราฟฟิก Layer 4",
       subtitle: "การตรวจสอบระดับเครือข่าย",
       hits: "รายการ",
       refresh: "รีเฟรช",
+      refreshing: "กำลังรีเฟรช...",
       downloadPcap: "ดาวน์โหลด PCAP",
       export: "ส่งออก"
     },
@@ -82,7 +84,7 @@ export const layer3Dict = {
       communityId: "COMMUNITY ID",
       package: "แพ็กเกจ", 
       databytes: "ดาต้าไบต์",
-      logTitle: "รายการทราฟฟิก Layer 3",
+      logTitle: "รายการทราฟฟิก Layer 4",
       loading: "กำลังโหลดข้อมูล...", 
       noData: "ไม่พบข้อมูล", 
       actions: "จัดการ",

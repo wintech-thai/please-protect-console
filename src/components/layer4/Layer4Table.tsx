@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { ChevronRight, MoreVertical, Tag as TagIcon } from "lucide-react";
 
-interface Layer3TableProps {
+interface Layer4TableProps {
   sessions: any[];
   totalHits: number;
   isLoading?: boolean;
@@ -18,7 +18,7 @@ interface Layer3TableProps {
   onAddFilter?: (key: string, value: any, operator: "==" | "!=") => void;
 }
 
-export function Layer3Table({
+export function Layer4Table({
   sessions,
   totalHits,
   isLoading,
@@ -30,7 +30,7 @@ export function Layer3Table({
   onPageChange,
   onItemsPerPageChange,
   t,
-}: Layer3TableProps) {
+}: Layer4TableProps) {
   
   const getProtocolColor = (proto: string) => {
     const p = proto?.toLowerCase() || "";

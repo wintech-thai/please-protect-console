@@ -3,25 +3,19 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { 
   RefreshCw, 
-  Activity, 
-  Download, 
-  ChevronDown,
+  ShieldAlert, 
   Search,
-  Info
+  Info,
+  Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { 
   AdvancedTimeRangeSelector, 
   TimeRangeValue, 
   TimePickerTranslations 
 } from "@/modules/dashboard/components/advanced-time-selector";
 
-interface Layer3TopNavProps {
+interface IocTopNavProps {
   luceneQuery: string;
   onQueryChange: (val: string) => void;
   onQuerySubmit: () => void;
@@ -31,14 +25,15 @@ interface Layer3TopNavProps {
   onRefresh: () => void;
   isLoading: boolean;
   dict?: any; 
-  currentLang?: "EN" | "TH"; 
-  onLangToggle?: () => void; 
   fields?: any[];
+  totalHits?: number; 
+  iocTypeFilter?: string;
+  onIocTypeFilterChange?: (type: string) => void;
 }
 
 const OPERATORS = ["==", "!=", ">", ">=", "<", "<=", "exists"];
 
-export function Layer3TopNav({
+export function IocTopNav({
   luceneQuery,
   onQueryChange,
   onQuerySubmit,
@@ -48,15 +43,18 @@ export function Layer3TopNav({
   onRefresh,
   isLoading,
   dict,
-  fields = []
-}: Layer3TopNavProps) {
+  fields = [],
+  totalHits = 0,
+  iocTypeFilter = "All",
+  onIocTypeFilterChange,
+}: IocTopNavProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1); 
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filteredSuggestions = useMemo(() => {
-    if (!luceneQuery) return [];
+    if (!luceneQuery || !fields.length) return [];
     const parts = luceneQuery.split(/\s+/);
     const lastPart = parts[parts.length - 1];
     if (OPERATORS.some(op => lastPart.includes(op)) || lastPart === "") return [];
@@ -113,26 +111,26 @@ export function Layer3TopNav({
   }, []);
 
   return (
-    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md z-30 relative">
+    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex flex-wrap lg:flex-nowrap items-center gap-3 backdrop-blur-md z-30 relative">
       
-      {/* Title & Logo Section */}
+      {/* Title & Badge Area */}
       <div className="flex items-center gap-3 px-3 border-r border-slate-800 mr-2 h-9 hidden lg:flex">
-        <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center">
-          <Activity className="w-4 h-4 text-blue-500" />
+        <div className="w-8 h-8 rounded-lg bg-rose-600/10 border border-rose-500/20 flex items-center justify-center">
+          <ShieldAlert className="w-4 h-4 text-rose-500" />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">
-            {dict?.title || "Layer 3 Traffic Analysis"}
+          <h1 className="text-[13px] font-bold text-white leading-none tracking-tight flex items-center gap-2">
+            {dict?.title || "Indicators of Compromise"}
           </h1>
           <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">
-            {dict?.subtitle || "NETWORK LAYER MONITORING"}
+            {dict?.subtitle || "THREAT INTELLIGENCE"}
           </span>
         </div>
       </div>
 
-      <div className="flex-1 flex items-stretch gap-2">
-        {/* Search Input Area */}
-        <div className="flex-1 relative group flex items-center">
+      <div className="flex-1 w-full flex flex-wrap sm:flex-nowrap items-stretch gap-2">
+        
+        <div className="flex-1 min-w-[200px] w-full sm:w-auto relative group flex items-center">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors">
             <Search size={16} />
           </div>
@@ -148,11 +146,10 @@ export function Layer3TopNav({
             }}
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
-            placeholder="protocols == tcp"
-            className="w-full h-10 bg-slate-900 border-slate-700 border rounded-lg pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-blue-500/50 transition-all font-mono"
+            placeholder={dict?.searchPlaceholder || "Search field e.g. ioc.type == domain"}
+            className="w-full h-10 bg-slate-950 border-slate-700 border rounded-lg pl-10 pr-4 text-sm text-slate-200 outline-none focus:border-blue-500/50 transition-all font-mono"
           />
 
-          {/* Autocomplete Dropdown */}
           {showSuggestions && filteredSuggestions.length > 0 && (
             <div 
               ref={suggestionsRef}
@@ -184,53 +181,56 @@ export function Layer3TopNav({
           )}
         </div>
 
-        {/* Time Selector */}
-        <div className="flex-none hidden sm:block">
-          <AdvancedTimeRangeSelector
-            value={timeRange}
-            onChange={onTimeRangeChange}
-            translations={timeDict}
-            disabled={isLoading}
-          />
-        </div>
 
-        {/* Refresh Button */}
-        <button 
-          onClick={onRefresh} 
-          disabled={isLoading}
-          className={cn(
-            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50",
-            isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95 hover:shadow-blue-500/20"
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+          {/* IoC Type Dropdown */}
+          {onIocTypeFilterChange && (
+            <div className="relative flex-1 sm:flex-none flex items-center min-w-[140px]">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <Filter size={14} />
+              </div>
+              <select
+                value={iocTypeFilter}
+                onChange={(e) => onIocTypeFilterChange(e.target.value)}
+                disabled={isLoading}
+                className="w-full h-10 pl-8 pr-8 bg-slate-900 border border-slate-700 hover:border-slate-600 focus:border-blue-500 text-slate-200 text-xs font-bold rounded-lg outline-none cursor-pointer appearance-none transition-colors tracking-tight"
+              >
+                <option value="All">{dict?.allTypes || "All Types"}</option>
+                <option value="SourceIP">SourceIP</option>
+                <option value="DestinationIP">DestinationIP</option>
+                <option value="Domain">Domain</option>
+                <option value="FileHashSha256">FileHashSha256</option>
+                <option value="FileHashMD5">FileHashMD5</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <svg width="8" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+            </div>
           )}
-        >
-          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
-          <span className="hidden sm:inline">
-            {isLoading ? "Refreshing..." : (dict?.refresh || "Refresh")} 
-          </span>
-        </button>
 
-        {/* Export Button */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              className="border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all active:scale-95"
-            >
-              <Download size={16} className="text-slate-400" />
-              <span className="text-xs font-bold uppercase tracking-wider hidden md:inline">{dict?.export || "Export"}</span>
-              <ChevronDown size={14} className="opacity-50" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-48 p-1 bg-slate-900 border-slate-800 shadow-2xl" align="end">
-            <button 
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-blue-600 hover:text-white transition-colors rounded-md uppercase tracking-widest text-left"
-              onClick={() => console.log("Download PCAP Triggered")}
-            >
-              <Download size={14} className="opacity-70" />
-              {dict?.downloadPcap || "Download PCAP"}
-            </button>
-          </PopoverContent>
-        </Popover>
+          <div className="flex-1 sm:flex-none min-w-[160px]">
+            <AdvancedTimeRangeSelector
+              value={timeRange}
+              onChange={onTimeRangeChange}
+              translations={timeDict}
+              disabled={isLoading}
+            />
+          </div>
 
+          <button 
+            onClick={onRefresh} 
+            disabled={isLoading}
+            className={cn(
+              "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50 h-10 w-10 sm:w-auto",
+              isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95"
+            )}
+          >
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
+            <span className="hidden sm:inline">
+              {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );

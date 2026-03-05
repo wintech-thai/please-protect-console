@@ -13,7 +13,6 @@ interface OverviewHeaderProps {
   loading: boolean;
   refreshInterval: number;
   language: string;
-  mounted: boolean;
   refreshLabel?: string;
   refreshOff?: string;
   onRefresh: () => void;
@@ -28,7 +27,6 @@ export function OverviewHeader({
   loading,
   refreshInterval,
   language,
-  mounted,
   refreshLabel,
   refreshOff,
   onRefresh,
@@ -36,9 +34,7 @@ export function OverviewHeader({
 }: OverviewHeaderProps) {
   return (
     <div
-      className={`flex flex-col md:flex-row items-center justify-between transition-all duration-700 transform ${
-        mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-      }`}
+      className={`flex flex-col md:flex-row items-center justify-between transition-all duration-700 transform`}
     >
       <div>
         <h1 className="text-3xl font-bold text-slate-100 tracking-wide drop-shadow-md">

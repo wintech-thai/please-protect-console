@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import {
   LineChart,
   Line,
@@ -14,7 +14,8 @@ import {
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
-import { useNodes, useNodeRates, useNodeHistory } from "../hooks/use-data-flow";
+import { useNodes, useNodeRates, useNodeHistory, dataFlowKeys } from "../hooks/use-data-flow";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   NodeData,
   NodeRates,
@@ -263,22 +264,18 @@ const DetailsPanel = ({
   nodeRates,
   timeRange,
   refreshInterval,
-  timeRangeKey,
 }: {
   node: NodeData | null;
   nodeRates: NodeRates;
-  timeRange?: import("@/modules/dashboard/components/advanced-time-selector").TimeRangeValue;
-  refreshInterval?: number;
-  timeRangeKey?: string;
+  timeRange: import("@/modules/dashboard/components/advanced-time-selector").TimeRangeValue;
+  refreshInterval: number;
 }) => {
   const { language } = useLanguage();
   const t =
     translations.dataFlow[language as keyof typeof translations.dataFlow] ||
     translations.dataFlow.EN;
-  const historyData = useNodeHistory(node, {
-    timeRange,
-    refreshInterval,
-    timeRangeKey,
+  const { data: historyData = [] } = useNodeHistory(node, timeRange, {
+    refetchInterval: refreshInterval > 0 ? refreshInterval : false,
   });
 
   if (!node) {
@@ -362,28 +359,24 @@ const DataFlowContent = () => {
     translations.dataFlow[language as keyof typeof translations.dataFlow] ||
     translations.dataFlow.EN;
 
-  const { timeRange, setTimeRange, timeRangeKey, isRelative } = useTimeRange();
+  const { timeRange, setTimeRange, isRelative } = useTimeRange();
 
-  const [mounted, setMounted] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(20_000);
+  const activeRefetchInterval = isRelative && refreshInterval > 0 ? refreshInterval : (false as const);
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
+  const queryClient = useQueryClient();
   const nodes = useNodes(t);
   const [selectedNodeId, setSelectedNodeId] = useState("receiver1");
-  const { nodeRates, getConnectionHasData, loading, error, retry, lastUpdated } =
-    useNodeRates(nodes, {
-      timeRange,
-      refreshInterval: isRelative ? refreshInterval : 0,
-      timeRangeKey,
+  const { nodeRates, getConnectionHasData, loading, isFetching , error, lastUpdated } =
+    useNodeRates(nodes, timeRange, {
+      refetchInterval: activeRefetchInterval,
     });
 
-  const selectedNode = useMemo(
-    () => nodes.find((n) => n.id === selectedNodeId) ?? null,
-    [selectedNodeId, nodes]
-  );
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+
+  const refetchAll = () => {
+    queryClient.invalidateQueries({ queryKey: dataFlowKeys.all });
+  };
 
   if (error && Object.keys(nodeRates).length === 0) {
     return (
@@ -392,7 +385,7 @@ const DataFlowContent = () => {
           <AlertTriangle className="w-10 h-10 text-red-500" />
           <span className="text-sm font-medium">{t.error}</span>
           <button
-            onClick={retry}
+            onClick={refetchAll}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm transition-colors border border-slate-700"
           >
             {t.retry}
@@ -411,20 +404,19 @@ const DataFlowContent = () => {
           subtitle={t.subtitle}
           lastUpdatedLabel={t.lastUpdated}
           lastUpdated={lastUpdated}
-          loading={loading}
+          loading={loading || isFetching}
           refreshInterval={refreshInterval}
           language={language}
-          mounted={mounted}
           refreshLabel={t.refresh}
           refreshOff={t.refreshOff}
-          onRefresh={retry}
+          onRefresh={refetchAll}
           onIntervalChange={setRefreshInterval}
         />
         <div className="flex justify-end">
           <AdvancedTimeRangeSelector
             value={timeRange}
             onChange={setTimeRange}
-            disabled={loading}
+            disabled={loading || isFetching}
             translations={t.timePicker}
           />
         </div>
@@ -465,7 +457,6 @@ const DataFlowContent = () => {
           nodeRates={nodeRates}
           timeRange={timeRange}
           refreshInterval={isRelative ? refreshInterval : 0}
-          timeRangeKey={timeRangeKey}
         />
       </div>
 
