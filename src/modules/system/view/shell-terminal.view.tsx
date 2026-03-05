@@ -250,15 +250,6 @@ export default function ShellTerminalView() {
         return false;
       }
 
-      // Shift+Insert = Paste
-      if (e.shiftKey && key === "Insert") {
-        void navigator.clipboard
-          .readText()
-          .then((text) => term.paste(text))
-          .catch(() => {});
-        return false;
-      }
-
       // Ctrl+Shift+C = Copy
       if (e.ctrlKey && e.shiftKey && (key === "c" || key === "C")) {
         const selection = term.getSelection();
