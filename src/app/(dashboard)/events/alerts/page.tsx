@@ -300,6 +300,8 @@ export default function AlertsPage() {
           onToggleField={handleToggleField}
           onSelectField={handleSelectField}
           onAddFilter={handleAddFilter} 
+          // isOpen={isSidebarOpen} 
+          // onClose={() => setIsSidebarOpen(false)}
           t={dict}
         />
       )}

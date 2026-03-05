@@ -110,7 +110,7 @@ export function IocHistogram({ data = [], totalHits, interval, maxDocCount, isLo
                       <div key={sub.key} className="flex justify-between items-center gap-6 text-[10px]">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full flex-none" style={{ backgroundColor: getDynamicTypeColor(sub.key) }}></div>
-                          <span className="text-slate-200 uppercase font-bold tracking-tight">{sub.key}</span>
+                          <span className="text-slate-200 font-bold tracking-tight">{sub.key}</span>
                         </div>
                         <span className="font-mono text-white font-medium">{sub.doc_count.toLocaleString()}</span>
                       </div>

@@ -113,7 +113,7 @@ export function Layer4TopNav({
   }, []);
 
   return (
-    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md z-30 relative">
+    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex flex-wrap lg:flex-nowrap items-center gap-3 backdrop-blur-md z-30 relative">
       
       {/* Title & Logo Section */}
       <div className="flex items-center gap-3 px-3 border-r border-slate-800 mr-2 h-9 hidden lg:flex">
@@ -130,9 +130,10 @@ export function Layer4TopNav({
         </div>
       </div>
 
-      <div className="flex-1 flex items-stretch gap-2">
+      <div className="flex-1 w-full flex flex-wrap sm:flex-nowrap items-stretch gap-2">
+        
         {/* Search Input Area */}
-        <div className="flex-1 relative group flex items-center">
+        <div className="flex-1 min-w-[200px] w-full sm:w-auto relative group flex items-center">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors">
             <Search size={16} />
           </div>
@@ -184,53 +185,56 @@ export function Layer4TopNav({
           )}
         </div>
 
-        {/* Time Selector */}
-        <div className="flex-none hidden sm:block">
-          <AdvancedTimeRangeSelector
-            value={timeRange}
-            onChange={onTimeRangeChange}
-            translations={timeDict}
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+          
+          {/* Time Selector */}
+          <div className="flex-1 sm:flex-none min-w-[160px]">
+            <AdvancedTimeRangeSelector
+              value={timeRange}
+              onChange={onTimeRangeChange}
+              translations={timeDict}
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Refresh Button */}
+          <button 
+            onClick={onRefresh} 
             disabled={isLoading}
-          />
+            className={cn(
+              "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50 h-10 w-10 sm:w-auto sm:px-4",
+              isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95 hover:shadow-blue-500/20"
+            )}
+          >
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
+            <span className="hidden sm:inline">
+              {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
+            </span>
+          </button>
+
+          {/* Export Button */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all active:scale-95 h-10 w-10 sm:w-auto"
+              >
+                <Download size={16} className="text-slate-400" />
+                <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">{dict?.export || "Export"}</span>
+                <ChevronDown size={14} className="opacity-50 hidden sm:inline" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-1 bg-slate-900 border-slate-800 shadow-2xl" align="end">
+              <button 
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-blue-600 hover:text-white transition-colors rounded-md uppercase tracking-widest text-left"
+                onClick={() => console.log("Download PCAP Triggered")}
+              >
+                <Download size={14} className="opacity-70" />
+                {dict?.downloadPcap || "Download PCAP"}
+              </button>
+            </PopoverContent>
+          </Popover>
+
         </div>
-
-        {/* Refresh Button */}
-        <button 
-          onClick={onRefresh} 
-          disabled={isLoading}
-          className={cn(
-            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50",
-            isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95 hover:shadow-blue-500/20"
-          )}
-        >
-          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
-          <span className="hidden sm:inline">
-            {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
-          </span>
-        </button>
-
-        {/* Export Button */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              className="border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all active:scale-95"
-            >
-              <Download size={16} className="text-slate-400" />
-              <span className="text-xs font-bold uppercase tracking-wider hidden md:inline">{dict?.export || "Export"}</span>
-              <ChevronDown size={14} className="opacity-50" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-48 p-1 bg-slate-900 border-slate-800 shadow-2xl" align="end">
-            <button 
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-blue-600 hover:text-white transition-colors rounded-md uppercase tracking-widest text-left"
-              onClick={() => console.log("Download PCAP Triggered")}
-            >
-              <Download size={14} className="opacity-70" />
-              {dict?.downloadPcap || "Download PCAP"}
-            </button>
-          </PopoverContent>
-        </Popover>
-
       </div>
     </div>
   );

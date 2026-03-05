@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, X, Plus, ChevronDown, ChevronRight, Globe, Hash, Calendar, Type } from "lucide-react";
+import { Search, Plus, ChevronDown, ChevronRight, Globe, Hash, Calendar, Type, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AlertsSidebarProps {
@@ -11,7 +11,8 @@ interface AlertsSidebarProps {
   onToggleField: (field: string) => void;
   onSelectField: (field: string) => void;
   onAddFilter?: (key: string, value: any, operator: "==" | "!=") => void;
-  t: any; 
+  t: any;
+  isOpen?: boolean;
 }
 
 const getFieldIcon = (field: string) => {
@@ -21,7 +22,16 @@ const getFieldIcon = (field: string) => {
   return <Type className="w-3.5 h-3.5" />;
 };
 
-export function AlertsSidebar({ fields, selectedFields, expandedField, onToggleField, onSelectField, onAddFilter, t }: AlertsSidebarProps) {
+export function AlertsSidebar({ 
+  fields, 
+  selectedFields, 
+  expandedField, 
+  onToggleField, 
+  onSelectField, 
+  onAddFilter, 
+  t,
+  isOpen = true, 
+}: AlertsSidebarProps) {
   const [localSearch, setLocalSearch] = useState(""); 
   const [appliedSearch, setAppliedSearch] = useState(""); 
 
@@ -60,63 +70,72 @@ export function AlertsSidebar({ fields, selectedFields, expandedField, onToggleF
   const s = t.sidebar;
 
   return (
-    <div className="hidden md:flex flex-col w-[280px] border-r border-slate-800 bg-slate-950 transition-all duration-200 overflow-hidden">
-      
-      <div className="p-4 border-b border-slate-800 bg-slate-900/30">
-        <div className="relative group">
-          <Search className={cn(
-            "w-4 h-4 absolute left-3 top-2.5 transition-colors", 
-            localSearch !== appliedSearch ? "text-blue-400" : "text-slate-500"
-          )} />
-          <input
-            type="text"
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-9 pr-8 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-slate-200 placeholder:text-slate-600 transition-all"
-            placeholder={s.search} 
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            onKeyDown={handleKeyDown} 
-          />
-          {localSearch && (
-            <button 
-              onClick={handleClearSearch} 
-              className="absolute right-2 top-2 text-slate-500 hover:text-white p-0.5 rounded transition-colors"
-            >
-              <X size={14} />
-            </button>
-          )}
+    // 🌟 1. เอา absolute/fixed ออก และใช้การเปลี่ยน width เพื่อ "ดัน" เนื้อหาแทน
+    <div 
+      className={cn(
+        "flex-none h-full bg-slate-950 border-slate-800 flex flex-col transition-[width,opacity] duration-300 ease-in-out overflow-hidden z-40",
+        isOpen ? "w-[280px] border-r opacity-100" : "w-0 opacity-0 border-r-0" 
+      )}
+    >
+      {/* 🌟 2. ห่อเนื้อหาข้างในด้วย w-[280px] เพื่อไม่ให้เนื้อหาบีบตัวเละเทะตอนที่ Sidebar กำลังหด/ขยาย */}
+      <div className="w-[280px] h-full flex flex-col">
+        
+        <div className="p-4 border-b border-slate-800 bg-slate-900/30">
+          <div className="relative group">
+            <Search className={cn(
+              "w-4 h-4 absolute left-3 top-2.5 transition-colors", 
+              localSearch !== appliedSearch ? "text-blue-400" : "text-slate-500"
+            )} />
+            <input
+              type="text"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-9 pr-8 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-slate-200 placeholder:text-slate-600 transition-all"
+              placeholder={s?.search || "Search field names"} 
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              onKeyDown={handleKeyDown} 
+            />
+            {localSearch && (
+              <button 
+                onClick={handleClearSearch} 
+                className="absolute right-2 top-2 text-slate-500 hover:text-white p-0.5 rounded transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
-        <FieldSection
-          title={s.selected} 
-          fields={selectedFields.filter(searchFilter)}
-          selectedFields={selectedFields}
-          expandedField={expandedField}
-          onToggleField={onToggleField}
-          onSelectField={onSelectField}
-          onAddFilter={onAddFilter}
-          isRemovableSection={true}
-        />
-        <FieldSection
-          title={s.popular} 
-          fields={popularFields.filter(f => !selectedFields.includes(f)).filter(searchFilter)}
-          selectedFields={selectedFields}
-          expandedField={expandedField}
-          onToggleField={onToggleField}
-          onSelectField={onSelectField}
-          onAddFilter={onAddFilter}
-          forceShow={true}
-        />
-        <FieldSection
-          title={s.available} 
-          fields={availableFields.filter(searchFilter)}
-          selectedFields={selectedFields}
-          expandedField={expandedField}
-          onToggleField={onToggleField}
-          onSelectField={onSelectField}
-          onAddFilter={onAddFilter}
-        />
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
+          <FieldSection
+            title={s?.selected || "SELECTED FIELDS"} 
+            fields={selectedFields.filter(searchFilter)}
+            selectedFields={selectedFields}
+            expandedField={expandedField}
+            onToggleField={onToggleField}
+            onSelectField={onSelectField}
+            onAddFilter={onAddFilter}
+            isRemovableSection={true}
+          />
+          <FieldSection
+            title={s?.popular || "POPULAR FIELDS"} 
+            fields={popularFields.filter(f => !selectedFields.includes(f)).filter(searchFilter)}
+            selectedFields={selectedFields}
+            expandedField={expandedField}
+            onToggleField={onToggleField}
+            onSelectField={onSelectField}
+            onAddFilter={onAddFilter}
+            forceShow={true}
+          />
+          <FieldSection
+            title={s?.available || "AVAILABLE FIELDS"} 
+            fields={availableFields.filter(searchFilter)}
+            selectedFields={selectedFields}
+            expandedField={expandedField}
+            onToggleField={onToggleField}
+            onSelectField={onSelectField}
+            onAddFilter={onAddFilter}
+          />
+        </div>
       </div>
     </div>
   );
@@ -172,7 +191,7 @@ function FieldItem({ field, isSelected, isExpanded, onToggle, onSelect, onAddFil
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); onSelect(); }}
-          className={cn("p-1 hover:bg-slate-700 rounded-md transition-opacity z-10 relative", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
+          className={cn("p-1 hover:bg-slate-700 rounded-md transition-opacity z-10 relative", isSelected ? "opacity-100" : "opacity-100 md:opacity-0 md:group-hover:opacity-100")}
         >
           {isSelected ? <X className="w-3.5 h-3.5 text-orange-500" /> : <Plus className="w-3.5 h-3.5 text-blue-500" />}
         </button>

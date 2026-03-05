@@ -162,7 +162,7 @@ export function AlertsFlyout({ data, events = [], currentIndex = -1, onNavigate,
         </span>
         <button
           onClick={() => handleCopyValue(valStr, k)}
-          className={cn("absolute right-0 top-0.5 p-1.5 rounded bg-slate-800 border border-slate-700 text-slate-400 opacity-0 group-hover/val:opacity-100 transition-all", copiedId === k && "opacity-100 text-green-500 border-green-500/50")}
+          className={cn("absolute right-0 top-0.5 p-1.5 rounded bg-slate-800 border border-slate-700 text-slate-400 opacity-100 sm:opacity-0 group-hover/val:opacity-100 transition-all", copiedId === k && "opacity-100 text-green-500 border-green-500/50")}
         >
           {copiedId === k ? <Check size={12} /> : <Copy size={12} />}
         </button>
@@ -172,18 +172,23 @@ export function AlertsFlyout({ data, events = [], currentIndex = -1, onNavigate,
 
   return (
     <>
-      <div className={cn("fixed top-0 right-0 h-screen w-[650px] bg-slate-950 border-l border-slate-800 shadow-[-20px_0_60px_rgba(0,0,0,0.7)] z-[100] flex flex-col font-sans transition-transform duration-300 ease-in-out", data ? "translate-x-0" : "translate-x-full")}>
+      <div className={cn(
+        // 🌟 ปรับ w-[650px] เป็น w-full max-w-[650px] 
+        "fixed top-0 right-0 h-screen w-full max-w-[650px] bg-slate-950 border-l border-slate-800 shadow-[-20px_0_60px_rgba(0,0,0,0.7)] z-[100] flex flex-col font-sans transition-transform duration-300 ease-in-out", 
+        data ? "translate-x-0" : "translate-x-full"
+      )}>
         
         {/* Header Section */}
-        <div className="flex-none px-6 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest opacity-80 flex items-center gap-2">
+        {/* 🌟 ปรับ px-6 เป็น px-4 sm:px-6 */}
+        <div className="flex-none px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-widest opacity-80 flex items-center gap-2">
               {f?.title}
             </h3>
             
-            <div className="flex items-center text-slate-400 text-[11px] font-medium gap-1 bg-slate-900 rounded-md border border-slate-800 p-0.5 select-none">
+            <div className="flex items-center text-slate-400 text-[10px] sm:text-[11px] font-medium gap-1 bg-slate-900 rounded-md border border-slate-800 p-0.5 select-none">
               <button disabled={currentIndex <= 0} onClick={() => onNavigate?.(currentIndex - 1)} className="p-1 hover:text-white disabled:opacity-20 transition-colors"><ChevronLeft size={14} /></button>
-              <span className="px-2 min-w-[70px] text-center tracking-tight">
+              <span className="px-2 min-w-[50px] sm:min-w-[70px] text-center tracking-tight">
                 {events.length > 0 
                   ? `${currentIndex + 1} ${f?.paginationOf} ${events.length}` 
                   : `0 ${f?.paginationOf} 0`}
@@ -198,8 +203,9 @@ export function AlertsFlyout({ data, events = [], currentIndex = -1, onNavigate,
         </div>
 
         {/* Tab Selection */}
-        <div className="flex-none flex px-6 border-b border-slate-800 bg-slate-950">
-          <button onClick={() => setDrawerTab("table")} className={cn("flex items-center gap-2 px-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 mr-8 transition-all", drawerTab === "table" ? "text-blue-500 border-blue-500" : "text-slate-500 border-transparent hover:text-slate-300")}>
+        {/* 🌟 ปรับ px-6 เป็น px-4 sm:px-6 */}
+        <div className="flex-none flex px-4 sm:px-6 border-b border-slate-800 bg-slate-950">
+          <button onClick={() => setDrawerTab("table")} className={cn("flex items-center gap-2 px-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 mr-4 sm:mr-8 transition-all", drawerTab === "table" ? "text-blue-500 border-blue-500" : "text-slate-500 border-transparent hover:text-slate-300")}>
             <TableIcon size={14} /> {f?.tabTable}
           </button>
           <button onClick={() => setDrawerTab("json")} className={cn("flex items-center gap-2 px-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all", drawerTab === "json" ? "text-blue-500 border-blue-500" : "text-slate-500 border-transparent hover:text-slate-300")}>
@@ -225,9 +231,10 @@ export function AlertsFlyout({ data, events = [], currentIndex = -1, onNavigate,
               </div>
 
               {/* Table Column Header */}
+              {/* 🌟 ปรับสัดส่วนคอลัมน์ในจอเล็ก */}
               <div className="flex-none flex border-b border-slate-800 bg-slate-900/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest select-none">
-                <div className="w-[40%] px-4 py-2 border-r border-slate-800">{f?.field}</div>
-                <div className="w-[60%] px-4 py-2">{f?.value}</div>
+                <div className="w-[45%] sm:w-[40%] px-4 py-2 border-r border-slate-800">{f?.field}</div>
+                <div className="w-[55%] sm:w-[60%] px-4 py-2">{f?.value}</div>
               </div>
 
               {/* Data Rows */}
@@ -237,18 +244,20 @@ export function AlertsFlyout({ data, events = [], currentIndex = -1, onNavigate,
                   .map((k) => {
                     const v = flattenedData[k];
                     return (
+                      // 🌟 เรียงเป็น Row เสมอ แต่บีบสัดส่วนคอลัมน์ในจอเล็ก
                       <div key={k} className="group flex border-b border-slate-900 hover:bg-slate-900/30 transition-colors text-sm relative">
-                        <div className="w-[40%] px-4 py-2.5 border-r border-slate-900 flex items-center justify-between min-w-0 group/field">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-slate-600 opacity-70">{getFieldIcon(k)}</span>
+                        <div className="w-[45%] sm:w-[40%] px-4 py-2.5 border-r border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between min-w-0 group/field">
+                          <div className="flex items-center gap-2 min-w-0 mb-1 sm:mb-0">
+                            <span className="text-slate-600 opacity-70 hidden sm:inline-block">{getFieldIcon(k)}</span>
                             <span className="font-semibold text-blue-400/90 truncate select-text cursor-text" title={k}>{k}</span>
                           </div>
-                          <div className="hidden group-hover/field:flex items-center gap-1 bg-slate-900 shadow-xl border border-slate-700 rounded p-0.5 z-10 animate-in fade-in zoom-in-95 duration-100">
+                          {/* 🌟 แสดงปุ่ม Filter แบบ Inline บนจอเล็กเลย ไม่ต้องรอ Hover */}
+                          <div className="flex sm:hidden group-hover/field:flex items-center gap-1 bg-slate-900 sm:shadow-xl border border-slate-700 rounded p-0.5 z-10 w-max">
                             <button onClick={() => onAddFilter?.(k, v, "==")} className="p-1 hover:bg-slate-800 rounded text-emerald-500" title="Filter In"><Plus size={12} /></button>
                             <button onClick={() => onAddFilter?.(k, v, "!=")} className="p-1 hover:bg-slate-800 rounded text-rose-500" title="Filter Out"><Minus size={12} /></button>
                           </div>
                         </div>
-                        <div className="w-[60%] px-4 py-2.5 min-w-0 break-all">{renderValueCell(k, v)}</div>
+                        <div className="w-[55%] sm:w-[60%] px-4 py-2.5 min-w-0 break-all">{renderValueCell(k, v)}</div>
                       </div>
                     );
                   })}
@@ -264,7 +273,8 @@ export function AlertsFlyout({ data, events = [], currentIndex = -1, onNavigate,
                 </button>
               </div>
               <div className="p-6 overflow-auto h-full custom-scrollbar bg-[#090b10]">
-                <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap select-text" dangerouslySetInnerHTML={{ __html: highlightJson(data.raw || data) }} />
+                {/* 🌟 ปรับ overflow-x-auto เพื่อกัน json ล้นจอ */}
+                <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap select-text overflow-x-auto" dangerouslySetInnerHTML={{ __html: highlightJson(data.raw || data) }} />
               </div>
             </div>
           )}

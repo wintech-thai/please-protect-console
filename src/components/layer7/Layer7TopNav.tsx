@@ -69,9 +69,9 @@ export function Layer7TopNav({
         </div>
       </div>
 
-      <div className="flex-1 flex items-stretch gap-2">
+      <div className="flex-1 flex flex-wrap md:flex-nowrap items-stretch gap-2">
         {/* Search Input */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-[200px]">
           <KqlSearchInput 
             value={luceneQuery}
             onChange={onQueryChange}
@@ -82,7 +82,7 @@ export function Layer7TopNav({
         </div>
 
         {/* Time Selector */}
-        <div className="flex-none hidden sm:block">
+        <div className="flex-1 sm:flex-none min-w-[160px]">
           <AdvancedTimeRangeSelector 
             value={timeRange} 
             onChange={onTimeRangeChange} 
@@ -96,7 +96,7 @@ export function Layer7TopNav({
           onClick={onRefresh} 
           disabled={isLoading}
           className={cn(
-            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50",
+            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50",
             isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95 hover:shadow-blue-500/20"
           )}
         >

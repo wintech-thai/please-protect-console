@@ -111,7 +111,7 @@ export function IocTopNav({
   }, []);
 
   return (
-    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md z-30 relative">
+    <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex flex-wrap lg:flex-nowrap items-center gap-3 backdrop-blur-md z-30 relative">
       
       {/* Title & Badge Area */}
       <div className="flex items-center gap-3 px-3 border-r border-slate-800 mr-2 h-9 hidden lg:flex">
@@ -128,9 +128,9 @@ export function IocTopNav({
         </div>
       </div>
 
-      <div className="flex-1 flex items-stretch gap-2">
-        {/* Search Input Area */}
-        <div className="flex-1 relative group flex items-center">
+      <div className="flex-1 w-full flex flex-wrap sm:flex-nowrap items-stretch gap-2">
+        
+        <div className="flex-1 min-w-[200px] w-full sm:w-auto relative group flex items-center">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors">
             <Search size={16} />
           </div>
@@ -182,53 +182,55 @@ export function IocTopNav({
         </div>
 
 
-        {/* IoC Type Dropdown */}
-        {onIocTypeFilterChange && (
-          <div className="relative flex-none hidden sm:flex items-center">
-            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-              <Filter size={14} />
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+          {/* IoC Type Dropdown */}
+          {onIocTypeFilterChange && (
+            <div className="relative flex-1 sm:flex-none flex items-center min-w-[140px]">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <Filter size={14} />
+              </div>
+              <select
+                value={iocTypeFilter}
+                onChange={(e) => onIocTypeFilterChange(e.target.value)}
+                disabled={isLoading}
+                className="w-full h-10 pl-8 pr-8 bg-slate-900 border border-slate-700 hover:border-slate-600 focus:border-blue-500 text-slate-200 text-xs font-bold rounded-lg outline-none cursor-pointer appearance-none transition-colors uppercase tracking-tight"
+              >
+                <option value="All">{dict?.allTypes || "All Types"}</option>
+                <option value="SourceIP">SourceIP</option>
+                <option value="DestinationIP">DestinationIP</option>
+                <option value="Domain">Domain</option>
+                <option value="FileHashSha256">FileHashSha256</option>
+                <option value="FileHashMD5">FileHashMD5</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <svg width="8" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
             </div>
-            <select
-              value={iocTypeFilter}
-              onChange={(e) => onIocTypeFilterChange(e.target.value)}
-              disabled={isLoading}
-              className="h-10 pl-8 pr-8 bg-slate-900 border border-slate-700 hover:border-slate-600 focus:border-blue-500 text-slate-200 text-xs font-bold rounded-lg outline-none cursor-pointer appearance-none transition-colors uppercase tracking-tight"
-            >
-              <option value="All">{dict?.allTypes || "All Types"}</option>
-              <option value="SourceIP">SourceIP</option>
-              <option value="DestinationIP">DestinationIP</option>
-              <option value="Domain">Domain</option>
-              <option value="FileHashSha256">FileHashSha256</option>
-              <option value="FileHashMD5">FileHashMD5</option>
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-              <svg width="8" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-          </div>
-        )}
-
-        <div className="flex-none hidden sm:block">
-          <AdvancedTimeRangeSelector
-            value={timeRange}
-            onChange={onTimeRangeChange}
-            translations={timeDict}
-            disabled={isLoading}
-          />
-        </div>
-
-        <button 
-          onClick={onRefresh} 
-          disabled={isLoading}
-          className={cn(
-            "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50 h-10",
-            isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95"
           )}
-        >
-          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
-          <span className="hidden sm:inline">
-            {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
-          </span>
-        </button>
+
+          <div className="flex-1 sm:flex-none min-w-[160px]">
+            <AdvancedTimeRangeSelector
+              value={timeRange}
+              onChange={onTimeRangeChange}
+              translations={timeDict}
+              disabled={isLoading}
+            />
+          </div>
+
+          <button 
+            onClick={onRefresh} 
+            disabled={isLoading}
+            className={cn(
+              "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50 h-10 w-10 sm:w-auto",
+              isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95"
+            )}
+          >
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
+            <span className="hidden sm:inline">
+              {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );

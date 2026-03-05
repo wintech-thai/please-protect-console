@@ -195,18 +195,18 @@ export function IocFlyout({
   return (
     <>
       <div className={cn(
-        "fixed top-0 right-0 h-screen w-[650px] bg-slate-950 border-l border-slate-800 shadow-[-20px_0_60px_rgba(0,0,0,0.7)] z-[100] flex flex-col transition-transform duration-300 ease-in-out",
+        "fixed top-0 right-0 h-screen w-full max-w-[650px] bg-slate-950 border-l border-slate-800 shadow-[-20px_0_60px_rgba(0,0,0,0.7)] z-[100] flex flex-col transition-transform duration-300 ease-in-out",
         data ? "translate-x-0" : "translate-x-full"
       )}>
         
-        <div className="flex-none px-6 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest opacity-80 flex items-center gap-2">
+        <div className="flex-none px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-widest opacity-80 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
               {t?.title || "IOC DETAILS"}
             </h3>
             
-            <div className="flex items-center text-slate-400 text-[11px] font-medium gap-1 bg-slate-900 rounded-md border border-slate-800 p-0.5 select-none">
+            <div className="flex items-center text-slate-400 text-[10px] sm:text-[11px] font-medium gap-1 bg-slate-900 rounded-md border border-slate-800 p-0.5 select-none">
               <button
                 disabled={currentIndex <= 0}
                 onClick={() => onNavigate?.(currentIndex - 1)}
@@ -214,7 +214,7 @@ export function IocFlyout({
               >
                 <ChevronLeft size={14} />
               </button>
-              <span className="px-2 min-w-[70px] text-center tracking-tight">
+              <span className="px-2 min-w-[50px] sm:min-w-[70px] text-center tracking-tight">
                 {events.length > 0
                   ? `${currentIndex + 1} ${t?.of || "of"} ${events.length}`
                   : `0 ${t?.of || "of"} 0`}
@@ -234,11 +234,11 @@ export function IocFlyout({
           </button>
         </div>
 
-        <div className="flex-none flex px-6 border-b border-slate-800 bg-slate-950">
+        <div className="flex-none flex px-4 sm:px-6 border-b border-slate-800 bg-slate-950">
           <button
             onClick={() => setDrawerTab("table")}
             className={cn(
-              "flex items-center gap-2 px-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 mr-8 transition-all",
+              "flex items-center gap-2 px-1 py-3 text-xs font-bold uppercase tracking-wider border-b-2 mr-4 sm:mr-8 transition-all",
               drawerTab === "table" ? "text-blue-500 border-blue-500" : "text-slate-500 border-transparent hover:text-slate-300",
             )}
           >
@@ -283,15 +283,15 @@ export function IocFlyout({
                   .map((f, idx) => {
                     return (
                       <div key={idx} className="group flex border-b border-slate-900 hover:bg-slate-900/30 transition-colors text-sm relative">
-                        <div className="w-[35%] px-4 py-2 border-r border-slate-900 flex items-center justify-between min-w-0">
-                          <span className="font-semibold text-blue-400/90 truncate select-text cursor-text" title={f.fieldKey || f.label}>
+                        <div className="w-[35%] px-4 py-2 border-r border-slate-900 flex flex-col sm:flex-row sm:items-center justify-between min-w-0">
+                          <span className="font-semibold text-blue-400/90 truncate select-text cursor-text mb-1 sm:mb-0" title={f.fieldKey || f.label}>
                             {f.label}
                           </span>
                           
                           {f.isClickableType && (
                             <button
                               onClick={(e) => onTypeClick?.(String(f.value), e)}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded bg-slate-800 border border-slate-700 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:text-emerald-300 transition-all shrink-0 ml-2"
+                              className="opacity-100 sm:opacity-0 group-hover:opacity-100 p-1 rounded bg-slate-800 border border-slate-700 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:text-emerald-300 transition-all shrink-0 sm:ml-2 w-max"
                               title="Filter for this value"
                             >
                               <Plus size={12} strokeWidth={3} />
@@ -299,7 +299,7 @@ export function IocFlyout({
                           )}
                         </div>
                         
-                        <div className="w-[65%] px-4 py-2 flex items-center min-w-0">
+                        <div className="w-[65%] px-4 py-2 flex items-center min-w-0 overflow-hidden">
                           {renderValueCell(f)}
                         </div>
                       </div>
@@ -320,7 +320,7 @@ export function IocFlyout({
               </div>
               <div className="p-6 overflow-auto h-full custom-scrollbar bg-[#090b10]">
                 <pre
-                  className="text-xs font-mono leading-relaxed whitespace-pre-wrap select-text"
+                  className="text-xs font-mono leading-relaxed whitespace-pre-wrap select-text overflow-x-auto"
                   dangerouslySetInnerHTML={{ __html: highlightJson(data.raw || data) }}
                 />
               </div>
