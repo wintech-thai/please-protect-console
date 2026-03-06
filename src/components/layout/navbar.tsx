@@ -125,7 +125,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
         // เส้นคั่น
         { isDivider: true },
         
-        { label: t.subnetMapping || "Subnet Mapping", href: "#", icon: <Network className="w-4 h-4 mr-2" /> },
+        { label: t.subnetMapping || "Subnet Mapping", href: "/events/subnet", icon: <Network className="w-4 h-4 mr-2" /> },
       ]
     },
     {

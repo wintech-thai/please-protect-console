@@ -73,3 +73,9 @@ export interface ApiKeyResponse {
   customRoleName?: string;
   customRoleDesc?: string;
 }
+
+export interface GetSubnetsParams {
+  offset?: number;
+  limit?: number;
+  fullTextSearch?: string;
+}
