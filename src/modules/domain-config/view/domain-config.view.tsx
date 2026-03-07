@@ -117,6 +117,7 @@ interface ConfigRowProps {
   t: T;
   onSave: (field: ConfigField, value: string) => Promise<void>;
   isSaving: boolean;
+  inputWidthClass?: string;
 }
 
 const ConfigRow = ({
@@ -129,6 +130,7 @@ const ConfigRow = ({
   t,
   onSave,
   isSaving,
+  inputWidthClass,
 }: ConfigRowProps) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -139,6 +141,12 @@ const ConfigRow = ({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isLogoField = field === "logo";
+  const max =
+    field === "shortName"
+      ? 30
+      : field === "domain"
+        ? 60
+        : undefined;
 
   const handleEdit = () => {
     setDraft(value);
@@ -232,9 +240,10 @@ const ConfigRow = ({
       <div className="flex items-center gap-3 flex-wrap">
         {editing ? (
           <>
-            <div className="flex-1 min-w-48 flex flex-col gap-1">
+            <div className={`w-full ${inputWidthClass ?? ""} min-w-48 flex flex-col gap-1`}>
               <div className="relative flex items-center">
                 <input
+                  maxLength={max}
                   autoFocus
                   type="text"
                   value={draft}
@@ -296,7 +305,7 @@ const ConfigRow = ({
         ) : (
           <>
             <span
-              className={`flex-1 text-sm font-mono px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-800 truncate ${
+              className={`w-full ${inputWidthClass ?? ""} text-sm font-mono px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-800 truncate ${
                 value ? "text-slate-100" : "text-slate-600 italic"
               }`}
             >
@@ -401,6 +410,7 @@ export default function DomainConfigView() {
             t={t}
             onSave={handleSave}
             isSaving={isPending}
+            inputWidthClass="md:w-1/2"
           />
           <ConfigRow
             field="domain"
@@ -412,6 +422,7 @@ export default function DomainConfigView() {
             t={t}
             onSave={handleSave}
             isSaving={isPending}
+            inputWidthClass="md:w-1/2"
           />
           <ConfigRow
             field="logo"
