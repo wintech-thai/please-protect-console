@@ -19,6 +19,96 @@ export interface HistoryPoint {
   output?: number;
 }
 
+// ─── Kafka types ──────────────────────────────────────────────────────────────
+
+/**
+ * Real shape from GetTopicByName partitions array.
+ * NOTE: no offset data here — use GetTopicOffsets for begin/end offsets.
+ */
+export interface KafkaTopicPartition {
+  partition: number;
+  leader: number;
+  replicas: number[];
+  isr: number[];
+  hasError: boolean;
+  errorReason: string;
+}
+
+/**
+ * Real shape from GetTopicByName.
+ * NOTE: replicationFactor and totalMessages are NOT returned by the server.
+ *       Derive replicationFactor from partitions[0].replicas.length.
+ *       Derive totalMessages from GetTopicOffsets (sum of endOffset - beginOffset).
+ */
+export interface KafkaTopicInfo {
+  name: string;
+  partitionCount: number;
+  partitions: KafkaTopicPartition[];
+}
+
+export interface KafkaTopicOffsetPartition {
+  partition: number;
+  earliestOffset: number;
+  latestOffset: number;
+  messageCount: number;
+}
+
+/**
+ * Real shape from GetTopicOffsets:
+ * { topic, totalPartitions, partitions: [...] }
+ */
+export interface KafkaTopicOffsets {
+  topic: string;
+  totalPartitions: number;
+  partitions: KafkaTopicOffsetPartition[];
+}
+
+/**
+ * Derived topic stats computed client-side from KafkaTopicInfo + KafkaTopicOffset[].
+ */
+export interface KafkaTopicStats {
+  partitionCount: number;
+  /** Derived from partitions[0].replicas.length */
+  replicationFactor: number;
+  /** Sum of (endOffset - beginOffset) across all partitions */
+  totalMessages: number;
+  /** True if any partition has hasError === true */
+  hasPartitionError: boolean;
+  partitions: KafkaTopicPartition[];
+}
+
+/**
+ * One row from GetTopicLag — flat per group × partition.
+ * { group, topic, partition, committedOffset, latestOffset, lag }
+ */
+export interface KafkaTopicLagRow {
+  group: string;
+  topic: string;
+  partition: number;
+  committedOffset: number;
+  latestOffset: number;
+  lag: number;
+}
+
+/**
+ * Aggregated lag summary for one consumer group, derived client-side by
+ * grouping KafkaTopicLagRow[] entries by the `group` field.
+ */
+export interface KafkaGroupLagSummary {
+  group: string;
+  totalLag: number;
+  partitions: KafkaTopicLagRow[];
+}
+
+export interface KafkaTopicDetails {
+  /** Derived stats (partitions, RF, totalMessages) — null if fetch failed */
+  topicStats: KafkaTopicStats | null;
+  /** Aggregated per-group summaries, derived from the flat GetTopicLag rows. */
+  groupLagSummaries: KafkaGroupLagSummary[];
+}
+
+// ─── Translation interfaces ───────────────────────────────────────────────────
+
 export interface DataFlowNodesTranslations {
   interface: string;
   interfaceDesc: string;
@@ -42,6 +132,22 @@ export interface DataFlowDetailsTranslations {
   inputRate: string;
   outputRate: string;
   history: string;
+  // Kafka topic details
+  topicInfo: string;
+  partitions: string;
+  replicationFactor: string;
+  totalMessages: string;
+  consumerGroups: string;
+  noConsumerGroups: string;
+  groupId: string;
+  groupState: string;
+  groupMembers: string;
+  totalLag: string;
+  loading: string;
+  errorLoading: string;
+  partitionHealth: string;
+  partitionHealthOk: string;
+  partitionHealthError: string;
 }
 
 export interface DataFlowTimePickerTranslations {
