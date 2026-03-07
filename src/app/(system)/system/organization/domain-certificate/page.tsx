@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/ui/coming-soon";
+import DomainConfigView from "@/modules/domain-config/view/domain-config.view";
 
 export default function DomainCertificatePage() {
-  return <ComingSoon title="Domain & Certificate" />;
+  return <DomainConfigView />;
 }
