@@ -11,15 +11,23 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Users, BarChart2, RefreshCw } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
-import { useNodes, useNodeRates, useNodeHistory, dataFlowKeys } from "../hooks/use-data-flow";
+import {
+  useNodes,
+  useNodeRates,
+  useNodeHistory,
+  useKafkaTopicDetails,
+  dataFlowKeys,
+} from "../hooks/use-data-flow";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
   NodeData,
   NodeRates,
   HistoryPoint,
+  KafkaGroupLagSummary,
+  KafkaTopicStats,
 } from "../types/data-flow.types";
 import { useTimeRange } from "@/modules/dashboard/hooks/use-time-range";
 import { OverviewHeader } from "@/modules/dashboard/components/overview-header";
@@ -211,7 +219,9 @@ const HistoryChart = ({
             <YAxis {...CHART_AXIS_STYLE} />
             <Tooltip
               {...TOOLTIP_STYLE}
-              formatter={(value) => typeof value === "number" ? value.toFixed(2) : value}
+              formatter={(value) =>
+                typeof value === "number" ? value.toFixed(2) : value
+              }
             />
             <Legend
               wrapperStyle={{ fontSize: "12px", cursor: "pointer" }}
@@ -259,6 +269,164 @@ const HistoryChart = ({
   );
 };
 
+// ─── Kafka Topic Details Panel ────────────────────────────────────────────────
+
+type DetailTranslations = (typeof translations.dataFlow.EN)["details"];
+
+const KafkaTopicPanel = ({
+  node,
+  t,
+  refreshInterval,
+}: {
+  node: NodeData;
+  t: DetailTranslations;
+  refreshInterval: number;
+}) => {
+  const { data, isLoading, isError, refetch, isFetching } =
+    useKafkaTopicDetails(node, {
+      refetchInterval: refreshInterval > 0 ? refreshInterval : false,
+    });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-slate-400 text-sm p-4">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        {t.loading}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center gap-3 text-sm p-4">
+        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+        <span className="text-red-400">{t.errorLoading}</span>
+        <button
+          onClick={() => refetch()}
+          className="ml-auto flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          <RefreshCw className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  }
+
+  const topicStats: KafkaTopicStats | null = data?.topicStats ?? null;
+  const groupLagSummaries: KafkaGroupLagSummary[] = data?.groupLagSummaries ?? [];
+
+  return (
+    <div className="flex flex-col gap-4 w-full">
+      {/* Topic info stats row */}
+      {topicStats && (
+        <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 min-w-27.5">
+            <span className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+              {t.partitions}
+            </span>
+            <span className="text-lg font-mono text-amber-400">
+              {topicStats.partitionCount}
+            </span>
+          </div>
+          <div className="flex flex-col bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 min-w-27.5">
+            <span className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+              {t.replicationFactor}
+            </span>
+            <span className="text-lg font-mono text-amber-400">
+              {topicStats.replicationFactor}
+            </span>
+          </div>
+          <div className="flex flex-col bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 min-w-27.5">
+            <span className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+              {t.totalMessages}
+            </span>
+            <span className="text-lg font-mono text-amber-400">
+              {topicStats.totalMessages.toLocaleString()}
+            </span>
+          </div>
+          {/* Partition health badge */}
+          <div className="flex flex-col bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 min-w-27.5">
+            <span className="text-[10px] uppercase font-bold text-slate-400 mb-1">
+              {t.partitionHealth}
+            </span>
+            <span
+              className={`text-sm font-semibold ${
+                topicStats.hasPartitionError ? "text-red-400" : "text-emerald-400"
+              }`}
+            >
+              {topicStats.hasPartitionError ? t.partitionHealthError : t.partitionHealthOk}
+            </span>
+          </div>
+          {isFetching && (
+            <div className="flex items-center self-end pb-3 text-slate-500">
+              <Loader2 className="w-3 h-3 animate-spin" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Consumer groups + lag */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <Users className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+            {t.consumerGroups}
+            {groupLagSummaries.length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
+                {groupLagSummaries.length}
+              </span>
+            )}
+          </span>
+        </div>
+
+        {groupLagSummaries.length === 0 ? (
+          <p className="text-slate-500 text-xs italic">{t.noConsumerGroups}</p>
+        ) : (
+          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+            {groupLagSummaries.map((summary) => (
+              <div
+                key={summary.group}
+                className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2"
+              >
+                {/* Group name */}
+                <span className="font-mono text-xs text-slate-200 truncate flex-1 min-w-0">
+                  {summary.group}
+                </span>
+
+                {/* Partition count */}
+                <div className="shrink-0 flex items-center gap-1 text-slate-400 text-[10px]">
+                  <span className="uppercase font-semibold text-slate-500">
+                    {t.partitions}:
+                  </span>
+                  <span>{summary.partitions.length}</span>
+                </div>
+
+                {/* Total lag */}
+                <div className="shrink-0 flex items-center gap-1 text-[10px]">
+                  <BarChart2 className="w-3 h-3 text-slate-400" />
+                  <span className="text-slate-400 uppercase font-semibold">
+                    {t.totalLag}:
+                  </span>
+                  <span
+                    className={
+                      summary.totalLag > 0
+                        ? "text-red-400 font-semibold"
+                        : "text-emerald-400 font-semibold"
+                    }
+                  >
+                    {summary.totalLag.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Details Panel ────────────────────────────────────────────────────────────
+
 const DetailsPanel = ({
   node,
   nodeRates,
@@ -286,14 +454,15 @@ const DetailsPanel = ({
     );
   }
 
-  const hasMetrics = ["Processor", "Topic", "DataStore"].includes(node.type);
+  const isTopic = node.type === "Topic";
+  const hasMetrics = ["Processor", "DataStore"].includes(node.type);
   const isInputOnly = node.type === "DataStore";
   const { inputRate = 0, outputRate = 0 } = nodeRates[node.id] ?? {};
 
   return (
     <div className="border-t border-slate-700 bg-slate-900/50 p-4 md:p-6 animate-in slide-in-from-bottom-10 max-h-[40vh] md:max-h-none overflow-y-auto min-h-[40vh] md:min-h-80">
       <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-        {/* Left — Info & Rates */}
+        {/* Left — Info */}
         <div className="w-full md:w-64 space-y-3 md:space-y-4 shrink-0">
           <div>
             <h3 className="text-lg md:text-xl font-semibold text-white mb-1">
@@ -304,7 +473,7 @@ const DetailsPanel = ({
             </p>
           </div>
 
-          {!hasMetrics ? (
+          {isTopic ? null : !hasMetrics ? (
             <div className="p-4 bg-slate-800 rounded-lg text-slate-400 text-sm">
               {t.details.noMetrics}
             </div>
@@ -326,18 +495,28 @@ const DetailsPanel = ({
           )}
         </div>
 
-        {/* Right — Chart */}
-        {hasMetrics && (
-          <HistoryChart
-            data={historyData}
-            title={t.details.history}
-            showOutput={!isInputOnly}
-          />
-        )}
+        {/* Right — Kafka panel OR throughput chart */}
+        <div className="flex-1 min-w-0">
+          {isTopic ? (
+            <KafkaTopicPanel
+              node={node}
+              t={t.details}
+              refreshInterval={refreshInterval}
+            />
+          ) : hasMetrics ? (
+            <HistoryChart
+              data={historyData}
+              title={t.details.history}
+              showOutput={!isInputOnly}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );
 };
+
+// ─── Page shell ───────────────────────────────────────────────────────────────
 
 const DataFlowViewPage = () => {
   return (
@@ -362,15 +541,22 @@ const DataFlowContent = () => {
   const { timeRange, setTimeRange, isRelative } = useTimeRange();
 
   const [refreshInterval, setRefreshInterval] = useState(20_000);
-  const activeRefetchInterval = isRelative && refreshInterval > 0 ? refreshInterval : (false as const);
+  const activeRefetchInterval =
+    isRelative && refreshInterval > 0 ? refreshInterval : (false as const);
 
   const queryClient = useQueryClient();
   const nodes = useNodes(t);
   const [selectedNodeId, setSelectedNodeId] = useState("receiver1");
-  const { nodeRates, getConnectionHasData, loading, isFetching , error, lastUpdated } =
-    useNodeRates(nodes, timeRange, {
-      refetchInterval: activeRefetchInterval,
-    });
+  const {
+    nodeRates,
+    getConnectionHasData,
+    loading,
+    isFetching,
+    error,
+    lastUpdated,
+  } = useNodeRates(nodes, timeRange, {
+    refetchInterval: activeRefetchInterval,
+  });
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
 
