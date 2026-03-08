@@ -11,6 +11,7 @@ import {
   History,
   RotateCcw,
   TerminalSquare,
+  Settings,
 } from "lucide-react";
 import type { SidebarEntry } from "@/components/layout/app-sidebar";
 import { translations } from "@/locales/dict";
@@ -23,7 +24,7 @@ export function getSystemMenu(t: SidebarTranslations): SidebarEntry[] {
       label: t.organization,
       icon: <Building2 className="size-5" />,
       children: [
-        { label: t.domainCertificate, href: "/system/organization/domain-certificate", icon: <Globe className="size-5" /> },
+        { label: t.settings, href: "/system/organization/domain-certificate", icon: <Settings className="size-5" /> },
       ],
     },
     {

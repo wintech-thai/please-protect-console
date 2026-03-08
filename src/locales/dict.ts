@@ -239,7 +239,7 @@ export const translations = {
       systemLogs: "System Logs",
       workloads: "Workloads",
       shellTerminal: "Shell Terminal",
-      domainCertificate: "Domain & Certificate",
+      settings: "Settings",
       notifications: "Notifications",
       alertsChannels: "Alerts Channels",
       alertsFired: "Alerts Fired",
@@ -256,7 +256,7 @@ export const translations = {
       systemLogs: "บันทึกระบบ",
       workloads: "ภาระงาน",
       shellTerminal: "เทอร์มินัล",
-      domainCertificate: "โดเมนและใบรับรอง",
+      settings: "การตั้งค่า",
       notifications: "การแจ้งเตือน",
       alertsChannels: "ช่องทางแจ้งเตือน",
       alertsFired: "การแจ้งเตือนที่เกิดขึ้น",
@@ -2026,7 +2026,7 @@ export const translations = {
   },
   domainConfig: {
     EN: {
-      title: "Domain & Certificate",
+      title: "Settings",
       subtitle: "Manage your organisation's domain, logo, and short name",
       shortName: "Short Name",
       shortNameDesc: "Display name used across the console",
@@ -2052,7 +2052,7 @@ export const translations = {
       logoSizeError: "Image exceeds the maximum allowed size",
     },
     TH: {
-      title: "โดเมนและใบรับรอง",
+      title: "การตั้งค่า",
       subtitle: "จัดการโดเมน โลโก้ และชื่อย่อขององค์กร",
       shortName: "ชื่อย่อ",
       shortNameDesc: "ชื่อที่แสดงในระบบ",
