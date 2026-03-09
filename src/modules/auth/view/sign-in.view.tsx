@@ -2,41 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import Image from "next/image"; 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { loginSchema, LoginSchemaType } from "../schema/login.schema";
 import { authApi } from "../api/auth.api";
+import { useBranding } from "@/hooks/useBranding";
+import { DefaultLogo } from "@/components/ui/DefaultLogo";
 
 // --- Icons Components ---
 const LockIcon = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className={className || "w-5 h-5"}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" className={className || "w-5 h-5"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
   </svg>
 );
 
 const UserIcon = ({ className }: { className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className={className || "w-5 h-5"}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" className={className || "w-5 h-5"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
     <circle cx="12" cy="7" r="4"></circle>
   </svg>
@@ -44,6 +28,7 @@ const UserIcon = ({ className }: { className?: string }) => (
 
 export default function SignInView() {
   const router = useRouter();
+  const { branding, isLoading } = useBranding();
 
   const {
     register,
@@ -154,19 +139,26 @@ export default function SignInView() {
             <div className="absolute inset-0 border border-cyan-400/30 rounded-full scale-110 opacity-50 group-hover:scale-105 group-hover:opacity-100 transition-all duration-700 animate-[spin_10s_linear_infinite]"></div>
             <div className="absolute inset-0 border border-blue-600/20 rounded-full scale-125 opacity-30"></div>
 
-            <div className="relative w-20 h-20 transition-transform duration-300 group-hover:scale-110">
-              <Image
-                src="/img/rtarf.png"
-                alt="RTARF Logo"
-                fill
-                className="object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"
-                priority
-              />
+            <div className="relative w-20 h-20 transition-transform duration-300 group-hover:scale-110 flex items-center justify-center">
+              {/* Dynamic Logo Section */}
+              {isLoading ? (
+                <div className="w-14 h-14 rounded-full bg-blue-900/50 animate-pulse"></div>
+              ) : branding.logoUrl ? (
+                <img
+                  src={branding.logoUrl}
+                  alt={branding.shortName}
+                  className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              ) : (
+                <DefaultLogo className="w-16 h-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+              )}
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-lg">
-            RTARF SENSOR
+          {/* Dynamic Title Section */}
+          <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-lg uppercase">
+            {isLoading ? "LOADING..." : `${branding.shortName} SENSOR`}
           </h1>
           <p className="text-blue-400/60 text-sm mt-2 font-medium tracking-wider">
             SECURE CONSOLE ACCESS
