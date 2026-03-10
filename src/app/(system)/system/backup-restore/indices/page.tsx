@@ -90,7 +90,8 @@ export default function IndexManagementPage() {
     }
   };
 
-  const totalPages = Math.ceil(totalIndices / limit) || 1;
+  const displayTotal = filteredIndices.length;
+  const totalPages = Math.ceil(displayTotal / limit) || 1;
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-950 text-slate-300 p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden">
@@ -115,7 +116,7 @@ export default function IndexManagementPage() {
           onSearch={() => { setSearchQuery(searchInput); setPage(1); }}
           onClear={() => { setSearchInput(""); setSearchQuery(""); setPage(1); }}
           phaseFilter={phaseFilter}
-          setPhaseFilter={setPhaseFilter}
+          setPhaseFilter={(val) => { setPhaseFilter(val); setPage(1); }}
           selectedCount={selectedIndices.length}
           onDeleteBulk={() => { setIndexToDelete(null); setShowDeleteConfirm(true); }}
           onOpenPolicy={() => setShowPolicyModal(true)}
@@ -152,7 +153,7 @@ export default function IndexManagementPage() {
 
             <div className="flex items-center gap-5">
               <span className="text-[12px] font-bold text-slate-500">
-                {totalIndices === 0 ? '0-0' : `${((page - 1) * limit) + 1}-${Math.min(page * limit, totalIndices)}`} {dict.table.of} {totalIndices}
+                {displayTotal === 0 ? '0-0' : `${((page - 1) * limit) + 1}-${Math.min(page * limit, displayTotal)}`} {dict.table.of} {displayTotal}
               </span>
               <div className="flex items-center gap-1">
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || isLoading} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 disabled:opacity-20 transition-all">

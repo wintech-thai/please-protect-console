@@ -13,7 +13,7 @@ interface IndexPolicyModalProps {
 }
 
 export function IndexPolicyModal({ isOpen, onClose, dict }: IndexPolicyModalProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,15 +25,18 @@ export function IndexPolicyModal({ isOpen, onClose, dict }: IndexPolicyModalProp
 
   useEffect(() => {
     if (isOpen) {
+      setIsLoading(true); 
       loadPolicy();
     } else {
       setError(null);
+      const timer = setTimeout(() => {
+        setIsLoading(true);
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
   const loadPolicy = async () => {
-    setIsLoading(true);
-    setError(null);
     try {
       const res = await indicesApi.getIlmPolicy();
       const data = res?.configuration || res?.data || res; 
@@ -70,9 +73,9 @@ export function IndexPolicyModal({ isOpen, onClose, dict }: IndexPolicyModalProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       <div 
-        className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200"
+        className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -91,12 +94,36 @@ export function IndexPolicyModal({ isOpen, onClose, dict }: IndexPolicyModalProp
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content Section */}
+        <div className="p-6 min-h-[380px] flex flex-col justify-center transition-all duration-300 ease-in-out">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
-              <span className="text-slate-400 text-sm">{dict.loading}</span>
+            <div className="space-y-6 animate-pulse w-full">
+              {/* Fake Warm Phase */}
+              <div className="space-y-3">
+                <div className="flex gap-2 items-center"><div className="w-2 h-2 rounded-full bg-slate-700"></div><div className="h-4 w-24 bg-slate-800 rounded"></div></div>
+                <div className="pl-4 space-y-2">
+                  <div className="h-3 w-40 bg-slate-800 rounded"></div>
+                  <div className="h-10 w-full bg-slate-800 rounded-lg"></div>
+                </div>
+              </div>
+              
+              {/* Fake Cold Phase */}
+              <div className="space-y-3">
+                <div className="flex gap-2 items-center"><div className="w-2 h-2 rounded-full bg-slate-700"></div><div className="h-4 w-24 bg-slate-800 rounded"></div></div>
+                <div className="pl-4 space-y-2">
+                  <div className="h-3 w-40 bg-slate-800 rounded"></div>
+                  <div className="h-10 w-full bg-slate-800 rounded-lg"></div>
+                </div>
+              </div>
+
+              {/* Fake Delete Phase */}
+              <div className="space-y-3">
+                <div className="flex gap-2 items-center"><div className="w-2 h-2 rounded-full bg-slate-700"></div><div className="h-4 w-24 bg-slate-800 rounded"></div></div>
+                <div className="pl-4 space-y-2">
+                  <div className="h-3 w-40 bg-slate-800 rounded"></div>
+                  <div className="h-10 w-full bg-slate-800 rounded-lg"></div>
+                </div>
+              </div>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center text-center p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
@@ -107,7 +134,7 @@ export function IndexPolicyModal({ isOpen, onClose, dict }: IndexPolicyModalProp
               </button>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-6 w-full animate-in fade-in duration-300"> 
               {/* Warm Phase */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -174,7 +201,7 @@ export function IndexPolicyModal({ isOpen, onClose, dict }: IndexPolicyModalProp
 
         {/* Footer Actions */}
         {!isLoading && !error && (
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-800 bg-slate-900">
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-800 bg-slate-900 animate-in fade-in duration-300"> {/* 🌟 เพิ่ม animate-in fade-in ตรงนี้ให้ Footer โผล่มาสมูท */}
             <button 
               onClick={onClose} 
               className="px-5 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-red-500/20 hover:border-red-500/50 outline-none"

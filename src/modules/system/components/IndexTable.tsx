@@ -15,7 +15,7 @@ interface IndexTableProps {
   onSelectRow: (id: string) => void;
   onOpenDetail: (name: string) => void;
   formatToMB: (bytes: number) => string;
-  dict: IndicesDictType["table"];
+  dict: IndicesDictType["table"] & { columns?: { phase?: string } }; 
 }
 
 export function IndexTable({
@@ -48,6 +48,7 @@ export function IndexTable({
             <th className="px-4 py-3 font-semibold hover:text-slate-200 transition-colors">{dict.columns.status}</th>
             <th className="px-4 py-3 font-semibold hover:text-slate-200 transition-colors">{dict.columns.primaries}</th>
             <th className="px-4 py-3 font-semibold hover:text-slate-200 transition-colors">{dict.columns.replicas}</th>
+            <th className="px-4 py-3 font-semibold hover:text-slate-200 transition-colors">{dict.columns.phase || "Phase"}</th>
             <th className="px-4 py-3 font-semibold text-right hover:text-slate-200 transition-colors">{dict.columns.docsCount}</th>
             <th className="px-4 py-3 font-semibold text-right hover:text-slate-200 transition-colors">{dict.columns.storageSize}</th>
           </tr>
@@ -55,7 +56,7 @@ export function IndexTable({
         <tbody className="divide-y divide-blue-900/20">
           {isLoading ? (
             <tr>
-              <td colSpan={8} className="px-4 py-12 text-center text-slate-500 italic">
+              <td colSpan={9} className="px-4 py-12 text-center text-slate-500 italic">
                 <div className="flex justify-center items-center gap-2">
                   <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
                   {dict.loading} 
@@ -64,13 +65,15 @@ export function IndexTable({
             </tr>
           ) : indices.length === 0 ? (
             <tr>
-              <td colSpan={8} className="px-4 py-12 text-center text-slate-500 italic">
+              <td colSpan={9} className="px-4 py-12 text-center text-slate-500 italic">
                 {dict.noData} 
               </td>
             </tr>
           ) : (
             indices.map((idx) => {
               const isHighlighted = selectedRowId === idx.indexName;
+              const phaseLower = idx.ilmPhase?.toLowerCase();
+              
               return (
                 <tr 
                   key={idx.indexName} 
@@ -118,6 +121,23 @@ export function IndexTable({
                   <td className="px-4 py-3 text-slate-300">{idx.status}</td>
                   <td className="px-4 py-3 text-slate-300">{idx.primaryShards}</td>
                   <td className="px-4 py-3 text-slate-300">{idx.replicas}</td>
+                  
+                  <td className="px-4 py-3">
+                    {idx.ilmPhase ? (
+                      <span className={cn(
+                        "px-2 py-1 text-[10px] font-bold uppercase rounded border",
+                        phaseLower === "hot" ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                        phaseLower === "warm" ? "bg-orange-500/10 text-orange-400 border-orange-500/20" :
+                        phaseLower === "cold" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                        "bg-slate-800 text-slate-400 border-slate-700"
+                      )}>
+                        {idx.ilmPhase}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600">-</span>
+                    )}
+                  </td>
+
                   <td className="px-4 py-3 text-right text-slate-300">{idx.docCount.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right text-slate-300">{formatToMB(idx.storeSizeBytes)}</td>
                 </tr>

@@ -2,7 +2,7 @@ export const INDICES_DICT = {
   en: {
     toolbar: {
       title: "Index Management",
-      subtitle: "Elasticsearch Indices & ILM Policies",
+      subtitle: "Indices & ILM Policies",
       searchPlaceholder: "Type and press Enter to search indices...",
       lifecyclePhase: "Lifecycle phase",
       allPhases: "All phases",
@@ -64,7 +64,7 @@ export const INDICES_DICT = {
   th: {
     toolbar: {
       title: "จัดการดัชนี",
-      subtitle: "การจัดการ Elasticsearch Index และนโยบาย ILM",
+      subtitle: "Index และนโยบาย ILM",
       searchPlaceholder: "พิมพ์แล้วกด Enter เพื่อค้นหาดัชนี...",
       lifecyclePhase: "เฟส Lifecycle",
       allPhases: "ทุกเฟส",
