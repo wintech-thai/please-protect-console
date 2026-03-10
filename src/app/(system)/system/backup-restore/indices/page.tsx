@@ -10,7 +10,6 @@ import { IndexTable } from "@/modules/system/components/IndexTable";
 import { IndexPolicyModal } from "@/modules/system/components/modals/IndexPolicyModal";
 import { IndexDetailPanel } from "@/modules/system/components/IndexDetailPanel";
 import { ChevronLeft, ChevronRight, Trash2, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const formatToMB = (bytes: number) => {
   if (bytes === 0 || !bytes) return '0.00mb';
@@ -34,7 +33,8 @@ export default function IndexManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10); 
+  const [limit, setLimit] = useState(25); 
+  
   const [selectedIndices, setSelectedIndices] = useState<string[]>([]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
@@ -93,8 +93,8 @@ export default function IndexManagementPage() {
   const totalPages = Math.ceil(totalIndices / limit) || 1;
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-950 text-slate-300 p-6 font-sans relative overflow-hidden">
-      <div className="max-w-[1400px] w-full mx-auto flex flex-col h-full min-h-0 space-y-5">
+    <div className="flex flex-col h-full w-full bg-slate-950 text-slate-300 p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden">
+      <div className="w-full flex flex-col h-full min-h-0 space-y-5">
         
         {/* --- Header Section --- */}
         <div className="flex-none flex justify-between items-start">
@@ -146,7 +146,7 @@ export default function IndexManagementPage() {
                 onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }} 
                 className="bg-transparent text-slate-200 border-none outline-none cursor-pointer hover:text-white transition-colors"
               >
-                {[10, 20, 50, 100, 200].map(v => <option key={v} value={v} className="bg-slate-900">{v}</option>)}
+                {[25, 50, 100, 200].map(v => <option key={v} value={v} className="bg-slate-900">{v}</option>)}
               </select>
             </div>
 
