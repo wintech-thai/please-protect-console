@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import Image from "next/image"; 
 import { usePathname, useRouter } from "next/navigation";
 import {
   LogOut,
@@ -44,6 +44,9 @@ import { ChangePasswordModal } from "@/components/modals/change-password-modal";
 import { translations } from "@/locales/dict";
 import { AppVersionDisplay } from "@/components/layout/app-version-display";
 
+import { useBranding } from "@/hooks/useBranding";
+import { DefaultLogo } from "@/components/ui/DefaultLogo";
+
 interface NavItem {
   label: string;
   href: string;
@@ -67,6 +70,8 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
 
   const { language, setLanguage } = useLanguage();
   const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
+
+  const { branding, isLoading } = useBranding();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -111,20 +116,12 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
       label: t.events,
       href: "/events/layer7",
       children: [
-        //  กลุ่ม Layer 7 และ Layer 4
         { label: t.layer7 || "Layer 7", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-        { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> }, // 🌟 เปลี่ยนเป็น Layer 4
-        
-        // เส้นคั่น
+        { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> }, 
         { isDivider: true },
-        
-        // กลุ่ม Events 
         { label: t.alerts || "Event Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
         { label: t.eventIoc || "Event IoC", href: "/events/ioc", icon: <Target className="w-4 h-4 mr-2" /> },
-        
-        // เส้นคั่น
         { isDivider: true },
-        
         { label: t.subnetMapping || "Subnet Mapping", href: "/events/subnet", icon: <Network className="w-4 h-4 mr-2" /> },
       ]
     },
@@ -175,18 +172,24 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
                 <PanelLeft className="w-5 h-5" />
               </button>
             )}
+            
             <div className="relative w-10 h-10 flex items-center justify-center">
-              <Image
-                src="/img/rtarf.png"
-                alt="RTARF Logo"
-                fill
-                className="object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]"
-                priority
-              />
+              {isLoading ? (
+                <div className="w-8 h-8 rounded-full bg-blue-900/50 animate-pulse"></div>
+              ) : branding.logoUrl ? (
+                <img
+                  src={branding.logoUrl}
+                  alt={branding.shortName}
+                  className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              ) : (
+                <DefaultLogo className="w-9 h-auto drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+              )}
             </div>
 
-            <span className="text-2xl font-bold tracking-tight text-white hidden sm:block">
-              RTARF <span className="text-cyan-400">SENSOR</span>
+            <span className="text-2xl font-bold tracking-tight text-white hidden sm:block uppercase">
+              {isLoading ? "..." : branding.shortName} <span className="text-cyan-400">SENSOR</span>
             </span>
           </div>
 
