@@ -3,8 +3,7 @@
 import { PanelLeft, PanelLeftClose, RefreshCw, Activity } from "lucide-react";
 import {
   AdvancedTimeRangeSelector,
-  TimeRangeValue,
-  TimePickerTranslations
+  TimeRangeValue
 } from "@/components/ui/advanced-time-selector";
 import { cn } from "@/lib/utils";
 import { KqlSearchInput } from "./KqlSearchInput";
@@ -24,7 +23,6 @@ interface TopNavProps {
   currentLang: "en" | "th";
   onLangToggle: () => void;
   dict: L7DictType['topNav'];
-  timeDict: TimePickerTranslations;
 }
 
 export function Layer7TopNav({
@@ -39,7 +37,6 @@ export function Layer7TopNav({
   isLoading = false,
   availableFields = [],
   dict,
-  timeDict,
 }: TopNavProps) {
 
   if (!dict) return null;
@@ -86,7 +83,6 @@ export function Layer7TopNav({
           <AdvancedTimeRangeSelector
             value={timeRange}
             onChange={onTimeRangeChange}
-            translations={timeDict}
             disabled={isLoading}
           />
         </div>

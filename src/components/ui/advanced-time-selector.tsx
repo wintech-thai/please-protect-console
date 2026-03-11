@@ -14,6 +14,8 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 
 // Ensure dark mode for MUI components to match the app
 const darkTheme = createTheme({
@@ -85,7 +87,7 @@ interface AdvancedTimeRangeSelectorProps {
   value: TimeRangeValue;
   onChange: (value: TimeRangeValue) => void;
   disabled?: boolean;
-  translations: TimePickerTranslations;
+  translations?: TimePickerTranslations;
   className?: string;
 }
 
@@ -108,9 +110,12 @@ export function AdvancedTimeRangeSelector({
   value,
   onChange,
   disabled,
-  translations: tp,
   className,
 }: AdvancedTimeRangeSelectorProps) {
+  const { language } = useLanguage();
+  const tp =
+    translations.timePicker[language as keyof typeof translations.timePicker] ??
+    translations.timePicker.EN;
   const [isOpen, setIsOpen] = useState(false);
   const [fromDate, setFromDate] = useState<Dayjs | null>(null);
   const [toDate, setToDate] = useState<Dayjs | null>(null);

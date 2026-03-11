@@ -192,7 +192,6 @@ export function Layer4TopNav({
             <AdvancedTimeRangeSelector
               value={timeRange}
               onChange={onTimeRangeChange}
-              translations={timeDict}
               disabled={isLoading}
             />
           </div>

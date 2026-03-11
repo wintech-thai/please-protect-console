@@ -122,9 +122,6 @@ export function AlertFiredView() {
   const t =
     translations.alertFired[language as keyof typeof translations.alertFired] ??
     translations.alertFired.EN;
-  const tTimePicker =
-    translations.timePicker[language as keyof typeof translations.timePicker] ??
-    translations.timePicker.EN;
 
   const STATUS_OPTIONS: { value: StatusFilter; label: string; cls: string }[] =
     [
@@ -210,7 +207,6 @@ export function AlertFiredView() {
           <AdvancedTimeRangeSelector
             value={timeRange}
             onChange={setTimeRange}
-            translations={tTimePicker}
             className="h-10 w-52"
           />
           <button

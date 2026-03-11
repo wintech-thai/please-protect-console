@@ -18,6 +18,7 @@ import {
 export default function AuditLogPage() {
   const { language } = useLanguage();
   const t = translations.auditLogs[language as keyof typeof translations.auditLogs] || translations.auditLogs.EN;
+  const tTimePicker = translations.timePicker[language as keyof typeof translations.timePicker] || translations.timePicker.EN;
 
   // --- States ---
   const [logs, setLogs] = useState<AuditLogDocument[]>([]);
@@ -33,7 +34,7 @@ export default function AuditLogPage() {
   const [timeRange, setTimeRange] = useState<TimeRangeValue>({
     type: "relative",
     value: "24h",
-    label: t.timeRange.last24h
+    label: tTimePicker.last24h
   });
 
   const [selectedLog, setSelectedLog] = useState<AuditLogDocument | null>(null);
@@ -263,7 +264,6 @@ export default function AuditLogPage() {
                     value={timeRange}
                     onChange={(val) => { setTimeRange(val); setPage(1); }}
                     disabled={isLoading}
-                    translations={t.timeRange}
                 />
                 <button onClick={handleResetFilters} className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2" title="Reset Filters">
                     <RefreshCcw className="w-4 h-4" />

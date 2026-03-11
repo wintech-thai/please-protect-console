@@ -537,6 +537,7 @@ const DataFlowContent = () => {
   const t =
     translations.dataFlow[language as keyof typeof translations.dataFlow] ||
     translations.dataFlow.EN;
+  const tTimePicker = translations.timePicker[language as keyof typeof translations.timePicker ?? "EN"]
 
   const { timeRange, setTimeRange, isRelative } = useTimeRange();
 
@@ -545,7 +546,10 @@ const DataFlowContent = () => {
     isRelative && refreshInterval > 0 ? refreshInterval : (false as const);
 
   const queryClient = useQueryClient();
-  const nodes = useNodes(t);
+  const nodes = useNodes({
+    ...t,
+    timePicker: tTimePicker
+  });
   const [selectedNodeId, setSelectedNodeId] = useState("receiver1");
   const {
     nodeRates,
@@ -603,7 +607,6 @@ const DataFlowContent = () => {
             value={timeRange}
             onChange={setTimeRange}
             disabled={loading || isFetching}
-            translations={t.timePicker}
           />
         </div>
       </div>

@@ -253,7 +253,6 @@ export default function Layer7Page() {
           currentLang={langKey}
           onLangToggle={toggleLanguage}
           dict={dict.topNav}
-          timeDict={dict.timePicker}
         />
 
         {/* Filter Bar */}

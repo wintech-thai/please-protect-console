@@ -322,7 +322,6 @@ export default function LokiView() {
             value={timeRange}
             onChange={setTimeRange}
             disabled={isLoading}
-            translations={timeRangeT}
           />
         }
       />

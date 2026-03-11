@@ -450,7 +450,6 @@ export default function WorkloadDetailView({ namespace, type, name }: WorkloadDe
                   value={timeRange}
                   onChange={setTimeRange}
                   disabled={metricsFetching}
-                  translations={timePicker}
                 />
               </div>
             </div>

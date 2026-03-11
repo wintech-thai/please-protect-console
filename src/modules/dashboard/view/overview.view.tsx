@@ -189,7 +189,6 @@ function OverviewContent() {
             value={timeRange}
             onChange={setTimeRange}
             disabled={historyFetching}
-            translations={t.timePicker}
           />
         </div>
       </div>

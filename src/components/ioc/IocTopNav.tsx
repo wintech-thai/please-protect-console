@@ -212,7 +212,6 @@ export function IocTopNav({
             <AdvancedTimeRangeSelector
               value={timeRange}
               onChange={onTimeRangeChange}
-              translations={timeDict}
               disabled={isLoading}
             />
           </div>
