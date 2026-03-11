@@ -1,7 +1,7 @@
 import { useQuery, keepPreviousData, type UseQueryOptions } from "@tanstack/react-query";
 import { prometheusApi } from "@/modules/dashboard/api/prometheus.api";
 import type { Metrics } from "@/modules/dashboard/components/overview-types";
-import type { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
+import type { TimeRangeValue } from "@/components/ui/advanced-time-selector";
 import { getTimeParams } from "@/modules/dashboard/utils/time-params";
 import { processAllCharts } from "@/modules/dashboard/utils/chart-processors";
 import { fetchCurrentMetrics, metricsFromHistory, EMPTY_METRICS } from "@/modules/dashboard/utils/metrics-helpers";

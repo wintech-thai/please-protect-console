@@ -23,7 +23,7 @@ import { formatBytes, formatBytesPerSec } from "@/modules/dashboard/components/o
 import { OverviewHeader } from "@/modules/dashboard/components/overview-header";
 import { StatCard, type StatCardData } from "@/modules/dashboard/components/stat-card";
 import { SystemInfoPanel } from "@/modules/dashboard/components/system-info-panel";
-import { AdvancedTimeRangeSelector } from "@/modules/dashboard/components/advanced-time-selector";
+import { AdvancedTimeRangeSelector } from "@/components/ui/advanced-time-selector";
 import {
   CpuUsageChart,
   MemoryUsageChart,

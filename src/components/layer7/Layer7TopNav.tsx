@@ -1,13 +1,13 @@
 "use client";
 
 import { PanelLeft, PanelLeftClose, RefreshCw, Activity } from "lucide-react";
-import { 
-  AdvancedTimeRangeSelector, 
-  TimeRangeValue, 
-  TimePickerTranslations 
-} from "@/modules/dashboard/components/advanced-time-selector";
+import {
+  AdvancedTimeRangeSelector,
+  TimeRangeValue,
+  TimePickerTranslations
+} from "@/components/ui/advanced-time-selector";
 import { cn } from "@/lib/utils";
-import { KqlSearchInput } from "./KqlSearchInput"; 
+import { KqlSearchInput } from "./KqlSearchInput";
 import { L7DictType } from "@/locales/layer7dict";
 
 interface TopNavProps {
@@ -20,11 +20,11 @@ interface TopNavProps {
   onTimeRangeChange: (val: TimeRangeValue) => void;
   onRefresh: () => void;
   isLoading?: boolean;
-  availableFields?: string[]; 
-  currentLang: "en" | "th"; 
-  onLangToggle: () => void; 
-  dict: L7DictType['topNav']; 
-  timeDict: TimePickerTranslations; 
+  availableFields?: string[];
+  currentLang: "en" | "th";
+  onLangToggle: () => void;
+  dict: L7DictType['topNav'];
+  timeDict: TimePickerTranslations;
 }
 
 export function Layer7TopNav({
@@ -38,8 +38,8 @@ export function Layer7TopNav({
   onRefresh,
   isLoading = false,
   availableFields = [],
-  dict,      
-  timeDict, 
+  dict,
+  timeDict,
 }: TopNavProps) {
 
   if (!dict) return null;
@@ -47,8 +47,8 @@ export function Layer7TopNav({
   return (
     <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex items-center gap-3 backdrop-blur-md z-30 relative">
       {/* Sidebar Toggle Button */}
-      <button 
-        onClick={toggleSidebar} 
+      <button
+        onClick={toggleSidebar}
         className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all duration-200"
       >
         {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeft className="w-5 h-5" />}
@@ -61,10 +61,10 @@ export function Layer7TopNav({
         </div>
         <div className="flex flex-col">
           <h1 className="text-[13px] font-bold text-white leading-none tracking-tight">
-            {dict.title} 
+            {dict.title}
           </h1>
           <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1">
-            {dict.subtitle} 
+            {dict.subtitle}
           </span>
         </div>
       </div>
@@ -72,37 +72,37 @@ export function Layer7TopNav({
       <div className="flex-1 flex flex-wrap md:flex-nowrap items-stretch gap-2">
         {/* Search Input */}
         <div className="flex-1 min-w-[200px]">
-          <KqlSearchInput 
+          <KqlSearchInput
             value={luceneQuery}
             onChange={onQueryChange}
             onSubmit={onQuerySubmit}
             fields={availableFields}
-            placeholder={dict.searchPlaceholder} 
+            placeholder={dict.searchPlaceholder}
           />
         </div>
 
         {/* Time Selector */}
         <div className="flex-1 sm:flex-none min-w-[160px]">
-          <AdvancedTimeRangeSelector 
-            value={timeRange} 
-            onChange={onTimeRangeChange} 
-            translations={timeDict} 
+          <AdvancedTimeRangeSelector
+            value={timeRange}
+            onChange={onTimeRangeChange}
+            translations={timeDict}
             disabled={isLoading}
           />
         </div>
 
         {/* Refresh Button */}
-        <button 
-          onClick={onRefresh} 
+        <button
+          onClick={onRefresh}
           disabled={isLoading}
           className={cn(
             "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50",
             isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95 hover:shadow-blue-500/20"
           )}
         >
-          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
+          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
           <span className="hidden sm:inline">
-            {isLoading ? dict.refreshing : dict.refresh} 
+            {isLoading ? dict.refreshing : dict.refresh}
           </span>
         </button>
       </div>

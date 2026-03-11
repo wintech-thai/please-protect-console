@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { 
-  Search, ChevronLeft, ChevronRight, Loader2, Eye, FileJson, X, 
-  ChevronDown, RefreshCcw, Copy, Check 
+import {
+  Search, ChevronLeft, ChevronRight, Loader2, Eye, FileJson, X,
+  ChevronDown, RefreshCcw, Copy, Check
 } from "lucide-react";
-import { useLanguage } from "@/context/LanguageContext"; 
-import { translations } from "@/locales/dict"; 
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 import { esService } from "@/lib/elasticsearch";
 import { AuditLogDocument } from "@/types/audit-log";
-import { format, subMinutes, subHours, subDays } from "date-fns"; 
-import { 
-  AdvancedTimeRangeSelector, 
-  TimeRangeValue 
-} from "@/modules/dashboard/components/advanced-time-selector";
+import { format, subMinutes, subHours, subDays } from "date-fns";
+import {
+  AdvancedTimeRangeSelector,
+  TimeRangeValue
+} from "@/components/ui/advanced-time-selector";
 
 export default function AuditLogPage() {
   const { language } = useLanguage();
@@ -27,13 +27,13 @@ export default function AuditLogPage() {
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
-  const [inputValue, setInputValue] = useState(""); 
-  const [searchField, setSearchField] = useState("Full Text Search"); 
+  const [inputValue, setInputValue] = useState("");
+  const [searchField, setSearchField] = useState("Full Text Search");
 
   const [timeRange, setTimeRange] = useState<TimeRangeValue>({
     type: "relative",
     value: "24h",
-    label: t.timeRange.last24h 
+    label: t.timeRange.last24h
   });
 
   const [selectedLog, setSelectedLog] = useState<AuditLogDocument | null>(null);
@@ -45,17 +45,17 @@ export default function AuditLogPage() {
     return jsonString.replace(
       /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
       (match) => {
-        let cls = 'text-[#ce9178]'; 
+        let cls = 'text-[#ce9178]';
         if (/^"/.test(match)) {
           if (/:$/.test(match)) {
-            cls = 'text-[#9cdcfe]'; 
+            cls = 'text-[#9cdcfe]';
           }
         } else if (/true|false/.test(match)) {
-          cls = 'text-[#569cd6]'; 
+          cls = 'text-[#569cd6]';
         } else if (/null/.test(match)) {
-          cls = 'text-[#569cd6]'; 
+          cls = 'text-[#569cd6]';
         } else {
-          cls = 'text-[#b5cea8]'; 
+          cls = 'text-[#b5cea8]';
         }
         return `<span class="${cls}">${match}</span>`;
       }
@@ -136,16 +136,16 @@ export default function AuditLogPage() {
         from,
         size: itemsPerPage,
         sort: [{ "@timestamp": { order: "desc" } }],
-        track_total_hits: true, 
-        query: { 
-            bool: { 
-                must: queryMust.length > 0 ? queryMust : [{ match_all: {} }] 
-            } 
+        track_total_hits: true,
+        query: {
+            bool: {
+                must: queryMust.length > 0 ? queryMust : [{ match_all: {} }]
+            }
         }
       };
 
       const response = await esService.getAuditLogs(orgId, payload);
-      
+
       const hits = response.hits.hits.map((h: any) => {
           const source = h._source;
           const data = source.data || {};
@@ -153,7 +153,7 @@ export default function AuditLogPage() {
           const api = data.api || {};
 
           return {
-              id: h._id, 
+              id: h._id,
               "@timestamp": source["@timestamp"],
               user_name: userInfo.UserName || "",
               id_type: userInfo.IdentityType || "-",
@@ -163,7 +163,7 @@ export default function AuditLogPage() {
               resource: api.Controller,
               status_code: data.StatusCode,
               client_ip: data.CfClientIp || data.ClientIp || "-",
-              ...source 
+              ...source
           } as AuditLogDocument;
       });
 
@@ -177,7 +177,7 @@ export default function AuditLogPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, itemsPerPage, searchTerm, timeRange, searchField]); 
+  }, [page, itemsPerPage, searchTerm, timeRange, searchField]);
 
   useEffect(() => {
     fetchData();
@@ -216,7 +216,7 @@ export default function AuditLogPage() {
 
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 text-slate-200 relative font-sans">
-      
+
       {/* Header */}
       <div className="flex-none pt-6 mb-2 px-4 md:px-6">
         <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
@@ -229,7 +229,7 @@ export default function AuditLogPage() {
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800 shadow-sm">
             <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-2">
                 <div className="relative w-full sm:w-auto sm:min-w-[160px]">
-                    <select 
+                    <select
                         value={searchField}
                         onChange={(e) => setSearchField(e.target.value)}
                         className="w-full appearance-none bg-slate-950 border border-slate-700 text-slate-300 text-sm rounded-lg pl-3 pr-8 py-2.5 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
@@ -243,13 +243,13 @@ export default function AuditLogPage() {
                 </div>
 
                 <div className="relative w-full sm:w-auto sm:flex-1 xl:min-w-[240px]">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder={t.searchPlaceholder}
-                      value={inputValue}                         
-                      onChange={(e) => setInputValue(e.target.value)} 
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearchTrigger()}
-                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg pl-3 pr-10 py-2.5 focus:outline-none focus:border-blue-500 placeholder:text-slate-600 transition-colors" 
+                      className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg pl-3 pr-10 py-2.5 focus:outline-none focus:border-blue-500 placeholder:text-slate-600 transition-colors"
                     />
                 </div>
 
@@ -259,7 +259,7 @@ export default function AuditLogPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-center justify-end">
-                <AdvancedTimeRangeSelector 
+                <AdvancedTimeRangeSelector
                     value={timeRange}
                     onChange={(val) => { setTimeRange(val); setPage(1); }}
                     disabled={isLoading}
@@ -298,8 +298,8 @@ export default function AuditLogPage() {
                                 const isSelected = selectedRowId === log.id;
                                 const isError = log.status_code && log.status_code !== 200;
                                 return (
-                                    <tr 
-                                        key={log.id || idx} 
+                                    <tr
+                                        key={log.id || idx}
                                         onClick={() => handleRowClick(log.id)}
                                         className={`transition-all duration-200 text-sm cursor-pointer border-b border-slate-800/50 ${isSelected ? "bg-blue-500/10 border-l-4 border-l-blue-500" : isError ? "bg-red-500/10 text-red-200 hover:bg-red-500/20 border-l-4 border-l-transparent" : "hover:bg-slate-800/40 border-l-4 border-l-transparent"}`}
                                     >
@@ -322,7 +322,7 @@ export default function AuditLogPage() {
                     </tbody>
                 </table>
             </div>
-            
+
             {/* Paging Footer */}
             <div className="flex-none flex items-center justify-between sm:justify-end px-4 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-4 sm:gap-6">
                 <div className="flex items-center gap-2 text-sm text-slate-400">
@@ -355,9 +355,9 @@ export default function AuditLogPage() {
                     </h3>
                     <button onClick={() => setShowDetailModal(false)} className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded"><X className="w-5 h-5" /></button>
                 </div>
-                
+
                 <div className="flex-1 overflow-auto p-4 bg-[#0d1117] no-scrollbar">
-                    <pre 
+                    <pre
                       className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-all select-text"
                       dangerouslySetInnerHTML={{ __html: highlightJson(selectedLog) }}
                     />

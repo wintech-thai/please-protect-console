@@ -1,19 +1,19 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { 
-  RefreshCw, 
-  ShieldAlert, 
+import {
+  RefreshCw,
+  ShieldAlert,
   Search,
   Info,
   Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { 
-  AdvancedTimeRangeSelector, 
-  TimeRangeValue, 
-  TimePickerTranslations 
-} from "@/modules/dashboard/components/advanced-time-selector";
+import {
+  AdvancedTimeRangeSelector,
+  TimeRangeValue,
+  TimePickerTranslations
+} from "@/components/ui/advanced-time-selector";
 
 interface IocTopNavProps {
   luceneQuery: string;
@@ -24,9 +24,9 @@ interface IocTopNavProps {
   timeDict: TimePickerTranslations;
   onRefresh: () => void;
   isLoading: boolean;
-  dict?: any; 
+  dict?: any;
   fields?: any[];
-  totalHits?: number; 
+  totalHits?: number;
   iocTypeFilter?: string;
   onIocTypeFilterChange?: (type: string) => void;
 }
@@ -49,7 +49,7 @@ export function IocTopNav({
   onIocTypeFilterChange,
 }: IocTopNavProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1); 
+  const [activeIndex, setActiveIndex] = useState(-1);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,8 +61,8 @@ export function IocTopNav({
 
     const searchStr = lastPart.toLowerCase();
     return fields
-      .filter(f => 
-        (f.dbField?.toLowerCase().includes(searchStr)) || 
+      .filter(f =>
+        (f.dbField?.toLowerCase().includes(searchStr)) ||
         (f.friendlyName?.toLowerCase().includes(searchStr))
       )
       .slice(0, 10);
@@ -75,7 +75,7 @@ export function IocTopNav({
         applySuggestion(filteredSuggestions[activeIndex]);
       } else {
         setShowSuggestions(false);
-        onQuerySubmit(); 
+        onQuerySubmit();
       }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -112,7 +112,7 @@ export function IocTopNav({
 
   return (
     <div className="flex-none px-4 py-3 bg-slate-900/50 border-b border-slate-800 flex flex-wrap lg:flex-nowrap items-center gap-3 backdrop-blur-md z-30 relative">
-      
+
       {/* Title & Badge Area */}
       <div className="flex items-center gap-3 px-3 border-r border-slate-800 mr-2 h-9 hidden lg:flex">
         <div className="w-8 h-8 rounded-lg bg-rose-600/10 border border-rose-500/20 flex items-center justify-center">
@@ -129,12 +129,12 @@ export function IocTopNav({
       </div>
 
       <div className="flex-1 w-full flex flex-wrap sm:flex-nowrap items-stretch gap-2">
-        
+
         <div className="flex-1 min-w-[200px] w-full sm:w-auto relative group flex items-center">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors">
             <Search size={16} />
           </div>
-          
+
           <input
             ref={inputRef}
             type="text"
@@ -151,7 +151,7 @@ export function IocTopNav({
           />
 
           {showSuggestions && filteredSuggestions.length > 0 && (
-            <div 
+            <div
               ref={suggestionsRef}
               className="absolute top-full left-0 w-full mt-1 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl z-40 overflow-hidden animate-in fade-in slide-in-from-top-1"
             >
@@ -217,17 +217,17 @@ export function IocTopNav({
             />
           </div>
 
-          <button 
-            onClick={onRefresh} 
+          <button
+            onClick={onRefresh}
             disabled={isLoading}
             className={cn(
               "px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 border border-blue-500/50 h-10 w-10 sm:w-auto",
               isLoading ? "opacity-80 cursor-not-allowed" : "active:scale-95"
             )}
           >
-            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> 
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
             <span className="hidden sm:inline">
-              {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")} 
+              {isLoading ? (dict?.refreshing || "Refreshing...") : (dict?.refresh || "Refresh")}
             </span>
           </button>
         </div>

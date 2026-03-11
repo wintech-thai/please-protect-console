@@ -6,11 +6,20 @@ import { cn } from "@/lib/utils";
 import { useAlertEvents } from "../hooks/use-alert-fired";
 import { AlertFiredTable } from "../components/alert-fired-table";
 import { AlertFiredDetailModal } from "../components/alert-fired-detail-modal";
-import type { AlertEvent, AlertSeverity, AlertStatus } from "../api/alert-fired.api";
+import type {
+  AlertEvent,
+  AlertSeverity,
+  AlertStatus,
+} from "../api/alert-fired.api";
 import { useDebounceValue } from "usehooks-ts";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
+import {
+  AdvancedTimeRangeSelector,
+  type TimeRangeValue,
+} from "@/components/ui/advanced-time-selector";
+import { resolveTimeRange } from "@/utils/format-date";
 
 // ─────────────────────────────────────────────
 // Filter types
@@ -53,12 +62,22 @@ function FilterPill({
 // Stats bar
 // ─────────────────────────────────────────────
 
-function StatsBar({ alerts, labels }: { alerts: AlertEvent[]; labels: typeof translations.alertFired.EN.stats }) {
+function StatsBar({
+  alerts,
+  labels,
+}: {
+  alerts: AlertEvent[];
+  labels: typeof translations.alertFired.EN.stats;
+}) {
   const total = alerts.length;
   const firing = alerts.filter((a) => a.status === "firing").length;
   const resolved = alerts.filter((a) => a.status === "resolved").length;
-  const critical = alerts.filter((a) => a.severity === "critical" && a.status === "firing").length;
-  const warning = alerts.filter((a) => a.severity === "warning" && a.status === "firing").length;
+  const critical = alerts.filter(
+    (a) => a.severity === "critical" && a.status === "firing",
+  ).length;
+  const warning = alerts.filter(
+    (a) => a.severity === "warning" && a.status === "firing",
+  ).length;
 
   const stats = [
     { label: labels.total, value: total, cls: "text-slate-200" },
@@ -85,41 +104,95 @@ function StatsBar({ alerts, labels }: { alerts: AlertEvent[]; labels: typeof tra
 // Main view
 // ─────────────────────────────────────────────
 
+const DEFAULT_TIME_RANGE: TimeRangeValue = {
+  type: "relative",
+  value: "4h",
+};
+
 export function AlertFiredView() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedAlert, setSelectedAlert] = useState<AlertEvent | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [timeRange, setTimeRange] =
+    useState<TimeRangeValue>(DEFAULT_TIME_RANGE);
 
   const { language } = useLanguage();
-  const t = translations.alertFired[language as keyof typeof translations.alertFired] ?? translations.alertFired.EN;
+  const t =
+    translations.alertFired[language as keyof typeof translations.alertFired] ??
+    translations.alertFired.EN;
+  const tTimePicker =
+    translations.timePicker[language as keyof typeof translations.timePicker] ??
+    translations.timePicker.EN;
 
-  const STATUS_OPTIONS: { value: StatusFilter; label: string; cls: string }[] = [
-    { value: "all", label: t.allStatus, cls: "text-slate-300 border-slate-600" },
-    { value: "firing", label: t.status.firing, cls: "text-red-400 border-red-500/40" },
-    { value: "resolved", label: t.status.resolved, cls: "text-emerald-400 border-emerald-500/40" },
-  ];
+  const STATUS_OPTIONS: { value: StatusFilter; label: string; cls: string }[] =
+    [
+      {
+        value: "all",
+        label: t.allStatus,
+        cls: "text-slate-300 border-slate-600",
+      },
+      {
+        value: "firing",
+        label: t.status.firing,
+        cls: "text-red-400 border-red-500/40",
+      },
+      {
+        value: "resolved",
+        label: t.status.resolved,
+        cls: "text-emerald-400 border-emerald-500/40",
+      },
+    ];
 
-  const SEVERITY_OPTIONS: { value: SeverityFilter; label: string; cls: string }[] = [
-    { value: "all", label: t.allSeverity, cls: "text-slate-300 border-slate-600" },
-    { value: "critical", label: t.severity.critical, cls: "text-red-400 border-red-500/40" },
-    { value: "warning", label: t.severity.warning, cls: "text-orange-400 border-orange-500/40" },
-    { value: "none", label: t.severity.none, cls: "text-slate-400 border-slate-600" },
+  const SEVERITY_OPTIONS: {
+    value: SeverityFilter;
+    label: string;
+    cls: string;
+  }[] = [
+    {
+      value: "all",
+      label: t.allSeverity,
+      cls: "text-slate-300 border-slate-600",
+    },
+    {
+      value: "critical",
+      label: t.severity.critical,
+      cls: "text-red-400 border-red-500/40",
+    },
+    {
+      value: "warning",
+      label: t.severity.warning,
+      cls: "text-orange-400 border-orange-500/40",
+    },
+    {
+      value: "none",
+      label: t.severity.none,
+      cls: "text-slate-400 border-slate-600",
+    },
   ];
 
   const [debounceSeach] = useDebounceValue(search, 1000);
+  const { fromDate, toDate } = useMemo(
+    () => resolveTimeRange(timeRange),
+    [timeRange],
+  );
 
-  const { data: alerts = [], isLoading, isFetching, refetch } = useAlertEvents(debounceSeach, {
-    placeholderData: keepPreviousData
-  });
+  const alertEvent = useAlertEvents(
+    { fullTextSearch: debounceSeach, fromDate, toDate },
+    {
+      placeholderData: keepPreviousData,
+    },
+  );
 
   const filtered = useMemo(() => {
-    return alerts.filter((a) => {
+    return (alertEvent.data ?? []).filter((a) => {
       if (statusFilter !== "all" && a.status !== statusFilter) return false;
-      if (severityFilter !== "all" && a.severity !== severityFilter) return false;
+      if (severityFilter !== "all" && a.severity !== severityFilter)
+        return false;
       return true;
     });
-  }, [alerts, statusFilter, severityFilter]);
+  }, [alertEvent.data, statusFilter, severityFilter]);
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200">
@@ -130,22 +203,30 @@ export function AlertFiredView() {
             <Bell className="w-5 h-5 text-orange-400" />
             {t.title}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {t.subtitle}
-          </p>
+          <p className="text-sm text-slate-500 mt-0.5">{t.subtitle}</p>
         </div>
 
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors",
-            isFetching && "opacity-50 cursor-not-allowed",
-          )}
-        >
-          <RefreshCw className={cn("w-3.5 h-3.5", isFetching && "animate-spin")} />
-          {t.refresh}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <AdvancedTimeRangeSelector
+            value={timeRange}
+            onChange={setTimeRange}
+            translations={tTimePicker}
+            className="h-10 w-52"
+          />
+          <button
+            onClick={() => alertEvent.refetch()}
+            disabled={alertEvent.isFetching}
+            className={cn(
+              "flex items-center gap-1.5 px-3 h-10 rounded-lg border border-slate-700 bg-slate-800 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors",
+              alertEvent.isFetching && "opacity-50 cursor-not-allowed",
+            )}
+          >
+            <RefreshCw
+              className={cn("size-4", alertEvent.isFetching && "animate-spin")}
+            />
+            {t.refresh}
+          </button>
+        </div>
       </div>
 
       {/* Search + Filters */}
@@ -200,20 +281,25 @@ export function AlertFiredView() {
         </div>
 
         {/* Stats */}
-        {!isLoading && alerts.length > 0 && <StatsBar alerts={alerts} labels={t.stats} />}
+        {!alertEvent.isLoading && (alertEvent.data ?? []).length > 0 && (
+          <StatsBar alerts={alertEvent.data ?? []} labels={t.stats} />
+        )}
       </div>
 
       {/* Table */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {isLoading ? (
+        {alertEvent.isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-slate-700 border-t-orange-400 rounded-full animate-spin" />
           </div>
         ) : (
           <AlertFiredTable
             data={filtered}
-            selectedId={selectedAlert?.id ?? null}
-            onView={(alert) => setSelectedAlert(alert)}
+            selectedId={selectedId}
+            onView={(alert) => {
+              setSelectedAlert(alert)
+              setSelectedId(alert.id)
+            }}
           />
         )}
       </div>

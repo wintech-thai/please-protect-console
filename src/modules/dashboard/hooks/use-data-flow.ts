@@ -16,7 +16,7 @@ import type {
   KafkaGroupLagSummary,
   KafkaTopicStats,
 } from "../types/data-flow.types";
-import type { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
+import type { TimeRangeValue } from "@/components/ui/advanced-time-selector";
 import { getTimeParams } from "@/modules/dashboard/utils/time-params";
 import { createTimeFormatter } from "@/modules/dashboard/utils/chart-processors";
 

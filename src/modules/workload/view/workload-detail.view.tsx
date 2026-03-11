@@ -32,7 +32,7 @@ import { REFRESH_OPTIONS } from "@/modules/dashboard/components/overview-types";
 import {
   AdvancedTimeRangeSelector,
   type TimeRangeValue,
-} from "@/modules/dashboard/components/advanced-time-selector";
+} from "@/components/ui/advanced-time-selector";
 import {
   AreaChart,
   Area,

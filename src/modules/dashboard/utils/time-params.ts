@@ -1,4 +1,4 @@
-import type { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
+import type { TimeRangeValue } from "@/components/ui/advanced-time-selector";
 
 // ─── Prometheus query time parameters ────────────────────────────────
 // Converts a TimeRangeValue into { start, end, step } (seconds)

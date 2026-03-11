@@ -140,12 +140,12 @@ export function AlertFiredDetailModal({
   const { language } = useLanguage();
   const t = translations.alertFired[language as keyof typeof translations.alertFired] ?? translations.alertFired.EN;
 
-  const { data: fetchedAlert, isLoading, isFetching } = useAlertEventDetail(id, {
+  const alertEventDetail = useAlertEventDetail(id, {
     placeholderData: preloadedAlert,
     enabled: !!id,
   });
 
-  const alert = fetchedAlert ?? preloadedAlert;
+  const alert = alertEventDetail.data ?? preloadedAlert;
 
   const cfg = alert
     ? severityConfig(alert.severity, alert.status)
@@ -162,7 +162,7 @@ export function AlertFiredDetailModal({
 
   return (
     <Modal open={isOpen} onClose={onClose}>
-      <ModalContent size="2xl" className={cfg.borderColor}>
+      <ModalContent size="5xl" className={cfg.borderColor}>
         {/* Glow accent */}
         <div
           className={cn(
@@ -185,8 +185,8 @@ export function AlertFiredDetailModal({
 
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-white tracking-tight truncate flex items-center gap-2">
-                {isLoading ? t.detail.loading : (alert?.name ?? t.detail.fallbackTitle)}
-                {isFetching && !isLoading && (
+                {alertEventDetail.isLoading ? t.detail.loading : (alert?.name ?? t.detail.fallbackTitle)}
+                {alertEventDetail.isFetching && !alertEventDetail.isLoading && (
                   <Loader2 className="w-4 h-4 text-orange-400 animate-spin shrink-0" />
                 )}
               </h2>
@@ -217,14 +217,14 @@ export function AlertFiredDetailModal({
         {/* ── Body ─────────────────────────────────────────────────────── */}
         <ModalBody className="space-y-5">
           {/* Full-height spinner when no placeholder data yet */}
-          {isLoading && !alert && (
+          {alertEventDetail.isLoading && !alert && (
             <div className="flex items-center justify-center py-16">
               <div className="w-8 h-8 border-2 border-slate-600 border-t-orange-400 rounded-full animate-spin" />
             </div>
           )}
 
           {alert && (
-            <div className={cn("space-y-5 transition-opacity duration-200", isFetching && "opacity-60")}>
+            <div className={cn("space-y-5 transition-opacity duration-200", alertEventDetail.isFetching && "opacity-60")}>
               {/* Summary */}
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">

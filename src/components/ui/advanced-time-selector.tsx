@@ -72,6 +72,7 @@ export interface TimePickerTranslations {
   last30m: string;
   last1h: string;
   last3h: string;
+  last4h: string;
   last6h: string;
   last12h: string;
   last24h: string;
@@ -85,6 +86,7 @@ interface AdvancedTimeRangeSelectorProps {
   onChange: (value: TimeRangeValue) => void;
   disabled?: boolean;
   translations: TimePickerTranslations;
+  className?: string;
 }
 
 const QUICK_RANGE_KEYS: { value: string; key: keyof TimePickerTranslations }[] = [
@@ -93,6 +95,7 @@ const QUICK_RANGE_KEYS: { value: string; key: keyof TimePickerTranslations }[] =
   { value: "30m", key: "last30m" },
   { value: "1h", key: "last1h" },
   { value: "3h", key: "last3h" },
+  { value: "4h", key: "last4h" },
   { value: "6h", key: "last6h" },
   { value: "12h", key: "last12h" },
   { value: "24h", key: "last24h" },
@@ -106,6 +109,7 @@ export function AdvancedTimeRangeSelector({
   onChange,
   disabled,
   translations: tp,
+  className,
 }: AdvancedTimeRangeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [fromDate, setFromDate] = useState<Dayjs | null>(null);
@@ -170,6 +174,7 @@ export function AdvancedTimeRangeSelector({
           className={cn(
             "w-full sm:w-auto sm:min-w-50 justify-between text-left font-normal bg-slate-900 border-slate-700 hover:bg-slate-800 text-slate-200",
             !value && "text-muted-foreground",
+            className,
           )}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -214,7 +219,7 @@ export function AdvancedTimeRangeSelector({
           </button>
         </div>
 
-        <div className="flex flex-col sm:flex-row h-90 sm:h-100">
+        <div className="flex flex-col sm:flex-row overflow-y-auto h-90 sm:h-100">
           {/* Left Column: Absolute Range Picker */}
           <div
             className={cn(
