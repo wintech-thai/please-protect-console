@@ -19,6 +19,7 @@ export const INDICES_DICT = {
         health: "Health",
         status: "Status",
         primaries: "Primaries",
+        phase: "Phase",
         replicas: "Replicas",
         docsCount: "Docs count",
         storageSize: "Storage size",
@@ -82,6 +83,7 @@ export const INDICES_DICT = {
         status: "สถานะ",
         primaries: "Primaries",
         replicas: "Replicas",
+        phase: "เฟส",
         docsCount: "จำนวนเอกสาร",
         storageSize: "พื้นที่จัดเก็บ",
       }
