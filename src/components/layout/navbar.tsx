@@ -45,7 +45,6 @@ import { translations } from "@/locales/dict";
 import { AppVersionDisplay } from "@/components/layout/app-version-display";
 
 import { useBranding } from "@/hooks/useBranding";
-import { DefaultLogo } from "@/components/ui/DefaultLogo";
 
 interface NavItem {
   label: string;
@@ -67,6 +66,8 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
 
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+
+  const [imageError, setImageError] = useState(false);
 
   const { language, setLanguage } = useLanguage();
   const t = translations.navbar[language as keyof typeof translations.navbar] || translations.navbar.EN;
@@ -176,15 +177,19 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
             <div className="relative w-10 h-10 flex items-center justify-center">
               {isLoading ? (
                 <div className="w-8 h-8 rounded-full bg-blue-900/50 animate-pulse"></div>
-              ) : branding.logoUrl ? (
+              ) : (branding.logoUrl && !imageError) ? (
                 <img
                   src={branding.logoUrl}
                   alt={branding.shortName}
                   className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]"
-                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                  onError={() => setImageError(true)}
                 />
               ) : (
-                <DefaultLogo className="w-9 h-auto drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                <img 
+                  src="/img/please-protect.svg" 
+                  alt="PLEASE-PROTECT Logo" 
+                  className="w-8 h-auto drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" 
+                />
               )}
             </div>
 

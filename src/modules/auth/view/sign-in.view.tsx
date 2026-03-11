@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { loginSchema, LoginSchemaType } from "../schema/login.schema";
 import { authApi } from "../api/auth.api";
 import { useBranding } from "@/hooks/useBranding";
-import { DefaultLogo } from "@/components/ui/DefaultLogo";
 
 // --- Icons Components ---
 const LockIcon = ({ className }: { className?: string }) => (
@@ -29,6 +28,8 @@ const UserIcon = ({ className }: { className?: string }) => (
 export default function SignInView() {
   const router = useRouter();
   const { branding, isLoading } = useBranding();
+  
+  const [imageError, setImageError] = useState(false);
 
   const {
     register,
@@ -68,7 +69,7 @@ export default function SignInView() {
           let orgIdToSave = "default"; 
 
           if (Array.isArray(orgs) && orgs.length > 0) {
-            const firstOrg = orgs[0] as any;
+            const firstOrg = orgs as any;
             orgIdToSave = firstOrg.orgCustomId || firstOrg.id || "default";
             console.log("Organization ID found:", orgIdToSave);
           } else {
@@ -143,15 +144,19 @@ export default function SignInView() {
               {/* Dynamic Logo Section */}
               {isLoading ? (
                 <div className="w-14 h-14 rounded-full bg-blue-900/50 animate-pulse"></div>
-              ) : branding.logoUrl ? (
+              ) : (branding.logoUrl && !imageError) ? (
                 <img
                   src={branding.logoUrl}
-                  alt={branding.shortName}
+                  alt={branding.shortName || "System Logo"}
                   className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"
-                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                  onError={() => setImageError(true)}
                 />
               ) : (
-                <DefaultLogo className="w-16 h-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+                <img 
+                  src="/img/please-protect.svg" 
+                  alt="PLEASE-PROTECT" 
+                  className="w-16 h-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" 
+                />
               )}
             </div>
           </div>
