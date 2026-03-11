@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   AdvancedTimeRangeSelector,
   type TimeRangeValue,
-} from "@/modules/dashboard/components/advanced-time-selector";
+} from "@/components/ui/advanced-time-selector";
 import { lokiService, isValidLogQL } from "@/lib/loki";
 import type { LokiLogEntry, VolumeDataPoint } from "@/lib/loki";
 import { useLanguage } from "@/context/LanguageContext";
@@ -322,7 +322,6 @@ export default function LokiView() {
             value={timeRange}
             onChange={setTimeRange}
             disabled={isLoading}
-            translations={timeRangeT}
           />
         }
       />

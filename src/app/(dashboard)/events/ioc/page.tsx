@@ -15,12 +15,12 @@ import { DeleteConfirmModal } from "@/components/ioc/DeleteConfirmModal";
 
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
-import { iocDict } from "@/locales/iocdict"; 
+import { iocDict } from "@/locales/iocdict";
 
 import {
   TimeRangeValue,
   TimePickerTranslations,
-} from "@/modules/dashboard/components/advanced-time-selector";
+} from "@/components/ui/advanced-time-selector";
 
 interface FilterItem {
   id: string;
@@ -75,7 +75,7 @@ export default function IocPage() {
   const [luceneQuery, setLuceneQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterItem[]>([]);
-  
+
   const [timeRange, setTimeRange] = useState<TimeRangeValue>({
     type: "relative",
     value: "30m",
@@ -102,15 +102,15 @@ export default function IocPage() {
   const handleRowClick = async (iocSummary: any) => {
     if (!iocSummary) return;
     setSelectedId(iocSummary.id);
-    setDetailData(iocSummary); 
+    setDetailData(iocSummary);
 
     try {
       const response = await iocApi.getIocById(iocSummary.id);
-      
+
       if (response && response.ioC) {
         setDetailData({
           ...iocSummary,
-          raw: response.ioC 
+          raw: response.ioC
         });
       }
     } catch (error) {
@@ -191,7 +191,7 @@ export default function IocPage() {
       await iocApi.deleteIocById(itemToDelete.id);
       setData((prev) => prev.filter((item: any) => item.id !== itemToDelete.id));
       setTotalHits((prev) => Math.max(0, prev - 1));
-      
+
       if (selectedId === itemToDelete.id) {
         setDetailData(null);
         setSelectedId(null);
@@ -307,13 +307,13 @@ export default function IocPage() {
     <div className="flex h-screen bg-slate-950 text-slate-200 font-sans overflow-hidden">
       <div className="flex-1 flex flex-col min-w-0 relative">
         <IocTopNav
-          luceneQuery={searchInput} 
-          onQueryChange={setSearchInput} 
+          luceneQuery={searchInput}
+          onQueryChange={setSearchInput}
           onQuerySubmit={() => { setLuceneQuery(searchInput); setPage(1); }}
-          timeRange={timeRange} 
+          timeRange={timeRange}
           onTimeRangeChange={(val) => { setTimeRange(val); setPage(1); }}
-          timeDict={timeDict} 
-          
+          timeDict={timeDict}
+
           onRefresh={() => {
             if (searchInput !== luceneQuery) {
               setLuceneQuery(searchInput);
@@ -321,11 +321,11 @@ export default function IocPage() {
             } else {
               fetchData();
             }
-          }} 
-          
+          }}
+
           isLoading={isLoading}
-          dict={dict.header} 
-          totalHits={totalHits} 
+          dict={dict.header}
+          totalHits={totalHits}
           fields={IOC_FIELDS_METADATA}
           iocTypeFilter={iocTypeFilter}
           onIocTypeFilterChange={(val) => { setIocTypeFilter(val); setPage(1); }}
@@ -347,47 +347,47 @@ export default function IocPage() {
 
         <div className="relative flex-none w-full border-b border-slate-800">
           <IocHistogram
-            data={histogramData} 
-            totalHits={totalHits} 
-            interval={currentInterval} 
-            maxDocCount={maxDocCount} 
+            data={histogramData}
+            totalHits={totalHits}
+            interval={currentInterval}
+            maxDocCount={maxDocCount}
             isLoading={isLoading}
-            t={dict.histogram} 
+            t={dict.histogram}
           />
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <IocTable
-            data={data} 
-            totalHits={totalHits} 
-            isLoading={isLoading} 
-            page={page} 
+            data={data}
+            totalHits={totalHits}
+            isLoading={isLoading}
+            page={page}
             itemsPerPage={itemsPerPage}
-            selectedId={selectedId} 
-            onSelect={(ioc) => setSelectedId(ioc.id)} 
-            onRowClick={handleRowClick} 
-            onPageChange={setPage} 
+            selectedId={selectedId}
+            onSelect={(ioc) => setSelectedId(ioc.id)}
+            onRowClick={handleRowClick}
+            onPageChange={setPage}
             onItemsPerPageChange={setItemsPerPage}
             onDelete={handleOpenDeleteModal}
-            t={dict.table} 
+            t={dict.table}
           />
         </div>
 
         <IocFlyout
-          data={detailData} 
-          events={data} 
+          data={detailData}
+          events={data}
           currentIndex={data.findIndex((s) => s.id === detailData?.id)}
-          onNavigate={(idx) => handleRowClick(data[idx])} 
+          onNavigate={(idx) => handleRowClick(data[idx])}
           onClose={() => { setDetailData(null); setSelectedId(null); }}
           onTypeClick={(val) => handleAddFilter("ioc.type", val, "==")}
-          t={dict.flyout} 
+          t={dict.flyout}
         />
 
-        <DeleteConfirmModal 
-          isOpen={isDeleteModalOpen} 
-          isLoading={isDeleting} 
-          onClose={() => setIsDeleteModalOpen(false)} 
-          onConfirm={handleConfirmDelete} 
+        <DeleteConfirmModal
+          isOpen={isDeleteModalOpen}
+          isLoading={isDeleting}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
           t={dict.deleteModal}
         />
       </div>

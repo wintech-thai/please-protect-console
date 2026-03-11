@@ -13,7 +13,7 @@ import { arkimeService } from "@/lib/elasticsearch";
 import {
   TimeRangeValue,
   TimePickerTranslations,
-} from "@/modules/dashboard/components/advanced-time-selector";
+} from "@/components/ui/advanced-time-selector";
 
 import { Layer4TopNav } from "@/components/layer4/Layer4TopNav";
 import { Layer4Histogram } from "@/components/layer4/Layer4Histogram";
@@ -22,7 +22,7 @@ import { Layer4Flyout } from "@/components/layer4/Layer4Flyout";
 
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
-import { layer4Dict } from "@/locales/layer4dict"; 
+import { layer4Dict } from "@/locales/layer4dict";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -49,13 +49,13 @@ const needsQuotes = (key: string, val: any) => {
     return false;
   if (!isNaN(Number(val)) && val.trim() !== "") return false;
 
-  return true; 
+  return true;
 };
 
 export default function Layer4Page() {
   const { language, setLanguage } = useLanguage();
   const langKey = (language === "TH" ? "TH" : "EN") as "EN" | "TH";
-  const dict = layer4Dict[langKey]; 
+  const dict = layer4Dict[langKey];
 
   const toggleLanguage = () => {
     const nextLang = language === "EN" ? "TH" : "EN";
@@ -186,7 +186,7 @@ export default function Layer4Page() {
     setIsLoading(true);
     try {
       const bounds = (() => {
-        const now = dayjs().utc(); 
+        const now = dayjs().utc();
         let start = now.subtract(15, "minute"),
           end = now;
         if (timeRange.type === "relative") {
@@ -201,8 +201,8 @@ export default function Layer4Page() {
           timeRange.start &&
           timeRange.end
         ) {
-          start = dayjs.unix(timeRange.start).utc(); 
-          end = dayjs.unix(timeRange.end).utc(); 
+          start = dayjs.unix(timeRange.start).utc();
+          end = dayjs.unix(timeRange.end).utc();
         }
         return { start, end };
       })();
@@ -225,7 +225,7 @@ export default function Layer4Page() {
           : combinedFilters;
       }
 
-      console.group("🚀 Layer 4 - Arkime API Request"); 
+      console.group("🚀 Layer 4 - Arkime API Request");
       console.log("📝 Expression:", finalExpression || "(none)");
       console.log("⏰ Time (UTC):", {
         start: bounds.start.format("YYYY-MM-DD HH:mm:ss"),
@@ -339,7 +339,7 @@ export default function Layer4Page() {
         if (infoProtocols.length === 0 && (item.ipProtocol === 1 || item.ipProtocol === 58)) {
           infoProtocols = ["icmp"];
         } else {
-          infoProtocols = infoProtocols.map((p: string) => 
+          infoProtocols = infoProtocols.map((p: string) =>
             (p.toLowerCase() === "icmp6" || p.toLowerCase() === "icmpv6") ? "icmp" : p
           );
         }
@@ -392,11 +392,11 @@ export default function Layer4Page() {
             hasshServer: item.ssh.hasshServer || "-",
           } : null,
           etherType: item.ethertype || item.etherType || "2,048 (IPv4)",
-          
+
           http: {
             host: item["host.http"] ?? item.host?.http ?? item["http.host"] ?? item.http?.host,
           },
-          
+
           tls: {
             version: item["tls.version"] ?? item.tls?.version,
             cipher: item["tls.cipher"] ?? item.tls?.cipher,
@@ -424,9 +424,9 @@ export default function Layer4Page() {
       if (response.graph && response.graph.sessionsHisto) {
         const diffSec = bounds.end.unix() - bounds.start.unix();
         const originalIntervalSec = response.graph.interval || 60;
-        
-        let targetIntervalSec = Math.ceil(diffSec / 60); 
-        
+
+        let targetIntervalSec = Math.ceil(diffSec / 60);
+
         if (targetIntervalSec <= 1) targetIntervalSec = 1;
         else if (targetIntervalSec <= 5) targetIntervalSec = 5;
         else if (targetIntervalSec <= 10) targetIntervalSec = 10;
@@ -437,9 +437,9 @@ export default function Layer4Page() {
         else if (targetIntervalSec <= 10 * 60) targetIntervalSec = 10 * 60;
         else if (targetIntervalSec <= 30 * 60) targetIntervalSec = 30 * 60;
         else if (targetIntervalSec <= 60 * 60) targetIntervalSec = 60 * 60;
-        
+
         targetIntervalSec = Math.max(originalIntervalSec, targetIntervalSec);
-        
+
         const intervalMs = targetIntervalSec * 1000;
         const displayInterval = targetIntervalSec >= 60 ? `${Math.floor(targetIntervalSec / 60)}m` : `${targetIntervalSec}s`;
 
@@ -451,13 +451,13 @@ export default function Layer4Page() {
 
         const startMs = Math.floor(bounds.start.valueOf() / intervalMs) * intervalMs;
         const endMs = Math.ceil(bounds.end.valueOf() / intervalMs) * intervalMs;
-        
+
         const fullBuckets = [];
         let currentMs = startMs;
 
         while (currentMs <= endMs) {
           const totalCount = dataMap.get(currentMs) || 0;
-          
+
           const estTcp = totalCount > 0 ? Math.round(totalCount * ratioTcp) : 0;
           const estUdp = totalCount > 0 ? Math.round(totalCount * ratioUdp) : 0;
           const estIcmp = totalCount > 0 ? totalCount - estTcp - estUdp : 0;
@@ -513,9 +513,9 @@ export default function Layer4Page() {
           }}
           timeDict={timeDict}
           onRefresh={() => {
-            setLuceneQuery(searchInput); 
-            setPage(1);                 
-            setRefreshKey((k) => k + 1); 
+            setLuceneQuery(searchInput);
+            setPage(1);
+            setRefreshKey((k) => k + 1);
           }}
           isLoading={isLoading}
           dict={dict.header}
@@ -614,7 +614,7 @@ export default function Layer4Page() {
           }}
           onClose={() => setDetailSession(null)}
           onAddFilter={handleAddFilter}
-          t={dict} 
+          t={dict}
         />
       </div>
     </div>

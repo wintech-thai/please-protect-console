@@ -100,7 +100,7 @@ function Pagination({ page, totalPages, pageSize, totalItems, onPageChange, onPa
   const end = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-t border-slate-800 text-xs text-slate-400">
+    <div className="flex items-center justify-end gap-x-4 px-4 py-2 border-t border-slate-800 text-xs text-slate-400">
       <div className="flex items-center gap-2">
         <span>Rows per page:</span>
         <select

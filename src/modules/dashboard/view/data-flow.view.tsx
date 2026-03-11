@@ -31,7 +31,7 @@ import type {
 } from "../types/data-flow.types";
 import { useTimeRange } from "@/modules/dashboard/hooks/use-time-range";
 import { OverviewHeader } from "@/modules/dashboard/components/overview-header";
-import { AdvancedTimeRangeSelector } from "@/modules/dashboard/components/advanced-time-selector";
+import { AdvancedTimeRangeSelector } from "@/components/ui/advanced-time-selector";
 
 const CHART_COLORS = { input: "#34d399", output: "#60a5fa" } as const;
 const CHART_AXIS_STYLE = {
@@ -435,7 +435,7 @@ const DetailsPanel = ({
 }: {
   node: NodeData | null;
   nodeRates: NodeRates;
-  timeRange: import("@/modules/dashboard/components/advanced-time-selector").TimeRangeValue;
+  timeRange: import("@/components/ui/advanced-time-selector").TimeRangeValue;
   refreshInterval: number;
 }) => {
   const { language } = useLanguage();
@@ -537,6 +537,7 @@ const DataFlowContent = () => {
   const t =
     translations.dataFlow[language as keyof typeof translations.dataFlow] ||
     translations.dataFlow.EN;
+  const tTimePicker = translations.timePicker[language as keyof typeof translations.timePicker ?? "EN"]
 
   const { timeRange, setTimeRange, isRelative } = useTimeRange();
 
@@ -545,7 +546,10 @@ const DataFlowContent = () => {
     isRelative && refreshInterval > 0 ? refreshInterval : (false as const);
 
   const queryClient = useQueryClient();
-  const nodes = useNodes(t);
+  const nodes = useNodes({
+    ...t,
+    timePicker: tTimePicker
+  });
   const [selectedNodeId, setSelectedNodeId] = useState("receiver1");
   const {
     nodeRates,
@@ -603,7 +607,6 @@ const DataFlowContent = () => {
             value={timeRange}
             onChange={setTimeRange}
             disabled={loading || isFetching}
-            translations={t.timePicker}
           />
         </div>
       </div>

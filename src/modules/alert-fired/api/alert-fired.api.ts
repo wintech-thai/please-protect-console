@@ -47,12 +47,26 @@ export interface AlertEventDetail {
 // API
 // ─────────────────────────────────────────────
 
+export interface GetAlertEventsParams {
+  fullTextSearch?: string;
+  fromDate?: string; // ISO 8601
+  toDate?: string; // ISO 8601
+}
+
 export const alertFiredApi = {
-  getAlertEvents: async (fullTextSearch = ""): Promise<AlertEvent[]> => {
+  getAlertEvents: async ({
+    fullTextSearch = "",
+    fromDate,
+    toDate,
+  }: GetAlertEventsParams = {}): Promise<AlertEvent[]> => {
     const orgId = getOrgId();
     const { data } = await client.post<AlertEvent[]>(
       `api//AlertEvent/org/${orgId}/action/GetAlertEvents`,
-      { FullTextSearch: fullTextSearch },
+      {
+        FullTextSearch: fullTextSearch,
+        ...(fromDate && { FromDate: fromDate }),
+        ...(toDate && { ToDate: toDate }),
+      },
     );
     return data;
   },

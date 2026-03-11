@@ -9,7 +9,7 @@ import { Filter, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { esService } from "@/lib/elasticsearch";
-import { TimeRangeValue, TimePickerTranslations } from "@/modules/dashboard/components/advanced-time-selector";
+import { TimeRangeValue, TimePickerTranslations } from "@/components/ui/advanced-time-selector";
 
 import { AlertsTopNav } from "@/components/alerts/AlertsTopNav";
 import { AlertsSidebar } from "@/components/alerts/AlertsSidebar";
@@ -125,7 +125,7 @@ export default function AlertsPage() {
   }, []);
 
   const handleSelectField = useCallback((field: string) => {
-    setSelectedFields(prev => 
+    setSelectedFields(prev =>
       prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
     );
   }, []);
@@ -148,15 +148,15 @@ export default function AlertsPage() {
     setIsLoading(true);
     try {
       const bounds = (() => {
-        const now = dayjs().utc(); 
+        const now = dayjs().utc();
         let start = now.subtract(24, "hour"), end = now;
         if (timeRange.type === "relative") {
           const num = parseInt(timeRange.value.replace(/\D/g, ""));
           const unit = timeRange.value.replace(/\d/g, "");
           start = now.subtract(num, unit === "m" ? "minute" : unit === "h" ? "hour" : "day");
         } else if (timeRange.type === "absolute" && timeRange.start && timeRange.end) {
-          start = dayjs.unix(timeRange.start).utc(); 
-          end = dayjs.unix(timeRange.end).utc(); 
+          start = dayjs.unix(timeRange.start).utc();
+          end = dayjs.unix(timeRange.end).utc();
         }
         return { start, end };
       })();
@@ -183,8 +183,8 @@ export default function AlertsPage() {
       }
 
       activeFilters.forEach((f) => {
-        const clause = typeof f.value === 'string' 
-          ? { match_phrase: { [f.key]: f.value } } 
+        const clause = typeof f.value === 'string'
+          ? { match_phrase: { [f.key]: f.value } }
           : { term: { [f.key]: f.value } };
 
         if (f.operator === "==") {
@@ -216,7 +216,7 @@ export default function AlertsPage() {
       };
 
       const response = await esService.getLayer7Events(orgId, payload);
-      
+
       const hits = response.hits?.hits || [];
       const dynamicFieldsSet = new Set<string>();
 
@@ -239,7 +239,7 @@ export default function AlertsPage() {
           dstIp: item.destination?.ip || "-",
           dstPort: item.destination?.port ?? 0,
           communityId: item.network?.community_id || item.community_id || "-",
-          
+
           alert: {
             severity: item.alert?.severity ?? null,
             category: item.alert?.category ?? "-",
@@ -248,7 +248,7 @@ export default function AlertsPage() {
             action: item.alert?.action ?? item.event?.action ?? "-",
           },
           event: { action: item.event?.action ?? "-" },
-          raw: item 
+          raw: item
         };
       });
 
@@ -291,16 +291,16 @@ export default function AlertsPage() {
 
   return (
     <div className="flex h-full bg-slate-950 text-slate-200 font-sans overflow-hidden">
-      
+
       {isSidebarOpen && (
-        <AlertsSidebar 
-          fields={fieldsMetadata} 
+        <AlertsSidebar
+          fields={fieldsMetadata}
           selectedFields={selectedFields}
           expandedField={expandedField}
           onToggleField={handleToggleField}
           onSelectField={handleSelectField}
-          onAddFilter={handleAddFilter} 
-          // isOpen={isSidebarOpen} 
+          onAddFilter={handleAddFilter}
+          // isOpen={isSidebarOpen}
           // onClose={() => setIsSidebarOpen(false)}
           t={dict}
         />
@@ -323,12 +323,12 @@ export default function AlertsPage() {
           }}
           timeDict={timeDict}
           onRefresh={() => {
-            setLuceneQuery(searchInput); 
-            setPage(1); 
-            setRefreshKey((k) => k + 1); 
+            setLuceneQuery(searchInput);
+            setPage(1);
+            setRefreshKey((k) => k + 1);
           }}
           isLoading={isLoading}
-          dict={dict.header} 
+          dict={dict.header}
           fields={fieldsMetadata}
         />
 
@@ -356,7 +356,7 @@ export default function AlertsPage() {
             interval={currentInterval}
             maxDocCount={maxDocCount}
             isLoading={isLoading}
-            dict={dict.header} 
+            dict={dict.header}
           />
         </div>
 
@@ -376,7 +376,7 @@ export default function AlertsPage() {
             }}
             onPageChange={setPage}
             onItemsPerPageChange={setItemsPerPage}
-            t={dict.table} 
+            t={dict.table}
             onAddFilter={handleAddFilter}
           />
         </div>
@@ -391,7 +391,7 @@ export default function AlertsPage() {
           }}
           onClose={() => setDetailSession(null)}
           onAddFilter={handleAddFilter}
-          t={dict.flyout} 
+          t={dict.flyout}
         />
       </div>
     </div>

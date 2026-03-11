@@ -7,7 +7,7 @@ import timezone from "dayjs/plugin/timezone";
 import { X, Filter, Trash2 } from "lucide-react";
 
 import { esService } from "@/lib/elasticsearch";
-import { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
+import { TimeRangeValue } from "@/components/ui/advanced-time-selector";
 
 // Import Components & Constants
 import { Layer7Sidebar } from "@/components/layer7/Layer7Sidebar";
@@ -17,7 +17,7 @@ import { Layer7Table } from "@/components/layer7/Layer7Table";
 import { Layer7Flyout } from "@/components/layer7/Layer7Flyout";
 import { COLUMN_DEFS } from "@/components/layer7/constants";
 import { L7_DICT, L7DictType } from "@/locales/layer7dict";
-import { useLanguage } from "@/context/LanguageContext"; 
+import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 
 dayjs.extend(utc);
@@ -33,11 +33,11 @@ interface FilterItem {
 const extractKeysFromObject = (obj: any, prefix = ""): string[] => {
   let keys: string[] = [];
   if (!obj || typeof obj !== "object") return [];
-  
+
   Object.keys(obj).forEach((key) => {
-    if (key === "id" || key === "_id") return; 
+    if (key === "id" || key === "_id") return;
     const fullKey = prefix ? `${prefix}.${key}` : key;
-    
+
     if (obj[key] && typeof obj[key] === "object" && !Array.isArray(obj[key])) {
       keys = [...keys, ...extractKeysFromObject(obj[key], fullKey)];
     } else {
@@ -244,16 +244,15 @@ export default function Layer7Page() {
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
           onRefresh={() => {
-            setLuceneQuery(searchInput); 
-            setPage(1);                 
-            setRefreshKey((k) => k + 1); 
+            setLuceneQuery(searchInput);
+            setPage(1);
+            setRefreshKey((k) => k + 1);
           }}
           isLoading={isLoading}
           availableFields={allIndexFields}
           currentLang={langKey}
           onLangToggle={toggleLanguage}
           dict={dict.topNav}
-          timeDict={dict.timePicker}
         />
 
         {/* Filter Bar */}

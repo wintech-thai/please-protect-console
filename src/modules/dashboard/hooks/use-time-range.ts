@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useQueryStates, parseAsString, parseAsInteger } from "nuqs";
-import type { TimeRangeValue } from "@/modules/dashboard/components/advanced-time-selector";
+import type { TimeRangeValue } from "@/components/ui/advanced-time-selector";
 
 // ─── nuqs-backed time range hook ─────────────────────────────────────
 // Persists the selected time range in URL query params so it survives

@@ -1,4 +1,5 @@
 import type React from "react";
+import { translations } from "@/locales/dict";
 
 export type NodeType = "Interface" | "Processor" | "Topic" | "DataStore";
 
@@ -162,6 +163,7 @@ export interface DataFlowTimePickerTranslations {
   last30m: string;
   last1h: string;
   last3h: string;
+  last4h: string;
   last6h: string;
   last12h: string;
   last24h: string;
@@ -181,5 +183,5 @@ export interface DataFlowTranslations {
   lastUpdated: string;
   refresh: string;
   refreshOff: string;
-  timePicker: DataFlowTimePickerTranslations;
+  timePicker: typeof translations.timePicker.EN;
 }

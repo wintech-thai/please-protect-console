@@ -81,7 +81,7 @@ function Pagination({ page, totalPages, pageSize, totalItems, rowsPerPage, onPag
   const end = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-t border-slate-800 text-xs text-slate-400">
+    <div className="flex items-center justify-end gap-x-4 px-4 py-2 border-t border-slate-800 text-xs text-slate-400">
       <div className="flex items-center gap-2">
         <span>{rowsPerPage ?? "Rows per page:"}</span>
         <select
@@ -175,26 +175,25 @@ export function AlertFiredTable({ data, selectedId, onView }: AlertFiredTablePro
               const statusCfg = STATUS_CFG[alert.status] ?? STATUS_CFG.firing;
               const severityCfg = getSeverityCfg(alert.severity);
               const isSelected = alert.id === selectedId;
-              console.log("isSelected", isSelected)
-              const isResolved = alert.status === "resolved";
 
               return (
                 <tr
                   key={alert.id}
-                  onClick={() => onView(alert)}
                   className={cn(
-                    "border-b border-slate-800/60 transition-colors cursor-pointer",
+                    "border-b border-slate-800/60 transition-colors",
                     isSelected
-                      ? "bg-orange-500/10 hover:bg-orange-500/15"
+                      ? "bg-blue-500/10 hover:bg-blue-500/15"
                       : cn("hover:bg-slate-800/40", i % 2 === 1 && "bg-slate-900/30"),
-                    isResolved && !isSelected && "opacity-70",
                   )}
                 >
                   <td className="px-4 py-2.5">
                     <span className={cn("inline-block w-2 h-2 rounded-full", statusCfg.dot)} />
                   </td>
 
-                  <td className="px-4 py-2.5 text-slate-200 font-mono text-xs max-w-xs truncate">
+                  <td
+                    className="px-4 py-2.5 underline cursor-pointer text-slate-200 font-mono text-xs max-w-xs truncate"
+                    onClick={() => onView(alert)}
+                  >
                     {alert.name}
                   </td>
 

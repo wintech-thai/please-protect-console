@@ -1,19 +1,19 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
-import { alertFiredApi, type AlertEvent } from "../api/alert-fired.api";
+import { alertFiredApi, type AlertEvent, type GetAlertEventsParams } from "../api/alert-fired.api";
 
 export const alertFiredKeys = {
   all: ["alert-fired"] as const,
-  list: (search: string) => [...alertFiredKeys.all, "list", search] as const,
+  list: (params: GetAlertEventsParams) => [...alertFiredKeys.all, "list", params] as const,
   detail: (id: string) => [...alertFiredKeys.all, "detail", id] as const,
 };
 
 type AlertEventsOptions = Omit<UseQueryOptions<AlertEvent[]>, "queryKey" | "queryFn">;
 type AlertEventDetailOptions = Omit<UseQueryOptions<AlertEvent>, "queryKey" | "queryFn">;
 
-export function useAlertEvents(search = "", options?: AlertEventsOptions) {
+export function useAlertEvents(params: GetAlertEventsParams = {}, options?: AlertEventsOptions) {
   return useQuery({
-    queryKey: alertFiredKeys.list(search),
-    queryFn: () => alertFiredApi.getAlertEvents(search),
+    queryKey: alertFiredKeys.list(params),
+    queryFn: () => alertFiredApi.getAlertEvents(params),
     ...options,
   });
 }
