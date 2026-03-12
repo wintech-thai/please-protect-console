@@ -114,7 +114,6 @@ export function AlertFiredView() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [selectedAlert, setSelectedAlert] = useState<AlertEvent | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [timeRange, setTimeRange] =
     useState<TimeRangeValue>(DEFAULT_TIME_RANGE);
 
@@ -291,11 +290,7 @@ export function AlertFiredView() {
         ) : (
           <AlertFiredTable
             data={filtered}
-            selectedId={selectedId}
-            onView={(alert) => {
-              setSelectedAlert(alert)
-              setSelectedId(alert.id)
-            }}
+            onView={(alert) => setSelectedAlert(alert)}
           />
         )}
       </div>
