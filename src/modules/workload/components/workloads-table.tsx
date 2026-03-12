@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useSelectedRowStore } from "@/lib/selected-row-store";
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, XCircle, HelpCircle } from "lucide-react";
 import type { Workload, WorkloadStatus, WorkloadType } from "../api/workloads.api";
 import type { translations } from "@/locales/dict";
@@ -160,6 +161,7 @@ const PAGE_SIZE_DEFAULT = 20;
 
 export function WorkloadsTable({ workloads, isLoading, t }: WorkloadsTableProps) {
   const router = useRouter();
+  const { selectedId, setSelectedId } = useSelectedRowStore("workloads");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
 
@@ -207,16 +209,27 @@ export function WorkloadsTable({ workloads, isLoading, t }: WorkloadsTableProps)
           </thead>
           <tbody>
             {paged.map((w, i) => {
+              const rowKey = `${w.namespace}/${w.type}/${w.name}`;
+              const isSelected = rowKey === selectedId;
               return (
               <tr
-                key={`${w.namespace}/${w.type}/${w.name}`}
-                onClick={() => router.push(`/system/operations/workloads/${w.namespace}/${w.type}/${w.name}`)}
+                key={rowKey}
+                onClick={() => {
+                  setSelectedId(rowKey);
+                }}
                 className={cn(
-                  "border-b border-slate-800/60 transition-colors cursor-pointer hover:bg-slate-800/40",
-                  i % 2 === 1 && "bg-slate-900/30"
+                  "border-b border-slate-800/60 transition-colors cursor-pointer",
+                  isSelected
+                    ? "bg-blue-500/10 hover:bg-blue-500/15"
+                    : cn("hover:bg-slate-800/40", i % 2 === 1 && "bg-slate-900/30")
                 )}
               >
-                <td className="px-4 py-2.5 text-slate-200 font-mono text-xs max-w-xs truncate">
+                <td
+                  className="px-4 py-2.5 underline text-slate-200 font-mono text-xs max-w-xs truncate"
+                  onClick={() => {
+                    router.push(`/system/operations/workloads/${w.namespace}/${w.type}/${w.name}`)
+                  }}
+                >
                   {w.name}
                 </td>
                 <td className="px-4 py-2.5 whitespace-nowrap">

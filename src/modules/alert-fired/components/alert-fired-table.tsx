@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useSelectedRowStore } from "@/lib/selected-row-store";
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
 import {
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle2,
-  AlertTriangle,
-  AlertOctagon,
-  Minus,
+    ChevronLeft,
+    ChevronRight,
+    CheckCircle2,
+    AlertTriangle,
+    AlertOctagon,
+    Minus,
 } from "lucide-react";
 import type { AlertEvent } from "../api/alert-fired.api";
 import { relativeAge } from "@/utils/format-date";
@@ -133,11 +134,11 @@ function Pagination({ page, totalPages, pageSize, totalItems, rowsPerPage, onPag
 
 interface AlertFiredTableProps {
   data: AlertEvent[];
-  selectedId: string | null;
   onView: (alert: AlertEvent) => void;
 }
 
-export function AlertFiredTable({ data, selectedId, onView }: AlertFiredTableProps) {
+export function AlertFiredTable({ data, onView }: AlertFiredTableProps) {
+  const { selectedId, setSelectedId } = useSelectedRowStore("alerts");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
 
@@ -179,8 +180,9 @@ export function AlertFiredTable({ data, selectedId, onView }: AlertFiredTablePro
               return (
                 <tr
                   key={alert.id}
+                  onClick={() => setSelectedId(alert.id)}
                   className={cn(
-                    "border-b border-slate-800/60 transition-colors",
+                    "border-b border-slate-800/60 transition-colors cursor-pointer",
                     isSelected
                       ? "bg-blue-500/10 hover:bg-blue-500/15"
                       : cn("hover:bg-slate-800/40", i % 2 === 1 && "bg-slate-900/30"),
