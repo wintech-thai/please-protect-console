@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/ui/coming-soon";
+import AlertChannelView from "@/modules/alert-channel/view/alert-channel.view";
 
 export default function AlertsChannelsPage() {
-  return <ComingSoon title="Alerts Channels" />;
+  return <AlertChannelView />
 }
