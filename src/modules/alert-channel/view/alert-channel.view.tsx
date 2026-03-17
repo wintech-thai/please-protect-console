@@ -1,88 +1,43 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import {
-  Search,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  MoreHorizontal,
-  Plus,
+    Search,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Loader2,
+    MoreHorizontal,
+    Plus,
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
-  useAlertChannels,
-  useEnableAlertChannel,
-  useDisableAlertChannel,
-  useDeleteAlertChannel,
+    useAlertChannels,
+    useEnableAlertChannel,
+    useDisableAlertChannel,
+    useDeleteAlertChannel,
 } from "../hooks/use-alert-channel";
 import type { AlertChannel } from "../api/alert-channel.api";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useSelectedRowStore } from "@/lib/selected-row-store";
-
-// Translations
-const t = {
-  title: "Notifications Channel",
-  subHeader: "Manage your notification channels",
-  searchPlaceholder: "Search channels...",
-  columns: {
-    channelName: "Channel Name",
-    description: "Description",
-    tags: "Tags",
-    type: "Type",
-    status: "Status",
-    action: "Action",
-  },
-  buttons: {
-    add: "Add",
-    delete: "Delete",
-    enable: "Enable Channel",
-    disable: "Disable Channel",
-    cancel: "Cancel",
-    confirm: "Confirm",
-    discord: "Discord",
-  },
-  status: {
-    enabled: "Enabled",
-    disabled: "Disabled",
-  },
-  loading: "Loading...",
-  noData: "No notification channels found",
-  rowsPerPage: "Rows per page:",
-  of: "of",
-  confirm: {
-    enableTitle: "Enable Channel",
-    enableMessage: "Are you sure you want to enable this notification channel?",
-    disableTitle: "Disable Channel",
-    disableMessage: "Are you sure you want to disable this notification channel?",
-    deleteTitle: "Delete Channel",
-    deleteMessage: "Are you sure you want to delete this notification channel?",
-  },
-  toast: {
-    enableSuccess: "Channel enabled successfully",
-    enableError: "Failed to enable channel",
-    disableSuccess: "Channel disabled successfully",
-    disableError: "Failed to disable channel",
-    deleteSuccess: "Channel deleted successfully",
-    deleteError: "Failed to delete channel",
-    fetchError: "Failed to load channels",
-  },
-};
+import { useLanguage } from "@/context/LanguageContext";
+import { alertChannelDict } from "../alert-channel.dict";
 
 export default function AlertChannelView() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const t = alertChannelDict[language as keyof typeof alertChannelDict] || alertChannelDict.EN;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 

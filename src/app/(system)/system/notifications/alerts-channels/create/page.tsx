@@ -1,7 +1,8 @@
 import { ComingSoon } from "@/components/ui/coming-soon"
+import CreateAlertChannelViewPage from "@/modules/alert-channel/view/create-alert-channel.view"
 
 const CreateAlertChannelPage = () => {
-  return <ComingSoon title="Create Alert Channel" />
+  return <CreateAlertChannelViewPage />
 }
 
 export default CreateAlertChannelPage

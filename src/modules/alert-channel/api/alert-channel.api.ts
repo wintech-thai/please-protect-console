@@ -25,16 +25,14 @@ export interface GetAlertChannelsParams {
 
 export interface AddAlertChannelPayload {
   Type: AlertChannelType;
-  Status: AlertChannelStatus;
   ChannelName: string;
   Description: string;
   DiscordWebhookUrl: string;
   Tags: string;
+  Status: AlertChannelStatus;
 }
 
 export interface UpdateAlertChannelPayload {
-  Type: AlertChannelType;
-  Status: AlertChannelStatus;
   ChannelName: string;
   Description: string;
   DiscordWebhookUrl: string;
@@ -76,22 +74,22 @@ export const alertChannelApi = {
     return data.notiAlertChannel;
   },
 
-  addAlertChannel: async (payload: AddAlertChannelPayload): Promise<AlertChannel> => {
+  addAlertChannel: async (payload: AddAlertChannelPayload): Promise<AlertChannelDetailResponse> => {
     const orgId = getOrgId();
     const { data } = await client.post<AlertChannelDetailResponse>(
       `/api/AlertChannel/org/${orgId}/action/AddAlertChannel`,
       payload
     );
-    return data.notiAlertChannel;
+    return data;
   },
 
-  updateAlertChannelById: async (id: string, payload: UpdateAlertChannelPayload): Promise<AlertChannel> => {
+  updateAlertChannelById: async (id: string, payload: UpdateAlertChannelPayload): Promise<AlertChannelDetailResponse> => {
     const orgId = getOrgId();
     const { data } = await client.post<AlertChannelDetailResponse>(
       `/api/AlertChannel/org/${orgId}/action/UpdateAlertChannelById/${id}`,
       payload
     );
-    return data.notiAlertChannel;
+    return data
   },
 
   enableAlertChannelById: async (id: string): Promise<AlertChannel> => {

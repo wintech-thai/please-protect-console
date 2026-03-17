@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type AlertChannelDict } from "./alert-channel.dict";
 
 export type AlertChannelFormData = {
   channelName: string;
@@ -7,19 +8,18 @@ export type AlertChannelFormData = {
   tags?: string;
 };
 
-export const alertChannelFormSchema = z.object({
+export const alertChannelFormSchema = (dict?: AlertChannelDict) => z.object({
   channelName: z
     .string()
-    .min(1, "Channel name is required")
-    .max(100, "Channel name must be less than 100 characters"),
+    .min(1, dict?.validation.channelNameRequired || "Channel name is required")
+    .max(100, dict?.validation.channelNameMax || "Channel name must be less than 100 characters"),
   description: z
     .string()
-    .min(1, "Description is required")
-    .max(500, "Description must be less than 500 characters"),
+    .max(500, dict?.validation.descriptionMax || "Description must be less than 500 characters"),
   discordWebhookUrl: z
     .string()
-    .min(1, "Discord webhook URL is required")
-    .url("Invalid URL format"),
+    .min(1, dict?.validation.discordUrlRequired || "Discord webhook URL is required")
+    .url(dict?.validation.discordUrlInvalid || "Invalid URL format"),
   tags: z
     .string()
     .optional()
@@ -30,9 +30,9 @@ export const alertChannelFormSchema = z.object({
         return tags.every(tag => tag.length > 0);
       },
       {
-        message: "Invalid tag format. Tags should be comma-separated.",
+        message: dict?.validation.tagsInvalid || "Invalid tag format. Tags should be comma-separated.",
       }
     ),
 });
 
-export type AlertChannelFormValues = z.infer<typeof alertChannelFormSchema>;
+export type AlertChannelFormValues = z.infer<ReturnType<typeof alertChannelFormSchema>>;
