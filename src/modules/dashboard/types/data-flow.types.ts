@@ -20,6 +20,23 @@ export interface HistoryPoint {
   output?: number;
 }
 
+// ─── Network Interface types ──────────────────────────────────────────────────
+
+export interface NetworkInterfaceData {
+  id: string;
+  name: string;
+  macAddress: string;
+  ipAddress: string;
+  isEnabled: boolean;
+  stats?: {
+    rxBytes: number;
+    txBytes: number;
+    rxPackets: number;
+    txPackets: number;
+  };
+}
+
+
 // ─── Kafka types ──────────────────────────────────────────────────────────────
 
 /**
@@ -172,6 +189,19 @@ export interface DataFlowTimePickerTranslations {
   last30d: string;
 }
 
+export interface DataFlowNetworkInterfacesTranslations {
+  title: string;
+  noInterface: string;
+  macAddress: string;
+  ipAddress: string;
+  status: string;
+  enable: string;
+  disable: string;
+  enabled: string;
+  disabled: string;
+}
+
+
 export interface DataFlowTranslations {
   title: string;
   subtitle: string;
@@ -184,4 +214,6 @@ export interface DataFlowTranslations {
   refresh: string;
   refreshOff: string;
   timePicker: typeof translations.timePicker.EN;
+  networkInterfaces: DataFlowNetworkInterfacesTranslations;
 }
+

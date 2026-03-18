@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
-import { useQuery, keepPreviousData, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData, type UseQueryOptions } from "@tanstack/react-query";
 import { Activity, Server, Database, Cpu, Router } from "lucide-react";
 import { prometheusApi } from "../api/prometheus.api";
 import { kafkaAdminApi, aggregateLagByGroup, buildTopicStats } from "../api/kafka-admin.api";
 import { esService } from "@/lib/elasticsearch";
+import { networkInterfaceApi } from "../api/network-interface.api";
 import dayjs from "dayjs";
 import type {
   NodeData,
@@ -164,6 +165,7 @@ export const dataFlowKeys = {
       : ([...dataFlowKeys.all, "history", nodeId, "relative", timeRange.value] as const),
   kafkaTopicDetails: (topicName: string | null) =>
     [...dataFlowKeys.all, "kafkaTopicDetails", topicName] as const,
+  networkInterfaces: ["dataFlow", "networkInterfaces"] as const,
 };
 
 // ─── Fetch functions ─────────────────────────────────────────────────
@@ -435,5 +437,30 @@ export function useKafkaTopicDetails(
     enabled: !!topicName,
     placeholderData: keepPreviousData,
     ...options,
+  });
+}
+
+/**
+ * Fetches the status of Network Interfaces (LAN cards)
+ */
+export function useNetworkInterfaces() {
+  return useQuery({
+    queryKey: dataFlowKeys.networkInterfaces,
+    queryFn: () => networkInterfaceApi.getInterfaces(),
+  });
+}
+
+/**
+ * Toggles the enabled/disabled state of a Network Interface
+ */
+export function useToggleNetworkInterface() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, isEnabled }: { id: string; isEnabled: boolean }) =>
+      networkInterfaceApi.toggleInterfaceStatus(id, isEnabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dataFlowKeys.networkInterfaces });
+    },
   });
 }
