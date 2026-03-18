@@ -4,28 +4,28 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
 import {
-    Search,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    Loader2,
-    MoreHorizontal,
-    Plus,
+  Search,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MoreHorizontal,
+  Plus,
 } from "lucide-react";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
-    useAlertChannels,
-    useEnableAlertChannel,
-    useDisableAlertChannel,
-    useDeleteAlertChannel,
+  useAlertChannels,
+  useEnableAlertChannel,
+  useDisableAlertChannel,
+  useDeleteAlertChannel,
 } from "../hooks/use-alert-channel";
 import type { AlertChannel } from "../api/alert-channel.api";
 import { toast } from "sonner";
@@ -225,10 +225,9 @@ export default function AlertChannelView() {
             <Button
               onClick={handleSearchTrigger}
               variant="default"
-              className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500"
+              className="w-full sm:w-auto h-10 bg-blue-600 hover:bg-blue-500"
             >
-              <Search className="w-4 h-4 mr-2" />
-              Search
+              <Search className="size-4" />
             </Button>
           </div>
 
