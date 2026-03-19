@@ -2,24 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { 
-  ChevronLeft, 
-  X, 
-  ChevronRight, 
+import {
+  ChevronLeft,
+  X,
+  ChevronRight,
   ChevronLeft as ChevronLeftIcon,
   Loader2,
   Save
 } from "lucide-react";
 import { toast } from "sonner";
-import { useLanguage } from "@/context/LanguageContext"; 
-import { translations } from "@/locales/dict"; 
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 import { userApi } from "@/modules/auth/api/user.api";
 import { roleApi } from "@/modules/auth/api/role.api";
 
 interface RoleItem {
   id: string;
   name: string;
-  desc?: string; 
+  desc?: string;
 }
 
 interface UserApiBody {
@@ -28,14 +28,14 @@ interface UserApiBody {
   userEmail: string;
   tags: string | null;
   customRoleId: string | null;
-  roles: string[]; 
-  [key: string]: any; 
+  roles: string[];
+  [key: string]: any;
 }
 
 interface GetUserResponse {
   status: string;
   description: string;
-  orgUser: UserApiBody; 
+  orgUser: UserApiBody;
 }
 
 export default function UpdateUserPage() {
@@ -63,13 +63,13 @@ export default function UpdateUserPage() {
 
   // --- Roles State ---
   const [customRolesList, setCustomRolesList] = useState<RoleItem[]>([]);
-  
+
   // --- Transfer List State ---
-  const [leftRoles, setLeftRoles] = useState<RoleItem[]>([]);  
-  const [rightRoles, setRightRoles] = useState<RoleItem[]>([]); 
+  const [leftRoles, setLeftRoles] = useState<RoleItem[]>([]);
+  const [rightRoles, setRightRoles] = useState<RoleItem[]>([]);
   const [checkedLeft, setCheckedLeft] = useState<string[]>([]);
   const [checkedRight, setCheckedRight] = useState<string[]>([]);
-  
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showExitDialog, setShowExitDialog] = useState(false);
 
@@ -79,7 +79,7 @@ export default function UpdateUserPage() {
       if (!userId) return;
       try {
         setIsLoadingData(true);
-        
+
         const [userRes, rolesRes, customRolesRes] = await Promise.all([
           userApi.getUserById(userId),
           roleApi.getRoles(),
@@ -89,9 +89,9 @@ export default function UpdateUserPage() {
         // Map System Roles
         const systemRolesData = Array.isArray(rolesRes) ? rolesRes : (rolesRes?.data || []);
         const allSystemRoles: RoleItem[] = systemRolesData.map((r: any) => ({
-          id: r.roleId || r.id, 
+          id: r.roleId || r.id,
           name: r.roleName || r.name,
-          desc: r.roleDescription || r.roleDesc || "-" 
+          desc: r.roleDescription || r.roleDesc || "-"
         }));
 
         // Map Custom Roles
@@ -115,14 +115,14 @@ export default function UpdateUserPage() {
 
         setFormData({
             username: userData.userName || "",
-            email: userData.userEmail || (userData as any).tmpUserEmail || "", 
+            email: userData.userEmail || (userData as any).tmpUserEmail || "",
             tags: userData.tags ? userData.tags.split(',').filter(t => t.trim() !== "") : [],
             customRole: userData.customRoleId || ""
         });
 
         let userRoleNames: string[] = [];
         if (Array.isArray(userData.roles)) {
-            userRoleNames = userData.roles.map((r: any) => 
+            userRoleNames = userData.roles.map((r: any) =>
               (typeof r === 'string' ? r : (r.roleName || r.name || ""))
             );
         }
@@ -148,8 +148,8 @@ export default function UpdateUserPage() {
   const checkIsDirty = () => {
     if (!originalUser) return false;
 
-    const originalTags = originalUser.tags 
-        ? originalUser.tags.split(',').filter(t => t.trim() !== "").sort().join(',') 
+    const originalTags = originalUser.tags
+        ? originalUser.tags.split(',').filter(t => t.trim() !== "").sort().join(',')
         : "";
     const currentTags = formData.tags.slice().sort().join(',');
     if (originalTags !== currentTags) return true;
@@ -165,7 +165,7 @@ export default function UpdateUserPage() {
             .sort()
             .join(',');
     }
-    
+
     const currentRoleIdsStr = rightRoles.map(r => r.name).slice().sort().join(',');
     if (originalRoleIdsStr !== currentRoleIdsStr) return true;
 
@@ -230,13 +230,13 @@ export default function UpdateUserPage() {
     if (Object.keys(newErrors).length > 0) return;
 
     if (originalUser) {
-        const originalTags = originalUser.tags 
-            ? originalUser.tags.split(',').filter(t => t.trim() !== "").sort().join(',') 
+        const originalTags = originalUser.tags
+            ? originalUser.tags.split(',').filter(t => t.trim() !== "").sort().join(',')
             : "";
         const finalTagsStr = finalTags.slice().sort().join(',');
-        
+
         const originalCustomRole = originalUser.customRoleId || "";
-        
+
         let originalRoleIdsStr = "";
         if (Array.isArray(originalUser.roles)) {
             originalRoleIdsStr = originalUser.roles
@@ -244,10 +244,10 @@ export default function UpdateUserPage() {
                 .sort()
                 .join(',');
         }
-        
+
         const currentRoleIdsStr = rightRoles.map(r => r.name).slice().sort().join(',');
 
-        const isChanged = 
+        const isChanged =
             originalTags !== finalTagsStr ||
             formData.customRole !== originalCustomRole ||
             originalRoleIdsStr !== currentRoleIdsStr;
@@ -259,20 +259,20 @@ export default function UpdateUserPage() {
 
         try {
             setIsSubmitting(true);
-            
+
             const payload: UserApiBody = {
                 ...originalUser,
-                userName: formData.username || originalUser.userName, 
+                userName: formData.username || originalUser.userName,
                 userEmail: formData.email || originalUser.userEmail,
                 tags: finalTags.join(','),
                 customRoleId: formData.customRole || null,
-                
+
                 roles: rightRoles.map(r => r.name)
             };
 
             await userApi.updateUserById(userId, payload);
-            
-            toast.success(t.toast.updateSuccess); 
+
+            toast.success(t.toast.updateSuccess);
             router.push(`/admin/users?highlight=${userId}`);
 
         } catch (error: any) {
@@ -297,7 +297,7 @@ export default function UpdateUserPage() {
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 text-slate-200">
-      
+
       {/* Header */}
       <div className="flex-none pt-6 px-4 md:px-8 mb-4">
         <div className="flex items-center gap-4">
@@ -318,8 +318,8 @@ export default function UpdateUserPage() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto pb-8 no-scrollbar">
-        <div className="px-4 md:px-8 space-y-6"> 
-            
+        <div className="px-4 md:px-8 space-y-6">
+
             {/* 1. User Information Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -332,10 +332,10 @@ export default function UpdateUserPage() {
                         <label className="text-sm font-medium text-slate-400">
                             {t.labels.username} <span className="text-red-400">*</span>
                         </label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={formData.username}
-                            disabled 
+                            disabled
                             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-500 outline-none cursor-default opacity-75 text-sm font-mono"
                         />
                     </div>
@@ -345,15 +345,15 @@ export default function UpdateUserPage() {
                         <label className="text-sm font-medium text-slate-400">
                             {t.labels.email} <span className="text-red-400">*</span>
                         </label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={formData.email}
-                            disabled 
+                            disabled
                             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2.5 text-slate-500 outline-none cursor-default opacity-75 text-sm font-mono"
                         />
                     </div>
                 </div>
-                
+
                 <div className="space-y-2 mt-6">
                     <label className="text-sm font-medium text-slate-300">{t.labels.tags} <span className="text-red-400">*</span></label>
                     <div className={`w-full bg-slate-950 border ${errors.tags ? 'border-red-500/50' : 'border-slate-700 focus-within:border-blue-500'} rounded-lg px-3 py-2 min-h-[46px] flex flex-wrap gap-2 items-center transition-all`}>
@@ -363,7 +363,7 @@ export default function UpdateUserPage() {
                                 <button onClick={() => removeTag(tag)} className="hover:text-white hover:bg-blue-500/20 rounded-full p-0.5 transition-colors"><X className="w-3 h-3" /></button>
                             </span>
                         ))}
-                        <input 
+                        <input
                             type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
                             placeholder={formData.tags.length === 0 ? t.labels.tagsPlaceholder : ""}
                             className="bg-transparent outline-none text-slate-200 flex-1 min-w-[150px] text-sm placeholder:text-slate-600 h-full py-1"
@@ -379,11 +379,11 @@ export default function UpdateUserPage() {
                     <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
                     {t.rolesTitle}
                 </h2>
-                
+
                 <div className="mb-6 max-w-xl">
                     <label className="text-sm font-medium text-slate-300 mb-2 block">{t.labels.customRole}</label>
                     <div className="relative">
-                        <select 
+                        <select
                             value={formData.customRole}
                             onChange={e => setFormData({...formData, customRole: e.target.value})}
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer text-sm"
@@ -416,8 +416,8 @@ export default function UpdateUserPage() {
                                     <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesAvailable}</div>
                                 ) : (
                                     leftRoles.map(role => (
-                                        <div 
-                                            key={role.id} 
+                                        <div
+                                            key={role.id}
                                             className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedLeft.includes(role.id) ? 'bg-blue-600/10 border border-blue-600/30' : 'hover:bg-slate-900 border border-transparent'}`}
                                             onClick={() => handleCheck(role.id, "left")}
                                         >
@@ -455,8 +455,8 @@ export default function UpdateUserPage() {
                                     <div className="h-full flex flex-col items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesSelected}</div>
                                 ) : (
                                     rightRoles.map(role => (
-                                        <div 
-                                            key={role.id} 
+                                        <div
+                                            key={role.id}
                                             className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedRight.includes(role.id) ? 'bg-red-500/10 border border-red-500/30' : 'hover:bg-slate-900 border border-transparent'}`}
                                             onClick={() => handleCheck(role.id, "right")}
                                         >
@@ -484,9 +484,9 @@ export default function UpdateUserPage() {
             <button onClick={handleCancel} className="px-6 py-2.5 rounded-lg border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-all font-medium text-sm">
                 {t.buttons.cancel}
             </button>
-            <button 
-                onClick={handleSubmit} 
-                disabled={isSubmitting} 
+            <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
                 className={`px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all font-medium text-sm flex items-center gap-2`}
             >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.buttons.save}

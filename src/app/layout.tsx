@@ -5,6 +5,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { QueryProvider } from "@/lib/query-provider";
+import { NavigationBlockerProvider } from "@/hooks/use-form-navigation-blocker";
 
 const prompt = localFont({
   src: [
@@ -47,7 +48,9 @@ export default function RootLayout({
         <LanguageProvider>
           <QueryProvider>
             <NuqsAdapter>
-              {children}
+              <NavigationBlockerProvider>
+                {children}
+              </NavigationBlockerProvider>
             </NuqsAdapter>
           </QueryProvider>
 

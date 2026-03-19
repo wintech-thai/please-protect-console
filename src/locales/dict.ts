@@ -241,9 +241,9 @@ export const translations = {
       shellTerminal: "Shell Terminal",
       settings: "Settings",
       notifications: "Notifications",
-      alertsChannels: "Alerts Channels",
-      alertsFired: "Alerts Fired",
-      alertsRules: "Alerts Rules",
+      alertsChannels: "Notifications Channels",
+      alertsFired: "Notifications Fired",
+      alertsRules: "Notifications Rules",
       backupRestore: "Backup / Restore",
       indices: "Indices",
       backupHistory: "Backup History",
@@ -421,6 +421,17 @@ export const translations = {
       lastUpdated: "Last updated",
       refresh: "Refresh",
       refreshOff: "Off",
+      networkInterfaces: {
+        title: "Network Interfaces",
+        noInterface: "No Interface",
+        macAddress: "MAC Address",
+        ipAddress: "IP Address",
+        status: "Status",
+        enable: "Enable",
+        disable: "Disable",
+        enabled: "Enabled",
+        disabled: "Disabled"
+      }
     },
     TH: {
       title: "ภาพรวมการไหลของข้อมูล",
@@ -469,6 +480,17 @@ export const translations = {
       lastUpdated: "อัปเดตล่าสุด",
       refresh: "รีเฟรช",
       refreshOff: "ปิด",
+      networkInterfaces: {
+        title: "Network Interfaces",
+        noInterface: "ไม่มี Interface",
+        macAddress: "MAC Address",
+        ipAddress: "IP Address",
+        status: "สถานะ",
+        enable: "เปิดใช้งาน (Enable)",
+        disable: "ปิดใช้งาน (Disable)",
+        enabled: "เปิดใช้งานแล้ว",
+        disabled: "ปิดใช้งานแล้ว"
+      }
     }
   },
 

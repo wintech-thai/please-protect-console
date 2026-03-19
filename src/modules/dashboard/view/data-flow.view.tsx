@@ -20,6 +20,7 @@ import {
   useNodeHistory,
   useKafkaTopicDetails,
   dataFlowKeys,
+  useNetworkInterfaces,
 } from "../hooks/use-data-flow";
 import { useQueryClient } from "@tanstack/react-query";
 import type {
@@ -32,6 +33,7 @@ import type {
 import { useTimeRange } from "@/modules/dashboard/hooks/use-time-range";
 import { OverviewHeader } from "@/modules/dashboard/components/overview-header";
 import { AdvancedTimeRangeSelector } from "@/components/ui/advanced-time-selector";
+import { LANPort } from "@/modules/dashboard/components/lan-port";
 
 const CHART_COLORS = { input: "#34d399", output: "#60a5fa" } as const;
 const CHART_AXIS_STYLE = {
@@ -455,12 +457,13 @@ const DetailsPanel = ({
   }
 
   const isTopic = node.type === "Topic";
+  const isInterface = node.type === "Interface";
   const hasMetrics = ["Processor", "DataStore"].includes(node.type);
   const isInputOnly = node.type === "DataStore";
   const { inputRate = 0, outputRate = 0 } = nodeRates[node.id] ?? {};
 
   return (
-    <div className="border-t border-slate-700 bg-slate-900/50 p-4 md:p-6 animate-in slide-in-from-bottom-10 max-h-[40vh] md:max-h-none overflow-y-auto min-h-[40vh] md:min-h-80">
+    <div className="border-t border-slate-700 bg-slate-900/50 p-4 md:p-6 animate-in slide-in-from-bottom-10 max-h-[40vh] overflow-y-auto min-h-[40vh] md:min-h-80">
       <div className="flex flex-col md:flex-row gap-4 md:gap-6">
         {/* Left — Info */}
         <div className="w-full md:w-64 space-y-3 md:space-y-4 shrink-0">
@@ -473,7 +476,7 @@ const DetailsPanel = ({
             </p>
           </div>
 
-          {isTopic ? null : !hasMetrics ? (
+          {isTopic || isInterface ? null : !hasMetrics ? (
             <div className="p-4 bg-slate-800 rounded-lg text-slate-400 text-sm">
               {t.details.noMetrics}
             </div>
@@ -495,7 +498,7 @@ const DetailsPanel = ({
           )}
         </div>
 
-        {/* Right — Kafka panel OR throughput chart */}
+        {/* Right — Kafka panel OR throughput chart OR Network Interface */}
         <div className="flex-1 min-w-0">
           {isTopic ? (
             <KafkaTopicPanel
@@ -503,6 +506,8 @@ const DetailsPanel = ({
               t={t.details}
               refreshInterval={refreshInterval}
             />
+          ) : node.type === "Interface" ? (
+            <NetworkInterfaceSlots t={t as Omit<DataFlowTranslations, "timePicker">} />
           ) : hasMetrics ? (
             <HistoryChart
               data={historyData}
@@ -516,7 +521,120 @@ const DetailsPanel = ({
   );
 };
 
+// ─── Network Interface Slots ──────────────────────────────────────────────────
+
+import type { DataFlowTranslations } from "../types/data-flow.types";
+
+const formatBytes = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const formatNumber = (num: number) => {
+  if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+  if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+  return num.toString();
+};
+
+const NetworkInterfaceSlots = ({ t }: { t: Omit<DataFlowTranslations, "timePicker"> }) => {
+  const { data: interfaces = [], isLoading } = useNetworkInterfaces();
+
+  // Fix exactly 4 slots representing LAN 1 to LAN 4
+  const slots = Array.from({ length: 4 }).map((_, idx) => interfaces[idx] || null);
+
+  if (isLoading) {
+    return (
+      <div className="w-full flex items-center justify-center p-4 text-slate-400">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+        {t.loading}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col w-full h-full">
+      {/* Switch Panel Box */}
+      <div className="bg-slate-800 rounded-lg p-4 md:p-6 border-b-4 border-r-4 border-slate-900 shadow-xl w-full flex-1 max-w-4xl">
+        <div className="flex justify-between text-[10px] text-slate-400 font-mono tracking-widest mb-6 px-2">
+          <span>NETWORK SWITCH</span>
+          <span>4-PORT GIGABIT</span>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 justify-items-center">
+          {slots.map((iface, idx) => {
+            const isEmpty = !iface;
+            const isEnabled = iface?.isEnabled ?? false;
+
+            return (
+              <div key={idx} className="flex flex-col items-center w-full max-w-48">
+                <div className="mb-4">
+                  <LANPort
+                    label={`LAN ${idx + 1}`}
+                    state={isEmpty ? "empty" : isEnabled ? "connected_active" : "connected_idle"}
+                  />
+                </div>
+
+                {/* Details Control */}
+                {isEmpty ? (
+                   <div className="text-center bg-slate-900/50 rounded p-2 text-slate-600 text-[10px] w-full border border-dashed border-slate-700 font-mono h-21.5 flex items-center justify-center">
+                     {t.networkInterfaces?.noInterface ?? "NO INTERFACE"}
+                   </div>
+                ) : (
+                  <div className="flex flex-col bg-slate-900 rounded p-3 text-slate-300 w-full border border-slate-700 min-h-32 justify-between relative shadow-md">
+                    <div className="flex items-start justify-between mb-2 gap-1.5">
+                      <div className="font-bold text-sm text-white truncate flex-1 min-w-0 leading-none pt-0.5">
+                        {iface.name}
+                      </div>
+
+                      <span className={`shrink-0 whitespace-nowrap inline-block text-[10px] px-2 py-1 leading-none rounded-full font-bold tracking-wider uppercase ${iface.isEnabled ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
+                        {iface.isEnabled ? (t.networkInterfaces?.enabled ?? "Enabled") : (t.networkInterfaces?.disabled ?? "Disabled")}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-0.5 text-[9px] font-mono text-slate-400 mt-1 mb-2">
+                      <div className="truncate text-slate-300">{iface.ipAddress !== "N/A" ? iface.ipAddress : "No IP"}</div>
+                      <div className="truncate opacity-60 text-[8px] shrink-0">{iface.macAddress !== "N/A" ? iface.macAddress : ""}</div>
+                    </div>
+
+                    {iface.stats ? (
+                      <div className="mt-auto pt-2 border-t border-slate-800 grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] w-full">
+                        <div className="flex flex-col">
+                          <span className="text-slate-500 whitespace-nowrap">Rx Data</span>
+                          <span className="text-emerald-400 font-mono">{formatBytes(iface.stats.rxBytes)}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-slate-500 whitespace-nowrap">Tx Data</span>
+                          <span className="text-blue-400 font-mono">{formatBytes(iface.stats.txBytes)}</span>
+                        </div>
+                        <div className="flex flex-col mt-1">
+                          <span className="text-slate-500 whitespace-nowrap">Rx Pkts</span>
+                          <span className="text-emerald-400/80 font-mono">{formatNumber(iface.stats.rxPackets)}</span>
+                        </div>
+                        <div className="flex flex-col mt-1">
+                          <span className="text-slate-500 whitespace-nowrap">Tx Pkts</span>
+                          <span className="text-blue-400/80 font-mono">{formatNumber(iface.stats.txPackets)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-auto pt-2 border-t border-slate-800 text-[9px] text-slate-500 italic text-center">
+                        No traffic metrics
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
 // ─── Page shell ───────────────────────────────────────────────────────────────
+
 
 const DataFlowViewPage = () => {
   return (
@@ -549,7 +667,7 @@ const DataFlowContent = () => {
   const nodes = useNodes({
     ...t,
     timePicker: tTimePicker
-  });
+  } as DataFlowTranslations);
   const [selectedNodeId, setSelectedNodeId] = useState("receiver1");
   const {
     nodeRates,

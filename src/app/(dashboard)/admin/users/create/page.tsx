@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation"; 
-import { 
-  ChevronLeft, 
-  X, 
-  ChevronRight, 
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import {
+  ChevronLeft,
+  X,
+  ChevronRight,
   ChevronLeft as ChevronLeftIcon,
   Loader2,
   Check,
@@ -13,8 +13,8 @@ import {
   UserPlus
 } from "lucide-react";
 import { toast } from "sonner";
-import { useLanguage } from "@/context/LanguageContext"; 
-import { translations } from "@/locales/dict"; 
+import { useLanguage } from "@/context/LanguageContext";
+import { translations } from "@/locales/dict";
 import { userApi } from "@/modules/auth/api/user.api";
 import { roleApi } from "@/modules/auth/api/role.api";
 import { InviteUserPayload } from "@/modules/auth/api/types";
@@ -22,7 +22,7 @@ import { InviteUserPayload } from "@/modules/auth/api/types";
 interface RoleItem {
   id: string;
   name: string;
-  desc?: string; 
+  desc?: string;
 }
 
 export default function CreateUserPage() {
@@ -30,9 +30,9 @@ export default function CreateUserPage() {
   const t = translations.createUser[language as keyof typeof translations.createUser] || translations.createUser.EN;
 
   const router = useRouter();
-  const pathname = usePathname(); 
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   const [returnToId, setReturnToId] = useState<string | null>(null);
 
   // --- Form State ---
@@ -44,7 +44,7 @@ export default function CreateUserPage() {
   });
 
   const [tagInput, setTagInput] = useState("");
-  
+
   // --- Roles State ---
   const [customRolesList, setCustomRolesList] = useState<RoleItem[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -55,7 +55,7 @@ export default function CreateUserPage() {
   const [rightRoles, setRightRoles] = useState<RoleItem[]>([]);
   const [checkedLeft, setCheckedLeft] = useState<string[]>([]);
   const [checkedRight, setCheckedRight] = useState<string[]>([]);
-  
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showExitDialog, setShowExitDialog] = useState(false);
 
@@ -63,7 +63,7 @@ export default function CreateUserPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [isCopied, setIsCopied] = useState(false);
-  
+
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -97,13 +97,13 @@ export default function CreateUserPage() {
         ]);
         const systemRolesData = Array.isArray(rolesRes) ? rolesRes : (rolesRes?.data || []);
         const mappedSystemRoles = systemRolesData.map((r: any) => ({
-          id: r.roleId || r.id, 
+          id: r.roleId || r.id,
           name: r.roleName || r.name,
-          desc: r.roleDescription || r.roleDesc || "-" 
+          desc: r.roleDescription || r.roleDesc || "-"
         }));
         const customRolesData = Array.isArray(customRolesRes) ? customRolesRes : (customRolesRes?.data || []);
         const mappedCustomRoles = customRolesData.map((r: any) => ({
-          id: r.customRoleId || r.roleId || r.id, 
+          id: r.customRoleId || r.roleId || r.id,
           name: r.customRoleName || r.roleName || r.name,
           desc: r.customRoleDesc || r.roleDescription || "-"
         }));
@@ -158,7 +158,7 @@ export default function CreateUserPage() {
   const handleCancel = () => {
     const isDirty = formData.username.trim() !== "" || formData.email.trim() !== "" || formData.tags.length > 0 || formData.customRole !== "" || rightRoles.length > 0 || tagInput.trim() !== "";
     if (isDirty) setShowExitDialog(true);
-    else goBack(); 
+    else goBack();
   };
 
   const handleSubmit = async () => {
@@ -171,7 +171,7 @@ export default function CreateUserPage() {
     if (!formData.email) newErrors.email = t.validation.email;
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t.validation.emailInvalid;
     if (finalTags.length === 0) newErrors.tags = t.validation.tags;
-    
+
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
@@ -181,9 +181,9 @@ export default function CreateUserPage() {
         const payload: InviteUserPayload = {
           userName: formData.username.trim(),
           tmpUserEmail: formData.email.trim(),
-          tags: finalTags.join(','), 
-          customRoleId: formData.customRole, 
-          roles: rightRoles.map(r => r.name), 
+          tags: finalTags.join(','),
+          customRoleId: formData.customRole,
+          roles: rightRoles.map(r => r.name),
         };
 
         const response = await userApi.inviteUser(payload);
@@ -197,7 +197,7 @@ export default function CreateUserPage() {
         const newId = resData?.orgUserId || resData?.id || null;
         setCreatedUserId(newId);
 
-        const rawLink = resData?.registrationUrl || ""; 
+        const rawLink = resData?.registrationUrl || "";
         let finalLink = rawLink;
 
         if (rawLink && typeof window !== "undefined") {
@@ -208,15 +208,15 @@ export default function CreateUserPage() {
         }
 
         setInviteLink(finalLink || "Link not found");
-        toast.success(t.toast.success); 
+        toast.success(t.toast.success);
         setShowInviteModal(true);
 
       } catch (error: any) {
         console.error("Failed to invite user:", error);
-        
+
         const errorMsg = error?.message || t.toast.error;
         toast.error(errorMsg);
-        
+
       } finally {
         setIsSubmitting(false);
       }
@@ -262,8 +262,8 @@ export default function CreateUserPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8 no-scrollbar">
-        <div className="px-4 md:px-8 space-y-6"> 
-            
+        <div className="px-4 md:px-8 space-y-6">
+
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
@@ -272,8 +272,8 @@ export default function CreateUserPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">{t.labels.username} <span className="text-red-400">*</span></label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder={t.placeholders.username}
                             value={formData.username}
                             onChange={e => setFormData({...formData, username: e.target.value})}
@@ -283,8 +283,8 @@ export default function CreateUserPage() {
                     </div>
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">{t.labels.email} <span className="text-red-400">*</span></label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder={t.placeholders.email}
                             value={formData.email}
                             onChange={e => setFormData({...formData, email: e.target.value})}
@@ -293,7 +293,7 @@ export default function CreateUserPage() {
                           {errors.email && <p className="text-red-400 text-xs">{errors.email}</p>}
                     </div>
                 </div>
-                
+
                 <div className="space-y-2 mt-6">
                     <label className="text-sm font-medium text-slate-300">{t.labels.tags} <span className="text-red-400">*</span></label>
                     <div className={`w-full bg-slate-950 border ${errors.tags ? 'border-red-500/50' : 'border-slate-700 focus-within:border-blue-500'} rounded-lg px-3 py-2 min-h-[46px] flex flex-wrap gap-2 items-center transition-all`}>
@@ -303,7 +303,7 @@ export default function CreateUserPage() {
                                 <button onClick={() => removeTag(tag)} className="hover:text-white hover:bg-blue-500/20 rounded-full p-0.5 transition-colors"><X className="w-3 h-3" /></button>
                             </span>
                         ))}
-                        <input 
+                        <input
                             type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown}
                             placeholder={formData.tags.length === 0 ? t.labels.tagsPlaceholder : ""}
                             className="bg-transparent outline-none text-slate-200 flex-1 min-w-[150px] text-sm placeholder:text-slate-600 h-full py-1"
@@ -318,11 +318,11 @@ export default function CreateUserPage() {
                     <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
                     {t.rolesTitle}
                 </h2>
-                
+
                 <div className="mb-6 max-w-xl">
                     <label className="text-sm font-medium text-slate-300 mb-2 block">{t.labels.customRole}</label>
                     <div className="relative">
-                        <select 
+                        <select
                             value={formData.customRole}
                             onChange={e => setFormData({...formData, customRole: e.target.value})}
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer text-sm"
@@ -353,8 +353,8 @@ export default function CreateUserPage() {
                                     <div className="h-full flex items-center justify-center text-slate-600 text-xs opacity-70">{t.noRolesAvailable}</div>
                                 ) : (
                                     leftRoles.map(role => (
-                                        <div 
-                                            key={role.id} 
+                                        <div
+                                            key={role.id}
                                             className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedLeft.includes(role.id) ? 'bg-blue-600/10 border border-blue-600/30' : 'hover:bg-slate-900 border border-transparent'}`}
                                             onClick={() => handleCheck(role.id, "left")}
                                         >
@@ -393,8 +393,8 @@ export default function CreateUserPage() {
                                     </div>
                                 ) : (
                                     rightRoles.map(role => (
-                                        <div 
-                                            key={role.id} 
+                                        <div
+                                            key={role.id}
                                             className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${checkedRight.includes(role.id) ? 'bg-red-500/10 border border-red-500/30' : 'hover:bg-slate-900 border border-transparent'}`}
                                             onClick={() => handleCheck(role.id, "right")}
                                         >
