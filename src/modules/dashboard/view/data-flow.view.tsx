@@ -469,7 +469,6 @@ const DetailsPanel = ({
         {!isInterface && (
           <div className={cn(
             "w-full md:w-64 space-y-3 md:space-y-4 shrink-0",
-            isInterface && "md:w-44"
           )}>
             <div>
               <h3 className="text-lg md:text-xl font-semibold text-white mb-1">
