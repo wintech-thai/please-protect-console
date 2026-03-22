@@ -466,40 +466,42 @@ const DetailsPanel = ({
     <div className="border-t border-slate-700 bg-slate-900/50 p-4 md:p-6 animate-in slide-in-from-bottom-10 max-h-[40vh] overflow-y-auto min-h-[40vh] md:min-h-80">
       <div className="flex flex-col md:flex-row gap-4 md:gap-6">
         {/* Left — Info */}
-        <div className={cn(
-          "w-full md:w-64 space-y-3 md:space-y-4 shrink-0",
-          isInterface && "md:w-44"
-        )}>
-          <div>
-            <h3 className="text-lg md:text-xl font-semibold text-white mb-1">
-              {node.name}
-            </h3>
-            <p className="text-xs md:text-sm text-slate-400 truncate">
-              {node.tag}
-            </p>
-          </div>
+        {!isInterface && (
+          <div className={cn(
+            "w-full md:w-64 space-y-3 md:space-y-4 shrink-0",
+            isInterface && "md:w-44"
+          )}>
+            <div>
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-1">
+                {node.name}
+              </h3>
+              <p className="text-xs md:text-sm text-slate-400 truncate">
+                {node.tag}
+              </p>
+            </div>
 
-          {isTopic || isInterface ? null : !hasMetrics ? (
-            <div className="p-4 bg-slate-800 rounded-lg text-slate-400 text-sm">
-              {t.details.noMetrics}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-4">
-              <RateCard
-                label={t.details.inputRate}
-                value={inputRate}
-                color="text-emerald-400"
-              />
-              {!isInputOnly && (
+            {isTopic || isInterface ? null : !hasMetrics ? (
+              <div className="p-4 bg-slate-800 rounded-lg text-slate-400 text-sm">
+                {t.details.noMetrics}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-4">
                 <RateCard
-                  label={t.details.outputRate}
-                  value={outputRate}
-                  color="text-blue-400"
+                  label={t.details.inputRate}
+                  value={inputRate}
+                  color="text-emerald-400"
                 />
-              )}
-            </div>
-          )}
-        </div>
+                {!isInputOnly && (
+                  <RateCard
+                    label={t.details.outputRate}
+                    value={outputRate}
+                    color="text-blue-400"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Right — Kafka panel OR throughput chart OR Network Interface */}
         <div className="flex-1 min-w-0">
