@@ -26,6 +26,7 @@ import {
   AdvancedTimeRangeSelector,
   TimeRangeValue,
 } from "@/components/ui/advanced-time-selector";
+import { Input } from "@/components/ui/input";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -89,14 +90,24 @@ export default function CloudConnectPageView() {
     // Escape special characters for Lucene query string to prevent parsing errors
     const escapedTerm = searchTerm.replace(/[+\-=&|><!(){}\[\]^"~*?:\\/]/g, "\\$&");
     const textQuery = {
-      query_string: {
-        query: `*${escapedTerm}*`,
-        fields: [
-          "data.CloudConnectDomain",
-          "data.CloudConnectPath",
-          "data.response.body*",
+      bool: {
+        should: [
+          {
+            multi_match: {
+              query: searchTerm,
+              fields: ["data.CloudConnectDomain", "data.CloudConnectPath"],
+              type: "phrase_prefix",
+            },
+          },
+          {
+            query_string: {
+              query: `*${escapedTerm}*`,
+              fields: ["data.response.body*"],
+              lenient: true,
+            },
+          },
         ],
-        lenient: true,
+        minimum_should_match: 1,
       },
     };
 
@@ -269,13 +280,12 @@ export default function CloudConnectPageView() {
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800 shadow-sm">
           <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-2">
             <div className="relative w-full sm:flex-1 xl:flex-none xl:w-auto xl:min-w-150">
-              <input
+              <Input
                 type="text"
                 placeholder={t.searchPlaceholder}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearchTrigger()}
-                className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg pl-3 pr-10 py-2.5 focus:outline-none focus:border-blue-500 placeholder:text-slate-600 transition-colors"
               />
             </div>
 
