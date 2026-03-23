@@ -14,3 +14,13 @@ export interface CloudConnectLogDocument {
   };
   [key: string]: unknown;
 }
+
+export interface ElasticSearchBucket {
+  key_as_string?: string;
+  key: number;
+  doc_count: number;
+  by_dataset?: {
+    buckets: Array<{ key: number | string; doc_count: number }>;
+  };
+  [key: string]: unknown;
+}

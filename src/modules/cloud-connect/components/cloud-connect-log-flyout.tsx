@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X, FileJson, Table as TableIcon, Search, Copy, Check, Calendar, Globe, Hash, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CloudConnectLogDocument } from "../cloud-connect.schema";
 import { cloudConnectDict } from "../cloud-connect.dict";
+import { } from "usehooks-ts";
 
 interface CloudConnectLogFlyoutProps {
   log: CloudConnectLogDocument | null;
@@ -33,17 +34,25 @@ export function CloudConnectLogFlyout({ log, onClose, dict }: CloudConnectLogFly
   const [isCopied, setIsCopied] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   const flattenedData = useMemo(() => {
     const data: Record<string, string> = {};
     if (!log) return data;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const flatten = (obj: any, prefix = "") => {
+    const flatten = (obj: Record<string, unknown>, prefix = "") => {
       Object.keys(obj).forEach((key) => {
         const value = obj[key];
         const newKey = prefix ? `${prefix}.${key}` : key;
         if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-          flatten(value, newKey);
+          flatten(value as Record<string, unknown>, newKey);
         } else {
           data[newKey] = String(value);
         }

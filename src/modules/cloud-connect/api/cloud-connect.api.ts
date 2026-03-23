@@ -14,7 +14,7 @@ export const cloudConnectApi = {
   getChartData: async (orgId: string, start: number, end: number, step: string, query?: Record<string, unknown>) => {
     if (!orgId) throw new Error("Organization ID is required.");
     const endpoint = `/api/Proxy/org/${orgId}/action/ElasticSearch/cc-*/_search`;
-    
+
     const payload: EsSearchPayload = {
       size: 0,
       track_total_hits: true,
@@ -30,10 +30,10 @@ export const cloudConnectApi = {
               max: new Date(end * 1000).toISOString()
             }
           },
-          aggs: { 
-            by_dataset: { 
-              terms: { field: "data.response.status", size: 10 } 
-            } 
+          aggs: {
+            by_dataset: {
+              terms: { field: "data.response.status", size: 10 }
+            }
           }
         }
       }

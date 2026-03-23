@@ -64,7 +64,7 @@ export function CloudConnectTable({
                   <td className="p-4 text-slate-400 truncate max-w-xs" title={row.description}>{row.description}</td>
                   <td className="p-4 text-slate-400 font-mono text-xs">{row.latencyMs !== null ? `${row.latencyMs} ms` : "-"}</td>
                   <td className="p-4 text-center">
-                    <button onClick={(e) => { e.stopPropagation(); onViewDetails(row); }} className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
+                    <button onClick={() => { onViewDetails(row); }} className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700">
                       <Eye className="w-4 h-4" />
                     </button>
                   </td>

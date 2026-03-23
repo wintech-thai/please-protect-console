@@ -16,7 +16,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { cloudConnectDict } from "../cloud-connect.dict";
 import { cloudConnectApi } from "../api/cloud-connect.api";
-import { CloudConnectLogDocument } from "../cloud-connect.schema";
+import { CloudConnectLogDocument, ElasticSearchBucket } from "../cloud-connect.schema";
 import { CloudConnectHistogram } from "../components/cloud-connect-histogram";
 import { RegisterCloudModal } from "../components/register-cloud-modal";
 import { CloudConnectTable } from "../components/cloud-connect-table";
@@ -86,7 +86,7 @@ export default function CloudConnectPageView() {
   const queryMustBase = useMemo(() => {
     const must: Record<string, unknown>[] = [];
     if (searchTerm) {
-      must.push({
+      const textQuery = {
         multi_match: {
           query: searchTerm,
           fields: [
@@ -96,7 +96,22 @@ export default function CloudConnectPageView() {
           ],
           type: "phrase_prefix",
         },
-      });
+      };
+
+      const searchNum = Number(searchTerm);
+      if (!isNaN(searchNum) && searchTerm.trim() !== "") {
+        must.push({
+          bool: {
+            should: [
+              textQuery,
+              { term: { "data.response.status": searchNum } }
+            ],
+            minimum_should_match: 1
+          }
+        });
+      } else {
+        must.push(textQuery);
+      }
     }
     return must;
   }, [searchTerm]);
@@ -113,13 +128,21 @@ export default function CloudConnectPageView() {
         return { logs: [] as CloudConnectLogDocument[], totalCount: 0 };
 
       const { start, end } = getTimeBounds();
+      const timeFilter = {
+        bool: {
+          should: [
+            { range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { range: { "@timestamp.keyword": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { range: { "timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { range: { "data.@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } }
+          ],
+          minimum_should_match: 1
+        }
+      };
+
       const queryMust = [
         ...queryMustBase,
-        {
-          range: {
-            "@timestamp": { gte: start.toISOString(), lte: end.toISOString() },
-          },
-        },
+        timeFilter,
       ];
       const from = (page - 1) * itemsPerPage;
 
@@ -153,13 +176,21 @@ export default function CloudConnectPageView() {
         return { buckets: [], interval: "1m", maxDocCount: 0, totalHits: 0 };
 
       const { start, end } = getTimeBounds();
+      const timeFilter = {
+        bool: {
+          should: [
+            { range: { "@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { range: { "@timestamp.keyword": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { range: { "timestamp": { gte: start.toISOString(), lte: end.toISOString() } } },
+            { range: { "data.@timestamp": { gte: start.toISOString(), lte: end.toISOString() } } }
+          ],
+          minimum_should_match: 1
+        }
+      };
+
       const queryMust = [
         ...queryMustBase,
-        {
-          range: {
-            "@timestamp": { gte: start.toISOString(), lte: end.toISOString() },
-          },
-        },
+        timeFilter,
       ];
       const query = {
         bool: { must: queryMust.length > 0 ? queryMust : [{ match_all: {} }] },
@@ -183,13 +214,11 @@ export default function CloudConnectPageView() {
         query,
       );
       const maxDocCount = Math.max(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...bucketsUrl.map((b: any) => b.doc_count || 0),
+        ...bucketsUrl.map((b: ElasticSearchBucket) => b.doc_count || 0),
         1,
       );
       const totalHits = bucketsUrl.reduce(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (sum: number, b: any) => sum + (b.doc_count || 0),
+        (sum: number, b: ElasticSearchBucket) => sum + (b.doc_count || 0),
         0,
       );
 
@@ -240,7 +269,7 @@ export default function CloudConnectPageView() {
       <div className="flex-none py-4 px-4 md:px-6">
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800 shadow-sm">
           <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-2">
-            <div className="relative w-full sm:w-auto xl:min-w-75">
+            <div className="relative w-full sm:flex-1 xl:flex-none xl:w-auto xl:min-w-150">
               <input
                 type="text"
                 placeholder={t.searchPlaceholder}
@@ -253,7 +282,7 @@ export default function CloudConnectPageView() {
 
             <button
               onClick={handleSearchTrigger}
-              className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all flex items-center justify-center gap-2 flex-none"
             >
               <Search className="w-4 h-4" />
             </button>
