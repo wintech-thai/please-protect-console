@@ -19,13 +19,18 @@ export function mapCloudConnectLogsToTableRows(logs: CloudConnectLogDocument[]):
     const logId = log.id || String(idx);
     const status = log.data?.response?.status;
     const isError = status ? (status < 200 || status >= 300) : false;
-    
+
     let formattedDate = log["@timestamp"] || "-";
     try {
       formattedDate = dayjs(log["@timestamp"]).format("M/D/YYYY, h:mm:ss A");
     } catch {
       // ignore
     }
+
+    const rawBody = log.data?.response?.body;
+    const description = typeof rawBody === "string"
+      ? rawBody
+      : (rawBody ? JSON.stringify(rawBody) : "-");
 
     return {
       id: logId,
@@ -36,7 +41,7 @@ export function mapCloudConnectLogsToTableRows(logs: CloudConnectLogDocument[]):
       isError,
       domain: log.data?.CloudConnectDomain || "-",
       path: log.data?.CloudConnectPath || "-",
-      description: log.data?.response?.body || "-",
+      description,
       latencyMs: log.data?.response?.latency_ms ?? null
     };
   });

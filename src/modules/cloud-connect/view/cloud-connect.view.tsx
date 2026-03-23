@@ -84,36 +84,35 @@ export default function CloudConnectPageView() {
   }, [timeRange]);
 
   const queryMustBase = useMemo(() => {
-    const must: Record<string, unknown>[] = [];
-    if (searchTerm) {
-      const textQuery = {
-        multi_match: {
-          query: searchTerm,
-          fields: [
-            "data.CloudConnectDomain",
-            "data.CloudConnectPath",
-            "data.response.body",
-          ],
-          type: "phrase_prefix",
-        },
-      };
+    if (!searchTerm) return [];
 
-      const searchNum = Number(searchTerm);
-      if (!isNaN(searchNum) && searchTerm.trim() !== "") {
-        must.push({
+    // Escape special characters for Lucene query string to prevent parsing errors
+    const escapedTerm = searchTerm.replace(/[+\-=&|><!(){}\[\]^"~*?:\\/]/g, "\\$&");
+    const textQuery = {
+      query_string: {
+        query: `*${escapedTerm}*`,
+        fields: [
+          "data.CloudConnectDomain",
+          "data.CloudConnectPath",
+          "data.response.body*",
+        ],
+        lenient: true,
+      },
+    };
+
+    const searchNum = Number(searchTerm);
+    if (!isNaN(searchNum) && searchTerm.trim() !== "") {
+      return [
+        {
           bool: {
-            should: [
-              textQuery,
-              { term: { "data.response.status": searchNum } }
-            ],
-            minimum_should_match: 1
-          }
-        });
-      } else {
-        must.push(textQuery);
-      }
+            should: [textQuery, { term: { "data.response.status": searchNum } }],
+            minimum_should_match: 1,
+          },
+        },
+      ];
     }
-    return must;
+
+    return [textQuery];
   }, [searchTerm]);
 
   const {
