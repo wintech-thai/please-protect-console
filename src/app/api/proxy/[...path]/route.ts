@@ -16,6 +16,7 @@ async function handleProxy(
     console.log(`🚀 Proxying [${req.method}] to: ${targetUrl}`);
 
     // จัดการ Body ---
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let body: any = null;
     const contentType = req.headers.get("content-type");
 
@@ -32,14 +33,20 @@ async function handleProxy(
                     console.log(` Proxy: Injecting Environment [${currentEnv}]`);
                     if (!body.query.bool.must) body.query.bool.must = [];
                     body.query.bool.must.push({
-                        match: { "data.Environment": currentEnv }
+                        bool: {
+                            should: [
+                                { match: { "data.Environment": currentEnv } },
+                                { match: { "data.environment": currentEnv } }
+                            ],
+                            minimum_should_match: 1
+                        }
                     });
                 } 
                 else if (isLayer7Query) {
                     console.log(` Proxy: Skipping Environment Injection for Layer 7 query`);
                 }
             }
-          } catch (e) {
+          } catch {
             console.warn(" JSON Body parsing failed, sending raw body instead");
           }
       } else {
@@ -82,10 +89,11 @@ async function handleProxy(
         headers: responseHeaders
     });
 
-  } catch (error: any) {
-    console.error(`[Proxy Crash] Error:`, error.message);
+  } catch (error: unknown) {
+    const errObj = error instanceof Error ? error : new Error("Unknown error");
+    console.error(`[Proxy Crash] Error:`, errObj.message);
     return NextResponse.json(
-      { message: "Proxy Connection Failed", error: error.message },
+      { message: "Proxy Connection Failed", error: errObj.message },
       { status: 500 }
     );
   }

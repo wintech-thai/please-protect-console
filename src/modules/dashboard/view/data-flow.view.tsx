@@ -466,37 +466,41 @@ const DetailsPanel = ({
     <div className="border-t border-slate-700 bg-slate-900/50 p-4 md:p-6 animate-in slide-in-from-bottom-10 max-h-[40vh] overflow-y-auto min-h-[40vh] md:min-h-80">
       <div className="flex flex-col md:flex-row gap-4 md:gap-6">
         {/* Left — Info */}
-        <div className="w-full md:w-64 space-y-3 md:space-y-4 shrink-0">
-          <div>
-            <h3 className="text-lg md:text-xl font-semibold text-white mb-1">
-              {node.name}
-            </h3>
-            <p className="text-xs md:text-sm text-slate-400 truncate">
-              {node.tag}
-            </p>
-          </div>
+        {!isInterface && (
+          <div className={cn(
+            "w-full md:w-64 space-y-3 md:space-y-4 shrink-0",
+          )}>
+            <div>
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-1">
+                {node.name}
+              </h3>
+              <p className="text-xs md:text-sm text-slate-400 truncate">
+                {node.tag}
+              </p>
+            </div>
 
-          {isTopic || isInterface ? null : !hasMetrics ? (
-            <div className="p-4 bg-slate-800 rounded-lg text-slate-400 text-sm">
-              {t.details.noMetrics}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-4">
-              <RateCard
-                label={t.details.inputRate}
-                value={inputRate}
-                color="text-emerald-400"
-              />
-              {!isInputOnly && (
+            {isTopic || isInterface ? null : !hasMetrics ? (
+              <div className="p-4 bg-slate-800 rounded-lg text-slate-400 text-sm">
+                {t.details.noMetrics}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-3 md:gap-4">
                 <RateCard
-                  label={t.details.outputRate}
-                  value={outputRate}
-                  color="text-blue-400"
+                  label={t.details.inputRate}
+                  value={inputRate}
+                  color="text-emerald-400"
                 />
-              )}
-            </div>
-          )}
-        </div>
+                {!isInputOnly && (
+                  <RateCard
+                    label={t.details.outputRate}
+                    value={outputRate}
+                    color="text-blue-400"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Right — Kafka panel OR throughput chart OR Network Interface */}
         <div className="flex-1 min-w-0">
@@ -524,6 +528,7 @@ const DetailsPanel = ({
 // ─── Network Interface Slots ──────────────────────────────────────────────────
 
 import type { DataFlowTranslations } from "../types/data-flow.types";
+import { cn } from "@/lib/utils";
 
 const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -557,74 +562,75 @@ const NetworkInterfaceSlots = ({ t }: { t: Omit<DataFlowTranslations, "timePicke
   return (
     <div className="flex flex-col w-full h-full">
       {/* Switch Panel Box */}
-      <div className="bg-slate-800 rounded-lg p-4 md:p-6 border-b-4 border-r-4 border-slate-900 shadow-xl w-full flex-1 max-w-4xl">
-        <div className="flex justify-between text-[10px] text-slate-400 font-mono tracking-widest mb-6 px-2">
-          <span>NETWORK SWITCH</span>
-          <span>4-PORT GIGABIT</span>
+      <div className="bg-slate-800 rounded-lg p-4 border-b-4 border-r-4 border-slate-900 shadow-xl w-full flex-1">
+        <div className="text-[10px] text-slate-400 font-mono tracking-widest mb-1 px-2">
+          <span>NETWORK SWITCH 4-PORT GIGABIT</span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 justify-items-center">
+        <div className="flex flex-col md:flex-row overflow-scroll gap-2 justify-start items-stretch pb-2 custom-scrollbar">
           {slots.map((iface, idx) => {
             const isEmpty = !iface;
             const isEnabled = iface?.isEnabled ?? false;
 
             return (
-              <div key={idx} className="flex flex-col items-center w-full max-w-48">
-                <div className="mb-4">
+              <div key={idx} className="flex flex-row items-center bg-slate-900/40 rounded-lg p-3 md:p-4 border border-slate-700/50 shrink-0 gap-4 min-w-75 md:min-w-85">
+                {/* Left: Port */}
+                <div className="shrink-0">
                   <LANPort
                     label={`LAN ${idx + 1}`}
                     state={isEmpty ? "empty" : isEnabled ? "connected_active" : "connected_idle"}
                   />
                 </div>
 
-                {/* Details Control */}
-                {isEmpty ? (
-                   <div className="text-center bg-slate-900/50 rounded p-2 text-slate-600 text-[10px] w-full border border-dashed border-slate-700 font-mono h-21.5 flex items-center justify-center">
-                     {t.networkInterfaces?.noInterface ?? "NO INTERFACE"}
-                   </div>
-                ) : (
-                  <div className="flex flex-col bg-slate-900 rounded p-3 text-slate-300 w-full border border-slate-700 min-h-32 justify-between relative shadow-md">
-                    <div className="flex items-start justify-between mb-2 gap-1.5">
-                      <div className="font-bold text-sm text-white truncate flex-1 min-w-0 leading-none pt-0.5">
-                        {iface.name}
+                {/* Right: Info */}
+                <div className="flex-1 min-w-0 h-full flex flex-col justify-center">
+                  {isEmpty ? (
+                     <div className="h-full w-full text-center bg-slate-900/50 rounded p-2 text-slate-600 text-[10px] border border-dashed border-slate-700 font-mono flex items-center justify-center min-h-27.5">
+                       {t.networkInterfaces?.noInterface ?? "NO INTERFACE"}
+                     </div>
+                  ) : (
+                    <div className="flex flex-col bg-slate-900 rounded p-3 text-slate-300 w-full border border-slate-700 h-full min-h-27.5 justify-between shadow-md">
+                      <div className="flex items-start justify-between mb-2 gap-1.5">
+                        <div className="font-bold text-sm text-white truncate flex-1 min-w-0 leading-none pt-0.5">
+                          {iface.name}
+                        </div>
+                        <span className={`shrink-0 whitespace-nowrap inline-block text-[10px] px-2 py-1 leading-none rounded-full font-bold tracking-wider uppercase ${iface.isEnabled ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
+                          {iface.isEnabled ? (t.networkInterfaces?.enabled ?? "Enabled") : (t.networkInterfaces?.disabled ?? "Disabled")}
+                        </span>
                       </div>
 
-                      <span className={`shrink-0 whitespace-nowrap inline-block text-[10px] px-2 py-1 leading-none rounded-full font-bold tracking-wider uppercase ${iface.isEnabled ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
-                        {iface.isEnabled ? (t.networkInterfaces?.enabled ?? "Enabled") : (t.networkInterfaces?.disabled ?? "Disabled")}
-                      </span>
+                      <div className="flex flex-col gap-0.5 text-[9px] font-mono text-slate-400 mt-1 mb-2">
+                        <div className="truncate text-slate-300">{iface.ipAddress !== "N/A" ? iface.ipAddress : "No IP"}</div>
+                        <div className="truncate opacity-60 text-[8px] shrink-0">{iface.macAddress !== "N/A" ? iface.macAddress : ""}</div>
+                      </div>
+
+                      {iface.stats ? (
+                        <div className="mt-auto pt-2 border-t border-slate-800 grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] w-full">
+                          <div className="flex flex-col">
+                            <span className="text-slate-500 whitespace-nowrap">Rx Data</span>
+                            <span className="text-emerald-400 font-mono">{formatBytes(iface.stats.rxBytes)}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-slate-500 whitespace-nowrap">Tx Data</span>
+                            <span className="text-blue-400 font-mono">{formatBytes(iface.stats.txBytes)}</span>
+                          </div>
+                          <div className="flex flex-col mt-1">
+                            <span className="text-slate-500 whitespace-nowrap">Rx Pkts</span>
+                            <span className="text-emerald-400/80 font-mono">{formatNumber(iface.stats.rxPackets)}</span>
+                          </div>
+                          <div className="flex flex-col mt-1">
+                            <span className="text-slate-500 whitespace-nowrap">Tx Pkts</span>
+                            <span className="text-blue-400/80 font-mono">{formatNumber(iface.stats.txPackets)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-auto pt-2 border-t border-slate-800 text-[9px] text-slate-500 italic text-center">
+                          No traffic metrics
+                        </div>
+                      )}
                     </div>
-
-                    <div className="flex flex-col gap-0.5 text-[9px] font-mono text-slate-400 mt-1 mb-2">
-                      <div className="truncate text-slate-300">{iface.ipAddress !== "N/A" ? iface.ipAddress : "No IP"}</div>
-                      <div className="truncate opacity-60 text-[8px] shrink-0">{iface.macAddress !== "N/A" ? iface.macAddress : ""}</div>
-                    </div>
-
-                    {iface.stats ? (
-                      <div className="mt-auto pt-2 border-t border-slate-800 grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] w-full">
-                        <div className="flex flex-col">
-                          <span className="text-slate-500 whitespace-nowrap">Rx Data</span>
-                          <span className="text-emerald-400 font-mono">{formatBytes(iface.stats.rxBytes)}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-slate-500 whitespace-nowrap">Tx Data</span>
-                          <span className="text-blue-400 font-mono">{formatBytes(iface.stats.txBytes)}</span>
-                        </div>
-                        <div className="flex flex-col mt-1">
-                          <span className="text-slate-500 whitespace-nowrap">Rx Pkts</span>
-                          <span className="text-emerald-400/80 font-mono">{formatNumber(iface.stats.rxPackets)}</span>
-                        </div>
-                        <div className="flex flex-col mt-1">
-                          <span className="text-slate-500 whitespace-nowrap">Tx Pkts</span>
-                          <span className="text-blue-400/80 font-mono">{formatNumber(iface.stats.txPackets)}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-auto pt-2 border-t border-slate-800 text-[9px] text-slate-500 italic text-center">
-                        No traffic metrics
-                      </div>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
@@ -730,8 +736,8 @@ const DataFlowContent = () => {
       </div>
 
       {/* Diagram */}
-      <div className="flex-1 overflow-auto p-4 md:p-8 flex md:items-center justify-center bg-[url('/grid-pattern.svg')] bg-repeat opacity-90">
-        <div className="flex flex-col md:flex-row items-center min-w-max gap-0 py-8 md:py-0">
+      <div className="flex-1 overflow-auto p-4 md:p-8 flex bg-[url('/grid-pattern.svg')] bg-repeat opacity-90">
+        <div className="m-auto flex flex-col md:flex-row items-center min-w-max gap-0 py-8 md:py-0">
           {nodes.map((node, i) => (
             <React.Fragment key={node.id}>
               <DiagramNode
