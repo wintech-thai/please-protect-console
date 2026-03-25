@@ -10,7 +10,8 @@ import {
   RotateCcw,
   TerminalSquare,
   Settings,
-  Cloud
+  Cloud,
+  Network
 } from "lucide-react";
 import type { SidebarEntry } from "@/components/layout/app-sidebar";
 import { translations } from "@/locales/dict";
@@ -31,6 +32,7 @@ export function getSystemMenu(t: SidebarTranslations): SidebarEntry[] {
       label: t.operations,
       icon: <Container className="size-5" />,
       children: [
+        { label: t.interfaces, href: "/system/operations/interface-networks", icon: <Network className="size-5" /> },
         { label: t.systemLogs, href: "/system/operations/system-logs", icon: <ScrollText className="size-5" /> },
         { label: t.workloads, href: "/system/operations/workloads", icon: <Container className="size-5" /> },
         { label: t.shellTerminal, href: "/system/operations/shell-terminal", icon: <TerminalSquare className="size-5" /> },
