@@ -13,9 +13,11 @@ import {
   useToggleNetworkInterface,
 } from "../../dashboard/hooks/use-data-flow";
 import type { NetworkInterfaceData } from "../../dashboard/types/data-flow.types";
+import {
+  NetworkHubPort,
+  type NetworkHubPortState,
+} from "../components/network-hub-port";
 import { interfaceNetworkDict } from "../interface-network.dict";
-
-type PortVisualState = "empty" | "connected_idle" | "connected_active";
 
 const SLOT_COUNT = 4;
 
@@ -38,90 +40,10 @@ const hasTraffic = (iface: NetworkInterfaceData) =>
 
 const getPortVisualState = (
   iface: NetworkInterfaceData | null,
-): PortVisualState => {
+): NetworkHubPortState => {
   if (!iface) return "empty";
   if (!iface.isEnabled) return "connected_idle";
   return hasTraffic(iface) ? "connected_active" : "connected_idle";
-};
-
-const HubPortFace = ({
-  state,
-  slotLabel,
-  ifaceName,
-  t,
-}: {
-  state: PortVisualState;
-  slotLabel: string;
-  ifaceName?: string;
-  t: typeof interfaceNetworkDict.EN;
-}) => {
-  const isEmpty = state === "empty";
-  const isActive = state === "connected_active";
-  const isConnected = state !== "empty";
-
-  return (
-    <div className="flex min-w-32.5 flex-col items-center gap-2">
-      <div className="text-xl tracking-wide text-slate-300">{slotLabel}</div>
-
-      <span
-        className={cn(
-          "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-          isConnected
-            ? "border border-emerald-300/50 bg-emerald-500/20 text-emerald-200"
-            : "border border-zinc-500 bg-zinc-700/70 text-zinc-200",
-        )}
-      >
-        {isConnected ? t.connected : t.notConnected}
-      </span>
-
-      <div className="relative h-24 w-30.5 rounded-md border border-zinc-600/90 bg-zinc-800 p-2 shadow-[inset_0_2px_4px_rgba(255,255,255,0.05)]">
-        <div
-          className={cn(
-            "absolute left-2 top-2 h-2.5 w-2.5 rounded-full",
-            isConnected
-              ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]"
-              : "bg-zinc-700",
-          )}
-        />
-        <div
-          className={cn(
-            "absolute right-2 top-2 h-2.5 w-2.5 rounded-full",
-            isActive
-              ? "animate-pulse bg-lime-300 shadow-[0_0_12px_rgba(163,230,53,0.9)]"
-              : "bg-zinc-700",
-          )}
-        />
-
-        <div className="absolute inset-x-2 bottom-2 h-15.5 rounded-[3px] bg-black/95 p-1.5">
-          <div className="relative h-full rounded-sm border border-zinc-700 bg-black/90">
-            {isConnected ? (
-              <>
-                <div className="absolute inset-x-1 top-1 h-9 rounded-sm bg-cyan-700/90" />
-                <div className="absolute inset-x-2 top-2 h-1.5 rounded-sm bg-cyan-300/80" />
-                <div className="absolute inset-x-1.5 bottom-1 h-1.5 rounded-sm bg-cyan-950/90" />
-              </>
-            ) : (
-              <div className="mx-auto mt-6 grid w-17.5 grid-cols-8 gap-1">
-                {Array.from({ length: 8 }).map((_, pinIndex) => (
-                  <div
-                    key={pinIndex}
-                    className={cn(
-                      "h-3 rounded-[1px]",
-                      isEmpty ? "bg-amber-500/20" : "bg-amber-400",
-                    )}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="text-sm tracking-wide text-slate-400">
-        {ifaceName || t.emptySlot}
-      </div>
-    </div>
-  );
 };
 
 const getStatus = (
@@ -223,7 +145,7 @@ const InterfaceNetworkViewPage = () => {
   };
 
   return (
-    <div className="flex h-full w-full flex-col gap-4 p-4 md:p-6 bg-slate-950 text-slate-100">
+    <div className="flex h-full w-full flex-col gap-4 bg-slate-950 p-4 text-slate-100 md:p-6">
       <DisableConfirmDialog />
 
       <div>
@@ -250,7 +172,7 @@ const InterfaceNetworkViewPage = () => {
       ) : null}
 
       {!isLoading && !isError ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 md:p-5 shadow-lg">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 shadow-lg md:p-5">
           <div className="mb-4 overflow-x-auto">
             <div className="min-w-190 rounded-3xl border border-zinc-500/70 bg-linear-to-b from-zinc-700 via-zinc-800 to-zinc-900 p-5 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_18px_40px_rgba(0,0,0,0.5)]">
               <div className="mb-5 flex items-start gap-6">
@@ -276,12 +198,14 @@ const InterfaceNetworkViewPage = () => {
 
                 <div className="grid flex-1 grid-cols-4 gap-4">
                   {slots.map((iface, index) => (
-                    <HubPortFace
+                    <NetworkHubPort
                       key={`hub-face-${index + 1}`}
                       slotLabel={`LAN ${index + 1}`}
                       state={getPortVisualState(iface)}
                       ifaceName={iface?.name}
-                      t={t}
+                      emptyLabel={t.emptySlot}
+                      connectedLabel={t.connected}
+                      notConnectedLabel={t.notConnected}
                     />
                   ))}
                 </div>
@@ -300,11 +224,13 @@ const InterfaceNetworkViewPage = () => {
                   className="flex min-h-48 flex-col items-center gap-4 rounded-lg border border-slate-700/60 bg-slate-800/70 p-3 md:flex-row md:items-stretch"
                 >
                   <div className="shrink-0">
-                    <HubPortFace
+                    <NetworkHubPort
                       slotLabel={`LAN ${index + 1}`}
                       state={getPortVisualState(iface)}
                       ifaceName={iface?.name}
-                      t={t}
+                      emptyLabel={t.emptySlot}
+                      connectedLabel={t.connected}
+                      notConnectedLabel={t.notConnected}
                     />
                   </div>
 
@@ -327,14 +253,10 @@ const InterfaceNetworkViewPage = () => {
                       <>
                         <div className="space-y-1 text-xs text-slate-300">
                           <div className="truncate">
-                            {t.ip}:{" "}
-                            {iface.ipAddress !== "N/A" ? iface.ipAddress : "-"}
+                            {t.ip}: {iface.ipAddress !== "N/A" ? iface.ipAddress : "-"}
                           </div>
                           <div className="truncate text-slate-400">
-                            {t.mac}:{" "}
-                            {iface.macAddress !== "N/A"
-                              ? iface.macAddress
-                              : "-"}
+                            {t.mac}: {iface.macAddress !== "N/A" ? iface.macAddress : "-"}
                           </div>
                         </div>
 
@@ -353,17 +275,13 @@ const InterfaceNetworkViewPage = () => {
                               </div>
                             </div>
                             <div>
-                              <div className="text-slate-500">
-                                {t.rxPackets}
-                              </div>
+                              <div className="text-slate-500">{t.rxPackets}</div>
                               <div className="font-mono text-emerald-200">
                                 {formatNumber(iface.stats.rxPackets)}
                               </div>
                             </div>
                             <div>
-                              <div className="text-slate-500">
-                                {t.txPackets}
-                              </div>
+                              <div className="text-slate-500">{t.txPackets}</div>
                               <div className="font-mono text-blue-200">
                                 {formatNumber(iface.stats.txPackets)}
                               </div>
@@ -378,9 +296,7 @@ const InterfaceNetworkViewPage = () => {
                         <div className="mt-auto pt-3">
                           <Button
                             size="sm"
-                            variant={
-                              iface.isEnabled ? "destructive" : "default"
-                            }
+                            variant={iface.isEnabled ? "destructive" : "default"}
                             className="w-full"
                             disabled={pending || toggleInterface.isPending}
                             onClick={() => handleToggle(iface)}

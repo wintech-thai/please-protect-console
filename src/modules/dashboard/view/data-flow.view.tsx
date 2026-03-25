@@ -33,7 +33,7 @@ import type {
 import { useTimeRange } from "@/modules/dashboard/hooks/use-time-range";
 import { OverviewHeader } from "@/modules/dashboard/components/overview-header";
 import { AdvancedTimeRangeSelector } from "@/components/ui/advanced-time-selector";
-import { LANPort } from "@/modules/dashboard/components/lan-port";
+import { NetworkHubPort } from "@/modules/interface-network/components/network-hub-port";
 
 const CHART_COLORS = { input: "#34d399", output: "#60a5fa" } as const;
 const CHART_AXIS_STYLE = {
@@ -570,15 +570,24 @@ const NetworkInterfaceSlots = ({ t }: { t: Omit<DataFlowTranslations, "timePicke
         <div className="flex flex-col md:flex-row overflow-scroll gap-2 justify-start items-stretch pb-2 custom-scrollbar">
           {slots.map((iface, idx) => {
             const isEmpty = !iface;
-            const isEnabled = iface?.isEnabled ?? false;
+            const hasTraffic = (iface?.stats?.rxBytes ?? 0) > 0 || (iface?.stats?.txBytes ?? 0) > 0;
+            const portState = isEmpty
+              ? "empty"
+              : !iface.isEnabled
+                ? "connected_idle"
+                : hasTraffic
+                  ? "connected_active"
+                  : "connected_idle";
 
             return (
               <div key={idx} className="flex flex-row items-center bg-slate-900/40 rounded-lg p-3 md:p-4 border border-slate-700/50 shrink-0 gap-4 min-w-75 md:min-w-85">
                 {/* Left: Port */}
                 <div className="shrink-0">
-                  <LANPort
-                    label={`LAN ${idx + 1}`}
-                    state={isEmpty ? "empty" : isEnabled ? "connected_active" : "connected_idle"}
+                  <NetworkHubPort
+                    slotLabel={`LAN ${idx + 1}`}
+                    state={portState}
+                    ifaceName={iface?.name}
+                    emptyLabel={t.networkInterfaces?.noInterface ?? "NO INTERFACE"}
                   />
                 </div>
 
