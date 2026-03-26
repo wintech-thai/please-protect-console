@@ -70,14 +70,12 @@ export function AlertsSidebar({
   const s = t.sidebar;
 
   return (
-    // 🌟 1. เอา absolute/fixed ออก และใช้การเปลี่ยน width เพื่อ "ดัน" เนื้อหาแทน
     <div 
       className={cn(
         "flex-none h-full bg-slate-950 border-slate-800 flex flex-col transition-[width,opacity] duration-300 ease-in-out overflow-hidden z-40",
         isOpen ? "w-[280px] border-r opacity-100" : "w-0 opacity-0 border-r-0" 
       )}
     >
-      {/* 🌟 2. ห่อเนื้อหาข้างในด้วย w-[280px] เพื่อไม่ให้เนื้อหาบีบตัวเละเทะตอนที่ Sidebar กำลังหด/ขยาย */}
       <div className="w-[280px] h-full flex flex-col">
         
         <div className="p-4 border-b border-slate-800 bg-slate-900/30">

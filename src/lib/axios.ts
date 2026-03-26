@@ -92,7 +92,6 @@ client.interceptors.response.use(
     const isSuccess = statusUpper === "OK" || statusUpper === "SUCCESS";
 
     if (!isSuccess) {
-      // ใช้ description จาก Backend เป็น error message หลัก
       const errorMsg = description || message || `Operation failed with status: ${statusUpper}`;
 
       const customError = new AxiosError(
@@ -131,9 +130,11 @@ client.interceptors.response.use(
        return Promise.reject(forbiddenError);
     }
 
+    const isLoginRequest = originalRequest?.url?.toLowerCase().includes("signin") || 
+                           originalRequest?.url?.toLowerCase().includes("login");
 
     const isTokenExpired =
-      status === 401 ||
+      (!isLoginRequest && status === 401) || 
       businessCode === "ERROR_TOKEN_EXPIRED" || 
       (typeof errorData === "string" && (errorData.includes("IDX10223") || errorData.includes("expired"))) ||
       (errorData?.raw && typeof errorData.raw === "string" && (errorData.raw.includes("IDX10223") || errorData.raw.includes("expired")));
