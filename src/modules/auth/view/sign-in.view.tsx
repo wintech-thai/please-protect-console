@@ -88,7 +88,7 @@ export default function SignInView() {
 
         // --- Success Toast ---
         toast.success("Login successful", {
-          duration: 2000,
+          duration: 5000,
         });
 
         // --- Redirect ---
@@ -112,7 +112,9 @@ export default function SignInView() {
         errorTitle = error?.response?.data?.message || "Login failed";
       }
 
-      toast.error(errorTitle);
+      toast.error(errorTitle, {
+        duration: 5000, 
+      });
     }
   };
 

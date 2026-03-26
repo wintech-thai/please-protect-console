@@ -7,6 +7,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { QueryProvider } from "@/lib/query-provider";
 import { NavigationBlockerProvider } from "@/hooks/use-form-navigation-blocker";
 
+
 const prompt = localFont({
   src: [
     { path: './fonts/Prompt-Light.ttf', weight: '300', style: 'normal' },
@@ -46,6 +47,7 @@ export default function RootLayout({
         `}
       >
         <LanguageProvider>
+
           <QueryProvider>
             <NuqsAdapter>
               <NavigationBlockerProvider>
