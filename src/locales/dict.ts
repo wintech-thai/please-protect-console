@@ -262,7 +262,7 @@ export const translations = {
       shellTerminal: "เทอร์มินัล",
       settings: "การตั้งค่า",
       cloudConnect: "เชื่อมต่อ cloud",
-      applications: "Applications",
+      applications: "แอปพลิเคชัน",
       notifications: "การแจ้งเตือน",
       alertsChannels: "ช่องทางแจ้งเตือน",
       alertsFired: "การแจ้งเตือนที่เกิดขึ้น",
