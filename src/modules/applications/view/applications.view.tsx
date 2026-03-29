@@ -3,12 +3,18 @@
 import { useMemo, useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { Search, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSelectedRowStore } from "@/lib/selected-row-store";
+import { useLanguage } from "@/context/LanguageContext";
 import { useApplications } from "../hooks/use-applications";
+import { applicationDict } from "../applications.dict";
 
 const ApplicationViewPage = () => {
+  const { language } = useLanguage();
+  const t = applicationDict[language as keyof typeof applicationDict] || applicationDict.EN;
+
   const { selectedId, setSelectedId } = useSelectedRowStore("applications");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
@@ -53,8 +59,8 @@ const ApplicationViewPage = () => {
       <div className="flex-none pt-6 px-4 md:px-6 mb-2">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Applications</h1>
-            <p className="text-slate-400 text-xs md:text-sm">Query and inspect deployed applications</p>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{t.list.title}</h1>
+            <p className="text-slate-400 text-xs md:text-sm">{t.list.subHeader}</p>
           </div>
         </div>
       </div>
@@ -65,7 +71,7 @@ const ApplicationViewPage = () => {
             <div className="relative w-full sm:w-auto lg:min-w-90">
               <Input
                 type="text"
-                placeholder="Filter by name, namespace, path, or repo URL"
+                placeholder={t.list.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearchTrigger()}
@@ -89,10 +95,10 @@ const ApplicationViewPage = () => {
             <table className="w-full text-left border-collapse min-w-275">
               <thead className="bg-slate-950 sticky top-0 z-10 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 <tr>
-                  <th className="p-4 border-b border-slate-800">Name</th>
-                  <th className="p-4 border-b border-slate-800">Namespace</th>
-                  <th className="p-4 border-b border-slate-800">Path</th>
-                  <th className="p-4 border-b border-slate-800">Repo URL</th>
+                  <th className="p-4 border-b border-slate-800">{t.list.columns.name}</th>
+                  <th className="p-4 border-b border-slate-800">{t.list.columns.namespace}</th>
+                  <th className="p-4 border-b border-slate-800">{t.list.columns.path}</th>
+                  <th className="p-4 border-b border-slate-800">{t.list.columns.repoUrl}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50">
@@ -101,14 +107,14 @@ const ApplicationViewPage = () => {
                     <td colSpan={4} className="p-20 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                        <span className="text-slate-500">Loading applications...</span>
+                        <span className="text-slate-500">{t.list.loading}</span>
                       </div>
                     </td>
                   </tr>
                 ) : paginatedApplications.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="p-20 text-center text-slate-500">
-                      No applications found
+                      {t.list.noData}
                     </td>
                   </tr>
                 ) : (
@@ -128,7 +134,19 @@ const ApplicationViewPage = () => {
                         `}
                         onClick={() => setSelectedId(rowId)}
                       >
-                        <td className="p-4 font-medium text-slate-200">{app.appName || "-"}</td>
+                        <td className="p-4 font-medium text-slate-200 underline">
+                          {app.appName ? (
+                            <Link
+                              href={`/system/operations/applications/${encodeURIComponent(app.appName)}/config`}
+                              className="block w-full h-full"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {app.appName}
+                            </Link>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
                         <td className="p-4 text-slate-300">{app.namespace || "-"}</td>
                         <td className="p-4 text-slate-300 max-w-90 truncate" title={app.path || ""}>
                           {app.path || "-"}
@@ -158,7 +176,7 @@ const ApplicationViewPage = () => {
 
           <div className="flex-none flex items-center justify-between sm:justify-end px-4 py-3 border-t border-slate-800 bg-slate-950 z-20 gap-4 sm:gap-6">
             <div className="flex items-center gap-2 text-sm text-slate-400">
-              <span>Rows per page:</span>
+              <span>{t.list.rowsPerPage}</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -173,7 +191,7 @@ const ApplicationViewPage = () => {
               </select>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-xs text-slate-400">{totalCount === 0 ? "0-0" : `${startRow}-${endRow}`} of {totalCount}</div>
+              <div className="text-xs text-slate-400">{totalCount === 0 ? "0-0" : `${startRow}-${endRow}`} {t.list.of} {totalCount}</div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
