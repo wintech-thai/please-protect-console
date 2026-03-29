@@ -11,7 +11,8 @@ import {
   TerminalSquare,
   Settings,
   Cloud,
-  Network
+  Network,
+  Layers
 } from "lucide-react";
 import type { SidebarEntry } from "@/components/layout/app-sidebar";
 import { translations } from "@/locales/dict";
@@ -36,6 +37,7 @@ export function getSystemMenu(t: SidebarTranslations): SidebarEntry[] {
         { label: t.systemLogs, href: "/system/operations/system-logs", icon: <ScrollText className="size-5" /> },
         { label: t.workloads, href: "/system/operations/workloads", icon: <Container className="size-5" /> },
         { label: t.shellTerminal, href: "/system/operations/shell-terminal", icon: <TerminalSquare className="size-5" /> },
+        { label: t.applications, href: "/system/operations/applications", icon: <Layers className="size-5" /> },
       ],
     },
     {
