@@ -139,7 +139,6 @@ const ApplicationViewPage = () => {
                             <Link
                               href={`/system/operations/applications/${encodeURIComponent(app.appName)}/config`}
                               className="block w-full h-full"
-                              onClick={(event) => event.stopPropagation()}
                             >
                               {app.appName}
                             </Link>

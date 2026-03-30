@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Save, GitMerge, RefreshCcw, ChevronLeft } from "lucide-react";
+import { Save, GitMerge, RefreshCcw, ChevronLeft, Loader } from "lucide-react";
 import { keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Editor from "@monaco-editor/react";
@@ -42,6 +42,8 @@ const monacoEditorOptions = {
 type ValidationResult =
   | { ok: true }
   | { ok: false; reason: string; invalidPaths?: string[] };
+
+const MAX_INVALID_FIELDS_PREVIEW = 5;
 
 function collectLeafPaths(
   input: unknown,
@@ -164,6 +166,13 @@ const ApplicationConfigViewPage = () => {
     appName,
     { placeholderData: keepPreviousData },
   );
+  const hasDefaultConfig = typeof defaultConfig === "string";
+  const hasCurrentCustomConfig = typeof currentCustomConfig === "string";
+  const hasDraftConfig = typeof draftConfig === "string";
+  const canRenderDraftEditor = hasDraftConfig || hasLocalChange;
+  const canRenderDiffEditor = hasCurrentCustomConfig && canRenderDraftEditor;
+  const canValidateConfig = hasDefaultConfig && hasCurrentCustomConfig;
+  const canRunConfigActions = canValidateConfig && canRenderDraftEditor;
 
   const saveDraftMutation = useSaveDraftAppCustomConfig();
   const mergeDraftMutation = useMergeDraftAppCustomConfig();
@@ -202,7 +211,12 @@ const ApplicationConfigViewPage = () => {
     setHasLocalChange(false);
   };
 
-  const handleSaveDraft = async () => {
+  const runConfigValidation = () => {
+    if (!canRunConfigActions) {
+      toast.error(t.config.toast.loadingConfigNotReady);
+      return null;
+    }
+
     const validation = validateEditableYaml(
       editableDraft,
       defaultConfig || "",
@@ -214,11 +228,20 @@ const ApplicationConfigViewPage = () => {
         ? t.config.toast.invalidFields
         : validation.reason;
       const suffix = validation.invalidPaths?.length
-        ? `: ${validation.invalidPaths.slice(0, 5).join(", ")}${validation.invalidPaths.length > 5 ? " ..." : ""}`
+        ? `: ${validation.invalidPaths
+            .slice(0, MAX_INVALID_FIELDS_PREVIEW)
+            .join(", ")}${validation.invalidPaths.length > MAX_INVALID_FIELDS_PREVIEW ? " ..." : ""}`
         : "";
       toast.error(`${reason}${suffix}`);
-      return;
+      return null;
     }
+
+    return validation;
+  };
+
+  const handleSaveDraft = async () => {
+    const validation = runConfigValidation();
+    if (!validation) return;
 
     const ok = await confirmSave();
     if (!ok) return;
@@ -233,22 +256,8 @@ const ApplicationConfigViewPage = () => {
   };
 
   const handleMergeDraft = async () => {
-    const validation = validateEditableYaml(
-      editableDraft,
-      defaultConfig || "",
-      currentCustomConfig || "",
-    );
-
-    if (!validation.ok) {
-      const reason = validation.invalidPaths?.length
-        ? t.config.toast.invalidFields
-        : validation.reason;
-      const suffix = validation.invalidPaths?.length
-        ? `: ${validation.invalidPaths.slice(0, 5).join(", ")}${validation.invalidPaths.length > 5 ? " ..." : ""}`
-        : "";
-      toast.error(`${reason}${suffix}`);
-      return;
-    }
+    const validation = runConfigValidation();
+    if (!validation) return;
 
     const ok = await confirmMerge();
     if (!ok) return;
@@ -293,11 +302,11 @@ const ApplicationConfigViewPage = () => {
             <Button onClick={handleResetDraft} variant="outline">
               {t.config.buttons.resetDraft}
             </Button>
-            <Button onClick={handleSaveDraft}>
+            <Button onClick={handleSaveDraft} disabled={!canRunConfigActions}>
               <Save className="w-4 h-4 mr-2" />
               {t.config.buttons.saveDraft}
             </Button>
-            <Button onClick={handleMergeDraft}>
+            <Button onClick={handleMergeDraft} disabled={!canRunConfigActions}>
               <GitMerge className="w-4 h-4 mr-2" />
               {t.config.buttons.merge}
             </Button>
@@ -314,14 +323,20 @@ const ApplicationConfigViewPage = () => {
           </div>
           <div className="flex-1 min-h-0">
             <div className="h-full">
-              <Editor
-                height="100%"
-                defaultLanguage="yaml"
-                theme="vs-dark"
-                value={defaultConfig || ""}
-                onMount={(editor) => (defaultEditorRef.current = editor)}
-                options={{ readOnly: true, ...monacoEditorOptions }}
-              />
+              {hasDefaultConfig ? (
+                <Editor
+                  height="100%"
+                  defaultLanguage="yaml"
+                  theme="vs-dark"
+                  value={defaultConfig}
+                  onMount={(editor) => (defaultEditorRef.current = editor)}
+                  options={{ readOnly: true, ...monacoEditorOptions }}
+                />
+              ) : (
+                <div className="h-full flex gap-2 items-center justify-center text-sm text-slate-500">
+                  <Loader className="size-4 animate-spin ml-2" />{t.config.loading.defaultConfig}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -333,18 +348,24 @@ const ApplicationConfigViewPage = () => {
           </div>
           <div className="flex-1 min-h-0">
             <div className="h-full">
-              <Editor
-                height="100%"
-                defaultLanguage="yaml"
-                theme="vs-dark"
-                value={editableDraft}
-                onMount={(editor) => (draftEditorRef.current = editor)}
-                onChange={(value) => {
-                  setDraftYaml(value ?? "");
-                  setHasLocalChange(true);
-                }}
-                options={{ readOnly: false, ...monacoEditorOptions }}
-              />
+              {canRenderDraftEditor ? (
+                <Editor
+                  height="100%"
+                  defaultLanguage="yaml"
+                  theme="vs-dark"
+                  value={editableDraft}
+                  onMount={(editor) => (draftEditorRef.current = editor)}
+                  onChange={(value) => {
+                    setDraftYaml(value ?? "");
+                    setHasLocalChange(true);
+                  }}
+                  options={{ readOnly: false, ...monacoEditorOptions }}
+                />
+              ) : (
+                <div className="h-full flex gap-2 items-center justify-center text-sm text-slate-500">
+                  <Loader className="size-4 animate-spin ml-2" />{t.config.loading.draftConfig}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -360,24 +381,30 @@ const ApplicationConfigViewPage = () => {
           </div>
 
           <div className="md:h-50 h-25">
-            <DiffEditor
-              height="100%"
-              original={currentCustomConfig || ""}
-              modified={editorValueForDiff || ""}
-              language="yaml"
-              theme="vs-dark"
-              options={{
-                readOnly: true,
-                automaticLayout: true,
-                minimap: { enabled: false },
-                renderSideBySide: false,
-                renderIndicators: true,
-                lineNumbers: "on",
-                scrollBeyondLastLine: false,
-                folding: true,
-                glyphMargin: true,
-              }}
-            />
+            {canRenderDiffEditor ? (
+              <DiffEditor
+                height="100%"
+                original={currentCustomConfig}
+                modified={editorValueForDiff || ""}
+                language="yaml"
+                theme="vs-dark"
+                options={{
+                  readOnly: true,
+                  automaticLayout: true,
+                  minimap: { enabled: false },
+                  renderSideBySide: false,
+                  renderIndicators: true,
+                  lineNumbers: "on",
+                  scrollBeyondLastLine: false,
+                  folding: true,
+                  glyphMargin: true,
+                }}
+              />
+            ) : (
+              <div className="h-full flex items-center gap-2 justify-center text-sm text-slate-500">
+                <Loader className="size-4 animate-spin" />{t.config.loading.diffPreview}
+              </div>
+            )}
           </div>
         </div>
       </div>

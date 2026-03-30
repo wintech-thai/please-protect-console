@@ -25,6 +25,11 @@ export const applicationDict = {
         diffPreview: "Diff Preview (Current Real Config vs Current Editor Value)",
         diffHint: "Left = current on main branch, Right = value in editor that will be saved/merged",
       },
+      loading: {
+        defaultConfig: "Loading configuration...",
+        draftConfig: "Loading draft configuration...",
+        diffPreview: "Loading diff preview...",
+      },
       buttons: {
         reload: "Reload",
         resetDraft: "Reset Draft",
@@ -45,6 +50,7 @@ export const applicationDict = {
         saveSuccess: "Draft saved successfully",
         mergeSuccess: "Draft merged to main successfully",
         invalidFields: "Found fields that are not allowed by current/default configuration",
+        loadingConfigNotReady: "Configuration is still loading. Please try again.",
       },
     },
   },
@@ -74,6 +80,11 @@ export const applicationDict = {
         diffPreview: "ตัวอย่าง Diff (ค่าจริงปัจจุบันเทียบกับค่าในตัวแก้ไข)",
         diffHint: "ซ้าย = ค่าปัจจุบันบน main branch, ขวา = ค่าใน editor ที่จะถูก save/merge",
       },
+      loading: {
+        defaultConfig: "กำลังโหลดการตั้งค่า...",
+        draftConfig: "กำลังโหลดค่า Draft...",
+        diffPreview: "กำลังโหลดตัวอย่าง Diff...",
+      },
       buttons: {
         reload: "รีโหลด",
         resetDraft: "รีเซ็ต Draft",
@@ -94,6 +105,7 @@ export const applicationDict = {
         saveSuccess: "บันทึก Draft สำเร็จ",
         mergeSuccess: "รวม Draft สำเร็จ",
         invalidFields: "พบฟิลด์ที่ไม่อนุญาตตามค่า current/default",
+        loadingConfigNotReady: "ข้อมูลการตั้งค่ายังโหลดไม่เสร็จ กรุณาลองใหม่อีกครั้ง",
       },
     },
   },
