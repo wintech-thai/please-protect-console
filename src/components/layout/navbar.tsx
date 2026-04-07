@@ -111,6 +111,8 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
       children: [
         { label: t.systemOverview, href: "/overview", icon: <Layers className="w-4 h-4 mr-2" /> },
         { label: t.dataFlowOverview, href: "/data-flow", icon: <Activity className="w-4 h-4 mr-2" /> },
+        { isDivider: true },
+        { label: "Network Diagram", href: "/diagram", icon: <Network className="w-4 h-4 mr-2" /> },
       ]
     },
     {
@@ -144,6 +146,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
 
   const isActive = (path: string) => {
     if (path === "/overview") return pathname === path;
+    if (path === "/diagram") return pathname === path;
     if (path === "/admin/users") return pathname.startsWith("/admin");
     if (path.startsWith("/system")) return pathname.startsWith("/system");
     return pathname.startsWith(path);
