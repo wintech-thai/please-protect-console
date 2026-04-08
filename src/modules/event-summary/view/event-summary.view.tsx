@@ -29,8 +29,7 @@ import {
 } from "recharts";
 
 import { resolveTimeRange } from "@/utils/format-date";
-import { useTimeRange } from "@/modules/dashboard/hooks/use-time-range";
-import { AdvancedTimeRangeSelector } from "@/components/ui/advanced-time-selector";
+import { AdvancedTimeRangeSelector, TimeRangeValue } from "@/components/ui/advanced-time-selector";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -112,7 +111,10 @@ const EventSummaryViewPage = () => {
   const { language } = useLanguage();
   const t = eventSummaryDict[language as keyof typeof eventSummaryDict] || eventSummaryDict.EN;
 
-  const { timeRange, setTimeRange } = useTimeRange();
+  const [timeRange, setTimeRange] = useState<TimeRangeValue>({
+    type: "relative",
+    value: "6h",
+  });
 
   const [refreshKey, setRefreshKey] = useState(0);
 
