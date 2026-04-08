@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
+import { useDebounceValue } from "usehooks-ts";
 import {
   Activity,
   Filter,
@@ -41,6 +42,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useEventSummaryDashboard } from "@/modules/event-summary/hooks/use-event-summary";
 import type { TermsBucket } from "@/modules/event-summary/api/event-summary.api";
+import { useLanguage } from "@/context/LanguageContext";
+import { eventSummaryDict } from "@/modules/event-summary/event-summary.dict";
 
 const CHART_COLORS = [
   "#22d3ee",
@@ -89,7 +92,26 @@ const formatXAxis = (value: string, durationSec: number) => {
   return dayjs(value).format("MM-DD HH:mm");
 };
 
+const ChartViewport = ({
+  isResizing,
+  children,
+}: {
+  isResizing: boolean;
+  children: React.ReactNode;
+}) => {
+  if (isResizing) {
+    return (
+      <div className="h-full w-full rounded-lg border border-slate-800/80 bg-slate-900/70 animate-pulse" />
+    );
+  }
+
+  return <>{children}</>;
+};
+
 const EventSummaryViewPage = () => {
+  const { language } = useLanguage();
+  const t = eventSummaryDict[language as keyof typeof eventSummaryDict] || eventSummaryDict.EN;
+
   const { timeRange, setTimeRange } = useTimeRange();
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -97,6 +119,25 @@ const EventSummaryViewPage = () => {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [draftSelectedDatasets, setDraftSelectedDatasets] = useState<string[]>([]);
   const [isDatasetFilterOpen, setIsDatasetFilterOpen] = useState(false);
+  const dashboardRef = useRef<HTMLDivElement | null>(null);
+  const [contentWidth, setContentWidth] = useState(0);
+  const [stableContentWidth] = useDebounceValue(contentWidth, 180);
+  const isResizing = contentWidth !== stableContentWidth;
+
+  useEffect(() => {
+    if (!dashboardRef.current || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver((entries) => {
+      const width = Math.round(entries[0]?.contentRect?.width || 0);
+      setContentWidth((prev) => (prev === width ? prev : width));
+    });
+
+    observer.observe(dashboardRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   const range = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
   const durationSec = useMemo(() => {
@@ -132,13 +173,13 @@ const EventSummaryViewPage = () => {
     refreshKey,
   );
 
-  const error = isError ? "Failed to load Event Summary dashboard" : null;
+  const error = isError ? t.status.loadError : null;
 
   const datasetLabel = useMemo(() => {
-    if (selectedDatasets.length === 0) return "All event.dataset";
+    if (selectedDatasets.length === 0) return t.filter.all;
     if (selectedDatasets.length <= 2) return selectedDatasets.join(", ");
-    return `${selectedDatasets.length} datasets selected`;
-  }, [selectedDatasets]);
+    return `${selectedDatasets.length} ${t.filter.selectedSuffix}`;
+  }, [selectedDatasets, t.filter.all, t.filter.selectedSuffix]);
 
   const renderDatasetLines = (mode: "eps" | "count") => {
     return (datasetBuckets.slice(0, 6) || []).map((bucket: TermsBucket, idx: number) => {
@@ -171,11 +212,11 @@ const EventSummaryViewPage = () => {
 
   return (
     <div className="flex-1 overflow-auto bg-slate-950 text-slate-100 p-4 md:p-6">
-      <div className="mx-auto max-w-400 space-y-5">
+      <div ref={dashboardRef} className="mx-auto max-w-400 space-y-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Event Summary</h1>
-            <p className="text-sm text-slate-400">Elasticsearch analytics by event.dataset, source.ip, destination.ip</p>
+            <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+            <p className="text-sm text-slate-400">{t.subtitle}</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <AdvancedTimeRangeSelector value={timeRange} onChange={setTimeRange} />
@@ -200,10 +241,10 @@ const EventSummaryViewPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 bg-[#0B1120] border border-slate-700 text-slate-100">
-                <DropdownMenuLabel>Filter event.dataset</DropdownMenuLabel>
+                <DropdownMenuLabel>{t.filter.label}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {datasetOptions.length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-slate-500">No dataset found</div>
+                  <div className="px-2 py-1.5 text-sm text-slate-500">{t.filter.noneFound}</div>
                 )}
                 {datasetOptions.map((item: TermsBucket) => (
                   <DropdownMenuCheckboxItem
@@ -225,7 +266,7 @@ const EventSummaryViewPage = () => {
                   className="w-full justify-start text-slate-300 hover:text-white"
                   onClick={() => setDraftSelectedDatasets([])}
                 >
-                  Clear dataset filter
+                  {t.filter.clear}
                 </Button>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -237,7 +278,7 @@ const EventSummaryViewPage = () => {
               disabled={isLoading || isFetching}
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading || isFetching ? "animate-spin" : ""}`} />
-              Refresh
+              {t.actions.refresh}
             </Button>
           </div>
         </div>
@@ -250,19 +291,19 @@ const EventSummaryViewPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="text-xs uppercase tracking-wider text-slate-400">Current Event Per Second</div>
+            <div className="text-xs uppercase tracking-wider text-slate-400">{t.stats.currentEps}</div>
             <div className="mt-2 text-3xl font-semibold text-cyan-300">{currentEps.toFixed(2)}</div>
-            <div className="text-xs text-slate-500">Based on latest interval</div>
+            <div className="text-xs text-slate-500">{t.stats.currentEpsHint}</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="text-xs uppercase tracking-wider text-slate-400">Average Event Per Second</div>
+            <div className="text-xs uppercase tracking-wider text-slate-400">{t.stats.avgEps}</div>
             <div className="mt-2 text-3xl font-semibold text-emerald-300">{avgEps.toFixed(2)}</div>
-            <div className="text-xs text-slate-500">Across selected time range</div>
+            <div className="text-xs text-slate-500">{t.stats.avgEpsHint}</div>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="text-xs uppercase tracking-wider text-slate-400">Total Events</div>
+            <div className="text-xs uppercase tracking-wider text-slate-400">{t.stats.totalEvents}</div>
             <div className="mt-2 text-3xl font-semibold text-blue-300">{totalEvents.toLocaleString()}</div>
-            <div className="text-xs text-slate-500">In current filter</div>
+            <div className="text-xs text-slate-500">{t.stats.totalEventsHint}</div>
           </div>
         </div>
 
@@ -270,113 +311,75 @@ const EventSummaryViewPage = () => {
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="mb-3 flex items-center gap-2 text-slate-200 font-medium">
               <Activity className="w-4 h-4 text-cyan-400" />
-              Event Per Second Over Time
+              {t.charts.epsOverTime}
             </div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
-                <LineChart data={epsSeries}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
-                  <Tooltip
-                    contentStyle={TOOLTIP_CONTENT_STYLE}
-                    itemStyle={TOOLTIP_ITEM_STYLE}
-                    labelStyle={TOOLTIP_LABEL_STYLE}
-                    labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="total" name="total EPS" stroke="#22d3ee" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-                  {renderDatasetLines("eps")}
-                </LineChart>
-              </ResponsiveContainer>
+              <ChartViewport isResizing={isResizing}>
+                <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
+                  <LineChart data={epsSeries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
+                    <YAxis stroke="#94a3b8" fontSize={11} />
+                    <Tooltip
+                      contentStyle={TOOLTIP_CONTENT_STYLE}
+                      itemStyle={TOOLTIP_ITEM_STYLE}
+                      labelStyle={TOOLTIP_LABEL_STYLE}
+                      labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="total" name={t.charts.totalEpsLegend} stroke="#22d3ee" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                    {renderDatasetLines("eps")}
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartViewport>
             </div>
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="mb-3 flex items-center gap-2 text-slate-200 font-medium">
               <Sigma className="w-4 h-4 text-fuchsia-400" />
-              event.dataset Distribution
+              {t.charts.datasetDistribution}
             </div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
-                <PieChart>
-                  <Pie
-                    data={datasetBuckets}
-                    dataKey="doc_count"
-                    nameKey="key"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={110}
-                    paddingAngle={2}
-                    stroke="#0b1120"
-                    strokeWidth={2}
-                    label
-                  >
-                    {datasetBuckets.map((_: TermsBucket, idx: number) => (
-                      <Cell key={`dataset-pie-${idx}`} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={TOOLTIP_CONTENT_STYLE}
-                    itemStyle={TOOLTIP_ITEM_STYLE}
-                    labelStyle={TOOLTIP_LABEL_STYLE}
-                    formatter={(value) => Number(value).toLocaleString()}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <ChartViewport isResizing={isResizing}>
+                <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
+                  <PieChart>
+                    <Pie
+                      data={datasetBuckets}
+                      dataKey="doc_count"
+                      nameKey="key"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={110}
+                      paddingAngle={2}
+                      stroke="#0b1120"
+                      strokeWidth={2}
+                      label
+                    >
+                      {datasetBuckets.map((_: TermsBucket, idx: number) => (
+                        <Cell key={`dataset-pie-${idx}`} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={TOOLTIP_CONTENT_STYLE}
+                      itemStyle={TOOLTIP_ITEM_STYLE}
+                      labelStyle={TOOLTIP_LABEL_STYLE}
+                      formatter={(value) => Number(value).toLocaleString()}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartViewport>
             </div>
           </div>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="mb-3 text-slate-200 font-medium">event.dataset Count Time Series</div>
+          <div className="mb-3 text-slate-200 font-medium">{t.charts.datasetSeries}</div>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
-              <AreaChart data={datasetSeries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
-                <YAxis stroke="#94a3b8" fontSize={11} />
-                <Tooltip
-                  contentStyle={TOOLTIP_CONTENT_STYLE}
-                  itemStyle={TOOLTIP_ITEM_STYLE}
-                  labelStyle={TOOLTIP_LABEL_STYLE}
-                  labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
-                />
-                <Legend />
-                {renderDatasetLines("count")}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="mb-3 text-slate-200 font-medium">Top source.ip (Selected Range)</div>
-            <div className="mb-2 text-xs text-slate-500">Aggregation field: {sourceField}</div>
-            <div className="h-80">
+            <ChartViewport isResizing={isResizing}>
               <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
-                <BarChart data={sourceBuckets} layout="vertical" margin={{ left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={11} />
-                  <YAxis type="category" dataKey="key" width={180} stroke="#94a3b8" fontSize={11} />
-                  <Tooltip
-                    contentStyle={TOOLTIP_CONTENT_STYLE}
-                    itemStyle={TOOLTIP_ITEM_STYLE}
-                    labelStyle={TOOLTIP_LABEL_STYLE}
-                    formatter={(value) => Number(value).toLocaleString()}
-                  />
-                  <Bar dataKey="doc_count" fill="#34d399" isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="mb-3 text-slate-200 font-medium">Unique source.ip Over Time</div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
-                <LineChart data={sourceUniqueSeries}>
+                <AreaChart data={datasetSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
                   <YAxis stroke="#94a3b8" fontSize={11} />
@@ -386,52 +389,104 @@ const EventSummaryViewPage = () => {
                     labelStyle={TOOLTIP_LABEL_STYLE}
                     labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
                   />
-                  <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-                </LineChart>
+                  <Legend />
+                  {renderDatasetLines("count")}
+                </AreaChart>
               </ResponsiveContainer>
+            </ChartViewport>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="mb-3 text-slate-200 font-medium">{t.charts.topSource}</div>
+            <div className="mb-2 text-xs text-slate-500">{t.charts.aggregationField}: {sourceField}</div>
+            <div className="h-80">
+              <ChartViewport isResizing={isResizing}>
+                <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
+                  <BarChart data={sourceBuckets} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis type="number" stroke="#94a3b8" fontSize={11} />
+                    <YAxis type="category" dataKey="key" width={180} stroke="#94a3b8" fontSize={11} />
+                    <Tooltip
+                      contentStyle={TOOLTIP_CONTENT_STYLE}
+                      itemStyle={TOOLTIP_ITEM_STYLE}
+                      labelStyle={TOOLTIP_LABEL_STYLE}
+                      formatter={(value) => Number(value).toLocaleString()}
+                    />
+                    <Bar dataKey="doc_count" fill="#34d399" isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartViewport>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="mb-3 text-slate-200 font-medium">{t.charts.uniqueSource}</div>
+            <div className="h-80">
+              <ChartViewport isResizing={isResizing}>
+                <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
+                  <LineChart data={sourceUniqueSeries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
+                    <YAxis stroke="#94a3b8" fontSize={11} />
+                    <Tooltip
+                      contentStyle={TOOLTIP_CONTENT_STYLE}
+                      itemStyle={TOOLTIP_ITEM_STYLE}
+                      labelStyle={TOOLTIP_LABEL_STYLE}
+                      labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
+                    />
+                    <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartViewport>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="mb-3 text-slate-200 font-medium">Top destination.ip (Selected Range)</div>
-            <div className="mb-2 text-xs text-slate-500">Aggregation field: {destinationField}</div>
+            <div className="mb-3 text-slate-200 font-medium">{t.charts.topDestination}</div>
+            <div className="mb-2 text-xs text-slate-500">{t.charts.aggregationField}: {destinationField}</div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
-                <BarChart data={destinationBuckets} layout="vertical" margin={{ left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" stroke="#94a3b8" fontSize={11} />
-                  <YAxis type="category" dataKey="key" width={180} stroke="#94a3b8" fontSize={11} />
-                  <Tooltip
-                    contentStyle={TOOLTIP_CONTENT_STYLE}
-                    itemStyle={TOOLTIP_ITEM_STYLE}
-                    labelStyle={TOOLTIP_LABEL_STYLE}
-                    formatter={(value) => Number(value).toLocaleString()}
-                  />
-                  <Bar dataKey="doc_count" fill="#60a5fa" isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartViewport isResizing={isResizing}>
+                <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
+                  <BarChart data={destinationBuckets} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis type="number" stroke="#94a3b8" fontSize={11} />
+                    <YAxis type="category" dataKey="key" width={180} stroke="#94a3b8" fontSize={11} />
+                    <Tooltip
+                      contentStyle={TOOLTIP_CONTENT_STYLE}
+                      itemStyle={TOOLTIP_ITEM_STYLE}
+                      labelStyle={TOOLTIP_LABEL_STYLE}
+                      formatter={(value) => Number(value).toLocaleString()}
+                    />
+                    <Bar dataKey="doc_count" fill="#60a5fa" isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartViewport>
             </div>
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-            <div className="mb-3 text-slate-200 font-medium">Unique destination.ip Over Time</div>
+            <div className="mb-3 text-slate-200 font-medium">{t.charts.uniqueDestination}</div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
-                <LineChart data={destinationUniqueSeries}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
-                  <Tooltip
-                    contentStyle={TOOLTIP_CONTENT_STYLE}
-                    itemStyle={TOOLTIP_ITEM_STYLE}
-                    labelStyle={TOOLTIP_LABEL_STYLE}
-                    labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
-                  />
-                  <Line type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <ChartViewport isResizing={isResizing}>
+                <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
+                  <LineChart data={destinationUniqueSeries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
+                    <YAxis stroke="#94a3b8" fontSize={11} />
+                    <Tooltip
+                      contentStyle={TOOLTIP_CONTENT_STYLE}
+                      itemStyle={TOOLTIP_ITEM_STYLE}
+                      labelStyle={TOOLTIP_LABEL_STYLE}
+                      labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
+                    />
+                    <Line type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartViewport>
             </div>
           </div>
         </div>
@@ -439,7 +494,7 @@ const EventSummaryViewPage = () => {
         {isLoading && (
           <div className="flex items-center justify-center text-slate-400 text-sm py-4 gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Loading Event Summary...
+            {t.status.loading}
           </div>
         )}
       </div>
