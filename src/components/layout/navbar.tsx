@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image"; 
 import { usePathname, useRouter } from "next/navigation";
 import {
   LogOut,
@@ -20,7 +19,7 @@ import {
   ShieldAlert,
   PanelLeft,
   Target,
-  Network,
+  Network
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -120,13 +119,17 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
       href: "/events/layer7",
       children: [
         { label: t.layer7 || "Layer 7", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-        { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> }, 
+        { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> },
         { isDivider: true },
         { label: t.alerts || "Event Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
         { label: t.eventIoc || "Event IoC", href: "/events/ioc", icon: <Target className="w-4 h-4 mr-2" /> },
         { isDivider: true },
         { label: t.subnetMapping || "Subnet Mapping", href: "/events/subnet", icon: <Network className="w-4 h-4 mr-2" /> },
       ]
+    },
+    {
+      label: t.analytics || "Analytics",
+      href: "/analytics/overview/event-summary",
     },
     {
       label: t.administrator,
@@ -148,6 +151,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
     if (path === "/overview") return pathname === path;
     if (path === "/diagram") return pathname === path;
     if (path === "/admin/users") return pathname.startsWith("/admin");
+    if (path.startsWith("/analytics")) return pathname.startsWith("/analytics");
     if (path.startsWith("/system")) return pathname.startsWith("/system");
     return pathname.startsWith(path);
   };
@@ -176,7 +180,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
                 <PanelLeft className="w-5 h-5" />
               </button>
             )}
-            
+
             <div className="relative w-10 h-10 flex items-center justify-center">
               {isLoading ? (
                 <div className="w-8 h-8 rounded-full bg-blue-900/50 animate-pulse"></div>
@@ -188,10 +192,10 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
                   onError={() => setImageError(true)}
                 />
               ) : (
-                <img 
-                  src="/img/please-protect.svg" 
-                  alt="PLEASE-PROTECT Logo" 
-                  className="w-8 h-auto drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]" 
+                <img
+                  src="/img/please-protect.svg"
+                  alt="PLEASE-PROTECT Logo"
+                  className="w-8 h-auto drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]"
                 />
               )}
             </div>
@@ -227,7 +231,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
                         if (subItem.isDivider) {
                           return <div key={`div-${idx}`} className="h-[1px] bg-slate-800 my-2 mx-3" />;
                         }
-                        
+
                         return (
                           <DropdownMenuItem key={subItem.label || idx} asChild>
                             <Link
