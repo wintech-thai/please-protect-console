@@ -99,6 +99,57 @@ export default function IocPage() {
   const [itemToDelete, setItemToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const handleGoToLayer7 = useCallback((ioc: any) => {
+    let searchField = "";
+    const type = (ioc.type || "").toLowerCase().replace(/[^a-z0-9]/g, ""); 
+
+    switch (type) {
+      case "destinationip":
+      case "dstip":
+        searchField = "destination.ip";
+        break;
+      case "sourceip":
+      case "srcip":
+        searchField = "source.ip";
+        break;
+      case "ip":
+        searchField = ""; 
+        break;
+      case "domain":
+      case "fqdn":
+        searchField = "dns.question.name"; 
+        break;
+      case "url":
+        searchField = "url.original";
+        break;
+      default:
+        searchField = "";
+    }
+
+    let queryParts = [];
+
+    if (ioc.source && ioc.source !== "-" && ioc.source !== "System") {
+      queryParts.push(`event.dataset:"${ioc.source}"`);
+    }
+
+    if (searchField && ioc.value && ioc.value !== "-") {
+      queryParts.push(`${searchField}:"${ioc.value}"`);
+    } else if (ioc.value && ioc.value !== "-") {
+      queryParts.push(`"${ioc.value}"`);
+    }
+
+    const finalQuery = queryParts.join(" AND ");
+
+    const lastSeenStr = ioc.raw?.lastSeenDate || new Date().toISOString();
+    const lastSeen = dayjs(lastSeenStr);
+    
+    const startUnix = lastSeen.subtract(5, 'minute').unix();
+    const endUnix = lastSeen.add(5, 'minute').unix();
+
+    const layer7Url = `/events/layer7?q=${encodeURIComponent(finalQuery)}&start=${startUnix}&end=${endUnix}`;
+    window.open(layer7Url, '_blank');
+  }, []);
+
   const handleRowClick = async (iocSummary: any) => {
     if (!iocSummary) return;
     setSelectedId(iocSummary.id);
@@ -370,6 +421,7 @@ export default function IocPage() {
             onItemsPerPageChange={setItemsPerPage}
             onDelete={handleOpenDeleteModal}
             t={dict.table}
+            onGoToLayer7={handleGoToLayer7} // 🚀 2. ส่ง Prop ลง Table
           />
         </div>
 

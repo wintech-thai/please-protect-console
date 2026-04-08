@@ -20,6 +20,9 @@ import { Layer4Histogram } from "@/components/layer4/Layer4Histogram";
 import { Layer4Table } from "@/components/layer4/Layer4Table";
 import { Layer4Flyout } from "@/components/layer4/Layer4Flyout";
 
+// 🚀 1. นำเข้า Component PcapDownloadModal ที่เราเพิ่งสร้าง
+import { PcapDownloadModal, PcapEventData } from "@/components/pcap-download-modal";
+
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
 import { layer4Dict } from "@/locales/layer4dict";
@@ -87,6 +90,10 @@ export default function Layer4Page() {
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  // 🚀 2. State สำหรับควบคุม PCAP Modal
+  const [isPcapModalOpen, setIsPcapModalOpen] = useState(false);
+  const [selectedPcapData, setSelectedPcapData] = useState<PcapEventData | null>(null);
 
   const timeDict: TimePickerTranslations = useMemo(() => {
     const picker =
@@ -165,6 +172,50 @@ export default function Layer4Page() {
     },
     [],
   );
+
+  // 🚀 3. ฟังก์ชันจัดเตรียมข้อมูลเพื่อเปิด Modal
+  const handleOpenPcapModal = useCallback((session: any) => {
+    // เราใช้ startTime ของ session (ที่ format แล้ว) แปลงกลับเป็น Date
+    const sessionTime = new Date(session.startTime);
+    
+    setSelectedPcapData({
+      srcIp: session.srcIp,
+      srcPort: session.srcPort,
+      destIp: session.dstIp,
+      destPort: session.dstPort,
+      timestamp: sessionTime,
+    });
+    setIsPcapModalOpen(true);
+  }, []);
+
+  // 🚀 4. ฟังก์ชันยิง API เมื่อกดยืนยันดาวน์โหลดใน Modal
+  const handleConfirmPcapDownload = async (data: PcapEventData, startTime: Date, endTime: Date) => {
+    try {
+      const orgId = getOrgId();
+      if (!orgId) throw new Error("Organization ID is missing.");
+
+      // ใช้ Toast แบบ Loading เพื่อให้ลูกค้ารู้ว่ากำลังโหลดอยู่ (ป้องกันการกดรัว)
+      const toastId = toast.loading("Preparing PCAP file for download...");
+
+      const startUnix = Math.floor(startTime.getTime() / 1000);
+      const endUnix = Math.floor(endTime.getTime() / 1000);
+
+      await arkimeService.downloadPcap(
+        orgId,
+        data.srcIp,
+        data.srcPort,
+        data.destIp,
+        data.destPort,
+        startUnix,
+        endUnix
+      );
+
+      toast.success("PCAP downloaded successfully!", { id: toastId });
+    } catch (error) {
+      console.error("PCAP Download failed:", error);
+      toast.error("Failed to download PCAP. Please try again or check connection.");
+    }
+  };
 
   const fetchMetadata = useCallback(async () => {
     const orgId = getOrgId();
@@ -601,6 +652,7 @@ export default function Layer4Page() {
             onItemsPerPageChange={setItemsPerPage}
             t={dict.table}
             onAddFilter={handleAddFilter}
+            onDownloadPcap={handleOpenPcapModal}
           />
         </div>
 
@@ -615,6 +667,14 @@ export default function Layer4Page() {
           onClose={() => setDetailSession(null)}
           onAddFilter={handleAddFilter}
           t={dict}
+        />
+        
+        {/* 🚀 6. วาง Modal Component */}
+        <PcapDownloadModal 
+          isOpen={isPcapModalOpen}
+          onClose={() => setIsPcapModalOpen(false)}
+          onConfirm={handleConfirmPcapDownload}
+          eventData={selectedPcapData}
         />
       </div>
     </div>

@@ -225,6 +225,83 @@ export const arkimeService = {
     const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/fields`;
     const response = await client.get(endpoint);
     return response.data;
+  },
+
+  downloadPcap: async (
+    orgId: string,
+    srcIp: string,
+    srcPort: number | string,
+    dstIp: string,
+    dstPort: number | string,
+    startTime: number, 
+    stopTime: number   
+  ): Promise<void> => {
+    if (!orgId) throw new Error("Organization ID is required.");
+
+    const expression = `ip.src == ${srcIp} && port.src == ${srcPort} && ip.dst == ${dstIp} && port.dst == ${dstPort}`;
+
+    const params = {
+      startTime: startTime,
+      stopTime: stopTime,
+      expression: expression,
+    };
+
+    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/sessions.pcap`;
+
+    const response = await client.get(endpoint, { 
+      params,
+      responseType: 'blob' 
+    });
+
+    const blob = new Blob([response.data], { type: 'application/vnd.tcpdump.pcap' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    
+    const fileName = `traffic-${srcIp}-${srcPort}-to-${dstIp}-${dstPort}.pcap`;
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+  },
+
+  downloadPcapCustom: async (
+    orgId: string,
+    expression: string,
+    startTime: number, 
+    stopTime: number   
+  ): Promise<void> => {
+    if (!orgId) throw new Error("Organization ID is required.");
+
+    const params = {
+      startTime: startTime,
+      stopTime: stopTime,
+      expression: expression,
+    };
+
+    const endpoint = `/api/Proxy/org/${orgId}/action/Arkime/api/sessions.pcap`;
+
+    const response = await client.get(endpoint, { 
+      params,
+      responseType: 'blob' 
+    });
+
+    const blob = new Blob([response.data], { type: 'application/vnd.tcpdump.pcap' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    
+    const fileName = `layer7-event-capture.pcap`;
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
   }
 };
 

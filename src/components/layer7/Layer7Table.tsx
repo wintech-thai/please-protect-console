@@ -1,9 +1,16 @@
 "use client";
 
-import { ChevronRight, ChevronLeft, Loader2, ChevronRight as ChevronRightSmall } from "lucide-react";
+import { ChevronRight, ChevronLeft, Loader2, ChevronRight as ChevronRightSmall, MoreVertical, Download, Eye } from "lucide-react"; 
 import { COLUMN_DEFS, getNestedValue } from "./constants";
 import { cn } from "@/lib/utils";
 import { L7DictType } from "@/locales/layer7dict";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface TableProps {
   events: any[];
@@ -18,6 +25,7 @@ interface TableProps {
   onRowClick: (event: any) => void; 
   onSelect: (id: string) => void;    
   dict: L7DictType['table'];
+  onDownloadPcap?: (event: any) => void; 
 }
 
 export function Layer7Table({
@@ -33,6 +41,7 @@ export function Layer7Table({
   onRowClick,
   onSelect,
   dict,
+  onDownloadPcap, 
 }: TableProps) {
   
   const totalPages = Math.ceil(totalHits / itemsPerPage);
@@ -65,9 +74,9 @@ export function Layer7Table({
               <tr>
                 <th className="w-10 px-4 py-5"></th>
                 {selectedFields.map((f) => (
-                  <th key={f} className="px-4 py-5 whitespace-nowrap">
+                  <th key={f} className={cn("px-4 py-5 whitespace-nowrap", f === "actions" && "text-center w-24")}>
                     <span className="text-blue-400/90 font-semibold tracking-normal">
-                      {dict.columns[f] || f}
+                      {f === "actions" ? (dict.columns?.actions || "Actions") : (dict.columns[f] || f)}
                     </span>
                   </th>
                 ))}
@@ -105,16 +114,47 @@ export function Layer7Table({
                           )} />
                         </button>
                       </td>
-                      {selectedFields.map((f) => (
-                        <td key={f} className="p-4 whitespace-nowrap">
-                          <div className={cn("truncate max-w-[250px]", isSelected ? "text-white" : "text-slate-300 group-hover:text-white")}>
-                            {COLUMN_DEFS[f]?.render 
-                              ? COLUMN_DEFS[f].render!(getNestedValue(event, f), event) 
-                              : <span className="font-mono text-xs">{String(getNestedValue(event, f) || "-")}</span>
-                            }
-                          </div>
-                        </td>
-                      ))}
+
+                      {selectedFields.map((f) => {
+                        
+                        if (f === "actions") {
+                          return (
+                            <td key={f} className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 mx-auto block transition-colors outline-none">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                
+                                <DropdownMenuContent align="end" className="w-48 bg-[#0B1120] border-slate-800 text-slate-300">
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      if (onDownloadPcap) {
+                                        onDownloadPcap(event);
+                                      }
+                                    }}
+                                    className="hover:bg-cyan-950 focus:bg-cyan-950 text-cyan-400 focus:text-cyan-400 cursor-pointer font-medium"
+                                  >
+                                    <Download className="w-4 h-4 mr-2" /> Download PCAP
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          );
+                        }
+
+                        return (
+                          <td key={f} className="p-4 whitespace-nowrap">
+                            <div className={cn("truncate max-w-[250px]", isSelected ? "text-white" : "text-slate-300 group-hover:text-white")}>
+                              {COLUMN_DEFS[f]?.render 
+                                ? COLUMN_DEFS[f].render!(getNestedValue(event, f), event) 
+                                : <span className="font-mono text-xs">{String(getNestedValue(event, f) || "-")}</span>
+                              }
+                            </div>
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })
