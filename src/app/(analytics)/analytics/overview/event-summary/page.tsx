@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/ui/coming-soon";
+import EventSummaryViewPage from "@/modules/event-summary/view/event-summary.view";
 
 export default function EventSummaryPage() {
-  return <ComingSoon title="Event Summary" />;
+  return <EventSummaryViewPage />;
 }
