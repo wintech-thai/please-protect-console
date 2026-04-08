@@ -68,6 +68,8 @@ const PIE_COLORS = [
   "#6366f1",
 ];
 
+const CHART_RESIZE_DEBOUNCE = 250;
+
 const TOOLTIP_CONTENT_STYLE = {
   backgroundColor: "#0f172a",
   border: "1px solid #334155",
@@ -271,7 +273,7 @@ const EventSummaryViewPage = () => {
               Event Per Second Over Time
             </div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
                 <LineChart data={epsSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
@@ -283,7 +285,7 @@ const EventSummaryViewPage = () => {
                     labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="total" name="total EPS" stroke="#22d3ee" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="total" name="total EPS" stroke="#22d3ee" strokeWidth={2.5} dot={false} isAnimationActive={false} />
                   {renderDatasetLines("eps")}
                 </LineChart>
               </ResponsiveContainer>
@@ -296,7 +298,7 @@ const EventSummaryViewPage = () => {
               event.dataset Distribution
             </div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
                 <PieChart>
                   <Pie
                     data={datasetBuckets}
@@ -330,7 +332,7 @@ const EventSummaryViewPage = () => {
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
           <div className="mb-3 text-slate-200 font-medium">event.dataset Count Time Series</div>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
               <AreaChart data={datasetSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
@@ -353,7 +355,7 @@ const EventSummaryViewPage = () => {
             <div className="mb-3 text-slate-200 font-medium">Top source.ip (Selected Range)</div>
             <div className="mb-2 text-xs text-slate-500">Aggregation field: {sourceField}</div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
                 <BarChart data={sourceBuckets} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis type="number" stroke="#94a3b8" fontSize={11} />
@@ -364,7 +366,7 @@ const EventSummaryViewPage = () => {
                     labelStyle={TOOLTIP_LABEL_STYLE}
                     formatter={(value) => Number(value).toLocaleString()}
                   />
-                  <Bar dataKey="doc_count" fill="#34d399" />
+                  <Bar dataKey="doc_count" fill="#34d399" isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -373,7 +375,7 @@ const EventSummaryViewPage = () => {
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="mb-3 text-slate-200 font-medium">Unique source.ip Over Time</div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
                 <LineChart data={sourceUniqueSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
@@ -384,7 +386,7 @@ const EventSummaryViewPage = () => {
                     labelStyle={TOOLTIP_LABEL_STYLE}
                     labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
                   />
-                  <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="value" stroke="#34d399" strokeWidth={2.5} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -396,7 +398,7 @@ const EventSummaryViewPage = () => {
             <div className="mb-3 text-slate-200 font-medium">Top destination.ip (Selected Range)</div>
             <div className="mb-2 text-xs text-slate-500">Aggregation field: {destinationField}</div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
                 <BarChart data={destinationBuckets} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis type="number" stroke="#94a3b8" fontSize={11} />
@@ -407,7 +409,7 @@ const EventSummaryViewPage = () => {
                     labelStyle={TOOLTIP_LABEL_STYLE}
                     formatter={(value) => Number(value).toLocaleString()}
                   />
-                  <Bar dataKey="doc_count" fill="#60a5fa" />
+                  <Bar dataKey="doc_count" fill="#60a5fa" isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -416,7 +418,7 @@ const EventSummaryViewPage = () => {
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="mb-3 text-slate-200 font-medium">Unique destination.ip Over Time</div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={CHART_RESIZE_DEBOUNCE}>
                 <LineChart data={destinationUniqueSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="time" tickFormatter={(v) => formatXAxis(String(v), durationSec)} stroke="#94a3b8" fontSize={11} />
@@ -427,7 +429,7 @@ const EventSummaryViewPage = () => {
                     labelStyle={TOOLTIP_LABEL_STYLE}
                     labelFormatter={(v) => dayjs(v as string).format("YYYY-MM-DD HH:mm:ss")}
                   />
-                  <Line type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="value" stroke="#60a5fa" strokeWidth={2.5} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
