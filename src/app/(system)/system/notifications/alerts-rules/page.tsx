@@ -1,5 +1,5 @@
-import { ComingSoon } from "@/components/ui/coming-soon";
+import { AlertRulesView } from "@/modules/alert-rules/view/alert-rules.view";
 
 export default function AlertsRulesPage() {
-  return <ComingSoon title="Alerts Rules" />;
+  return <AlertRulesView />;
 }
