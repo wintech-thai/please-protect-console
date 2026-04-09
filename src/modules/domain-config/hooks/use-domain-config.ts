@@ -10,6 +10,7 @@ export const domainConfigKeys = {
   domain: () => [...domainConfigKeys.all, "domain"] as const,
   logo: () => [...domainConfigKeys.all, "logo"] as const,
   shortName: () => [...domainConfigKeys.all, "shortName"] as const,
+  orgDescription: () => [...domainConfigKeys.all, "orgDescription"] as const,
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,9 +19,10 @@ export interface AllConfig {
   domain: ConfigurationEntry | null;
   logo: ConfigurationEntry | null;
   shortName: ConfigurationEntry | null;
+  orgDescription: ConfigurationEntry | null;
 }
 
-export type ConfigField = "domain" | "logo" | "shortName";
+export type ConfigField = "domain" | "logo" | "shortName" | "orgDescription";
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
@@ -33,16 +35,21 @@ export function useAllConfig() {
   return useQuery<AllConfig>({
     queryKey: domainConfigKeys.all,
     queryFn: async () => {
-      const [domainResult, logoResult, shortNameResult] = await Promise.allSettled([
+      const [domainResult, logoResult, shortNameResult, orgDescriptionResult] = await Promise.allSettled([
         configurationApi.getDomain(),
         configurationApi.getLogo(),
         configurationApi.getOrgShortName(),
+        configurationApi.getOrgDescription(),
       ]);
 
       return {
         domain: domainResult.status === "fulfilled" ? domainResult.value : null,
         logo: logoResult.status === "fulfilled" ? logoResult.value : null,
         shortName: shortNameResult.status === "fulfilled" ? shortNameResult.value : null,
+        orgDescription:
+          orgDescriptionResult.status === "fulfilled"
+            ? orgDescriptionResult.value
+            : null,
       };
     },
     placeholderData: keepPreviousData,
@@ -70,6 +77,8 @@ export function useSaveField() {
           return configurationApi.setLogo(value);
         case "shortName":
           return configurationApi.setOrgShortName(value);
+        case "orgDescription":
+          return configurationApi.setOrgDescription(value);
         default:
           return Promise.reject(new Error(`Unknown field: ${field}`));
       }
