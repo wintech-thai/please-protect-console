@@ -1,6 +1,6 @@
 export const alertRulesDict = {
   EN: {
-    title: "Prometheus Rules",
+    title: "Notification Rules",
     subtitle: "Browse all rule groups and alerting rules currently evaluated in the system",
     searchPlaceholder: "Filter by rule name, query, labels, or group",
     stateFilter: "Filter by rule state",
@@ -28,7 +28,7 @@ export const alertRulesDict = {
     },
   },
   TH: {
-    title: "Prometheus Rules",
+    title: "Notification Rules",
     subtitle: "แสดงกลุ่มกฎและรายการกฎที่ระบบกำลังประเมินทั้งหมด",
     searchPlaceholder: "ค้นหาด้วยชื่อกฎ query labels หรือชื่อกลุ่ม",
     stateFilter: "กรองตามสถานะกฎ",

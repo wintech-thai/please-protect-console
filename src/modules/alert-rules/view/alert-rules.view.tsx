@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Loader2, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import dayjs from "dayjs";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAlertRules } from "../hooks/use-alert-rules";
@@ -80,8 +80,8 @@ export function AlertRulesView() {
   const pagedRows = filteredRows.slice(startIndex, startIndex + rowsPerPage);
   const grouped = groupRowsByGroup(pagedRows);
 
-  const startRow = totalCount === 0 ? 0 : startIndex + 1;
-  const endRow = Math.min(startIndex + rowsPerPage, totalCount);
+  // const startRow = totalCount === 0 ? 0 : startIndex + 1;
+  // const endRow = Math.min(startIndex + rowsPerPage, totalCount);
 
   const onSearchChange = (value: string) => {
     setSearch(value);
@@ -129,23 +129,26 @@ export function AlertRulesView() {
               className="w-full h-10 pl-9 pr-3 rounded-lg border border-slate-700 bg-slate-900 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/60"
             />
           </div>
-          <select
-            value={stateFilter}
-            onChange={(e) => onStateChange(e.target.value)}
-            className="h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/60"
-          >
-            <option value="all">{t.allStates}</option>
-            {STATE_OPTIONS.map((state) => (
-              <option key={state} value={state}>
-                {state}
-              </option>
-            ))}
-          </select>
+          <div className="relative min-w-30">
+            <select
+              value={stateFilter}
+              onChange={(e) => onStateChange(e.target.value)}
+              className="h-10 w-full appearance-none rounded-lg border border-slate-700 bg-slate-900 pl-4 pr-4 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/60"
+            >
+              <option value="all">{t.allStates}</option>
+              {STATE_OPTIONS.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
+          </div>
         </div>
 
-        <div className="text-sm text-slate-400">
+        {/* <div className="text-sm text-slate-400">
           {totalCount === 0 ? "0-0" : `${startRow}-${endRow}`} {t.of} {totalCount}
-        </div>
+        </div> */}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-4">
