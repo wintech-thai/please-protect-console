@@ -62,7 +62,9 @@ export default function Layer7Page() {
   const { language, setLanguage } = useLanguage();
   const langKey = (language?.toLowerCase() || "en") as "en" | "th";
   const dict: L7DictType = L7_DICT[langKey];
+  
   const searchParams = useSearchParams();
+  
   const toggleLanguage = () => {
     const nextLang = language === "EN" ? "TH" : "EN";
     setLanguage(nextLang);
@@ -71,15 +73,26 @@ export default function Layer7Page() {
   // --- 2. State Management ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarSearch, setSidebarSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [luceneQuery, setLuceneQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeFilters, setActiveFilters] = useState<FilterItem[]>([]);
 
-  const [timeRange, setTimeRange] = useState<TimeRangeValue>({
-    type: "relative",
-    value: "15m",
-    label: "Last 15 minutes",
+  const [searchInput, setSearchInput] = useState(() => searchParams?.get("q") || "");
+  const [luceneQuery, setLuceneQuery] = useState(() => searchParams?.get("q") || "");
+
+  const [timeRange, setTimeRange] = useState<TimeRangeValue>(() => {
+    const startParam = searchParams?.get("start");
+    const endParam = searchParams?.get("end");
+    
+    if (startParam && endParam) {
+      return {
+        type: "absolute",
+        value: "custom",
+        start: Number(startParam),
+        end: Number(endParam),
+        label: "Custom (From IoC)",
+      };
+    }
+    return { type: "relative", value: "15m", label: "Last 15 minutes" };
   });
 
   useEffect(() => {
@@ -87,27 +100,29 @@ export default function Layer7Page() {
     const startParam = searchParams?.get("start");
     const endParam = searchParams?.get("end");
 
-    if (qParam || (startParam && endParam)) {
-      
-      if (qParam) {
-        setSearchInput(qParam);
-        setLuceneQuery(qParam);
-      }
+    let shouldUpdate = false;
 
-      if (startParam && endParam) {
-        setTimeRange({
-          type: "absolute",
-          value: "custom",
-          start: Number(startParam),
-          end: Number(endParam),
-          label: "Custom (From IoC)",
-        });
-      }
-      
-      setPage(1);
-      setRefreshKey((k) => k + 1);
+    if (qParam !== null && qParam !== luceneQuery) {
+      setSearchInput(qParam);
+      setLuceneQuery(qParam);
+      shouldUpdate = true;
     }
-  }, [searchParams]);
+
+    if (startParam && endParam && Number(startParam) !== timeRange.start) {
+      setTimeRange({
+        type: "absolute",
+        value: "custom",
+        start: Number(startParam),
+        end: Number(endParam),
+        label: "Custom (From IoC)",
+      });
+      shouldUpdate = true;
+    }
+    
+    if (shouldUpdate) {
+      setPage(1);
+    }
+  }, [searchParams, luceneQuery, timeRange.start]);
 
   const [events, setEvents] = useState<any[]>([]);
   const [totalHits, setTotalHits] = useState(0);

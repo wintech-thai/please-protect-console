@@ -10,7 +10,7 @@ export const pcapModalDict = {
     startTime: "Start Time (-5m)",
     endTime: "End Time (+5m)",
     cancel: "Cancel",
-    confirm: "Confirm Download",
+    confirm: "Download",
     processing: "Processing...",
   },
   TH: {
