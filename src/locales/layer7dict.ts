@@ -28,6 +28,7 @@ export const L7_DICT = {
       viewDetails: "View details",
       rowsPerPage: "Rows per page:",
       of: "of",
+      downloadPcap: "Download PCAP",
       noData: "No data found",
       columns: {
         "@timestamp": "TimeStamp",
@@ -99,6 +100,7 @@ export const L7_DICT = {
       loading: "กำลังดึงข้อมูล...",
       viewDetails: "ดูรายละเอียด",
       rowsPerPage: "แถวต่อหน้า:",
+      downloadPcap: "ดาวน์โหลด PCAP",
       of: "จาก",
       noData: "ไม่พบข้อมูล",
       columns: {

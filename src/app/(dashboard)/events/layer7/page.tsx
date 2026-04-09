@@ -23,6 +23,7 @@ import { useSearchParams } from "next/navigation";
 import { L7_DICT, L7DictType } from "@/locales/layer7dict";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
+import { pcapModalDict } from "@/locales/pcapModalDict";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -62,7 +63,6 @@ export default function Layer7Page() {
   const langKey = (language?.toLowerCase() || "en") as "en" | "th";
   const dict: L7DictType = L7_DICT[langKey];
   const searchParams = useSearchParams();
-
   const toggleLanguage = () => {
     const nextLang = language === "EN" ? "TH" : "EN";
     setLanguage(nextLang);
@@ -411,6 +411,7 @@ export default function Layer7Page() {
           onClose={() => setIsPcapModalOpen(false)}
           onConfirm={handleConfirmPcapDownload}
           eventData={selectedPcapData}
+          t={pcapModalDict[language === "TH" ? "TH" : "EN"]}
         />
       </div>
     </div>

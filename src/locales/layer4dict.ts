@@ -24,6 +24,7 @@ export const layer4Dict = {
       loading: "Loading traffic data...", 
       noData: "No data found", 
       actions: "ACTIONS",
+      downloadPcap: "Download PCAP",
       rowsPerPage: "Rows per page",
       of: "of"
     },
@@ -86,6 +87,7 @@ export const layer4Dict = {
       databytes: "ดาต้าไบต์",
       logTitle: "รายการทราฟฟิก Layer 4",
       loading: "กำลังโหลดข้อมูล...", 
+      downloadPcap: "ดาวน์โหลด PCAP",
       noData: "ไม่พบข้อมูล", 
       actions: "จัดการ",
       rowsPerPage: "จำนวนต่อหน้า",

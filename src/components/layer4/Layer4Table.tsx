@@ -188,9 +188,9 @@ export function Layer4Table({
                                 onDownloadPcap(session);
                               }
                             }}
-                            className="hover:bg-cyan-950 focus:bg-cyan-950 text-cyan-400 focus:text-cyan-400 cursor-pointer text-xs font-medium"
+                            className="hover:bg-cyan-950 focus:bg-cyan-950 text-cyan-400 focus:text-cyan-400 cursor-pointer font-medium"
                           >
-                            <Download className="w-3.5 h-3.5 mr-2" /> Download PCAP
+                            <Download className="w-3.5 h-3.5 mr-2" /> {t?.downloadPcap || "Download PCAP"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

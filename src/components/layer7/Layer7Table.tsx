@@ -136,7 +136,7 @@ export function Layer7Table({
                                     }}
                                     className="hover:bg-cyan-950 focus:bg-cyan-950 text-cyan-400 focus:text-cyan-400 cursor-pointer font-medium"
                                   >
-                                    <Download className="w-4 h-4 mr-2" /> Download PCAP
+                                    <Download className="w-4 h-4 mr-2" /> {dict.downloadPcap}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>

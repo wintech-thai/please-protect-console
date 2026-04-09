@@ -173,9 +173,9 @@ export function IocTable({
                                 onGoToLayer7(ioc);
                               }
                             }}
-                            className="hover:bg-blue-950/50 focus:bg-blue-950/50 text-blue-400 focus:text-blue-400 cursor-pointer text-xs font-medium"
+                            className="hover:bg-cyan-950 focus:bg-cyan-950 text-cyan-400 focus:text-cyan-400 cursor-pointer font-medium"
                           >
-                            <ExternalLink className="w-3.5 h-3.5 mr-2" /> ไปยัง event (Layer 7)
+                            {t?.goToLayer7 || "Go to event (Layer 7)"} 
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
