@@ -5,8 +5,9 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { X, Filter, Trash2 } from "lucide-react";
+import { toast } from "sonner"; 
 
-import { esService } from "@/lib/elasticsearch";
+import { esService, arkimeService } from "@/lib/elasticsearch"; 
 import { TimeRangeValue } from "@/components/ui/advanced-time-selector";
 
 // Import Components & Constants
@@ -16,9 +17,13 @@ import { Layer7Histogram } from "@/components/layer7/Layer7Histogram";
 import { Layer7Table } from "@/components/layer7/Layer7Table";
 import { Layer7Flyout } from "@/components/layer7/Layer7Flyout";
 import { COLUMN_DEFS } from "@/components/layer7/constants";
+
+import { PcapDownloadModal, PcapEventData } from "@/components/pcap-download-modal";
+import { useSearchParams } from "next/navigation";
 import { L7_DICT, L7DictType } from "@/locales/layer7dict";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
+import { pcapModalDict } from "@/locales/pcapModalDict";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -57,7 +62,9 @@ export default function Layer7Page() {
   const { language, setLanguage } = useLanguage();
   const langKey = (language?.toLowerCase() || "en") as "en" | "th";
   const dict: L7DictType = L7_DICT[langKey];
-
+  
+  const searchParams = useSearchParams();
+  
   const toggleLanguage = () => {
     const nextLang = language === "EN" ? "TH" : "EN";
     setLanguage(nextLang);
@@ -66,16 +73,56 @@ export default function Layer7Page() {
   // --- 2. State Management ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarSearch, setSidebarSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [luceneQuery, setLuceneQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeFilters, setActiveFilters] = useState<FilterItem[]>([]);
 
-  const [timeRange, setTimeRange] = useState<TimeRangeValue>({
-    type: "relative",
-    value: "15m",
-    label: "Last 15 minutes",
+  const [searchInput, setSearchInput] = useState(() => searchParams?.get("q") || "");
+  const [luceneQuery, setLuceneQuery] = useState(() => searchParams?.get("q") || "");
+
+  const [timeRange, setTimeRange] = useState<TimeRangeValue>(() => {
+    const startParam = searchParams?.get("start");
+    const endParam = searchParams?.get("end");
+    
+    if (startParam && endParam) {
+      return {
+        type: "absolute",
+        value: "custom",
+        start: Number(startParam),
+        end: Number(endParam),
+        label: "Custom (From IoC)",
+      };
+    }
+    return { type: "relative", value: "15m", label: "Last 15 minutes" };
   });
+
+  useEffect(() => {
+    const qParam = searchParams?.get("q");
+    const startParam = searchParams?.get("start");
+    const endParam = searchParams?.get("end");
+
+    let shouldUpdate = false;
+
+    if (qParam !== null && qParam !== luceneQuery) {
+      setSearchInput(qParam);
+      setLuceneQuery(qParam);
+      shouldUpdate = true;
+    }
+
+    if (startParam && endParam && Number(startParam) !== timeRange.start) {
+      setTimeRange({
+        type: "absolute",
+        value: "custom",
+        start: Number(startParam),
+        end: Number(endParam),
+        label: "Custom (From IoC)",
+      });
+      shouldUpdate = true;
+    }
+    
+    if (shouldUpdate) {
+      setPage(1);
+    }
+  }, [searchParams, luceneQuery, timeRange.start]);
 
   const [events, setEvents] = useState<any[]>([]);
   const [totalHits, setTotalHits] = useState(0);
@@ -91,12 +138,15 @@ export default function Layer7Page() {
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
   const [page, setPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [allIndexFields, setAllIndexFields] = useState<string[]>([]);
 
   const [selectedFields, setSelectedFields] = useState<string[]>([
     "@timestamp", "event.id", "event.dataset", "source.ip", "source.port", "destination.ip", "destination.port", "actions",
   ]);
+
+  const [isPcapModalOpen, setIsPcapModalOpen] = useState(false);
+  const [selectedPcapData, setSelectedPcapData] = useState<PcapEventData | null>(null);
 
   // --- 3. Derived State ---
   const maxDocCount = useMemo(() => {
@@ -217,6 +267,70 @@ export default function Layer7Page() {
     setSelectedFields(prev => prev.includes(field) ? prev.filter(f => f !== field) : [...prev.filter(f => f !== "actions"), field, "actions"]);
   };
 
+  const handleOpenPcapModal = useCallback((event: any) => {
+    const timestamp = event["@timestamp"] || event.timestamp;
+    const sessionTime = new Date(timestamp);
+    
+    setSelectedPcapData({
+      srcIp: event["source.ip"] || event.source?.ip || "-",
+      srcPort: event["source.port"] || event.source?.port || 0,
+      destIp: event["destination.ip"] || event.destination?.ip || "-",
+      destPort: event["destination.port"] || event.destination?.port || 0,
+      timestamp: sessionTime,
+    });
+    setIsPcapModalOpen(true);
+  }, []);
+
+  const handleConfirmPcapDownload = async (data: PcapEventData, startTime: Date, endTime: Date) => {
+    try {
+      const orgId = getOrgId();
+      if (!orgId) throw new Error("Organization ID is missing.");
+
+      if ((!data.srcIp || data.srcIp === "-") && (!data.destIp || data.destIp === "-")) {
+        toast.error("Cannot download PCAP: Missing IP addresses in this event.");
+        return; 
+      }
+
+      const toastId = toast.loading("Cross-referencing Arkime and preparing PCAP...");
+
+      const startUnix = Math.floor(startTime.getTime() / 1000);
+      const endUnix = Math.floor(endTime.getTime() / 1000);
+
+      let expressionParts = [];
+      
+      if (data.srcIp && data.srcIp !== "-") expressionParts.push(`ip == "${data.srcIp}"`);
+      if (data.destIp && data.destIp !== "-") expressionParts.push(`ip == "${data.destIp}"`);
+      
+      if (data.srcPort && Number(data.srcPort) !== 0 && data.srcPort !== "-") {
+        expressionParts.push(`port == ${data.srcPort}`);
+      }
+      if (data.destPort && Number(data.destPort) !== 0 && data.destPort !== "-") {
+        expressionParts.push(`port == ${data.destPort}`);
+      }
+
+      const expression = expressionParts.join(" && ");
+
+      await arkimeService.downloadPcapCustom(
+        orgId,
+        expression,
+        startUnix,
+        endUnix
+      );
+
+      toast.success("PCAP downloaded successfully!", { id: toastId });
+    } catch (error: any) {
+      console.error("PCAP Download failed:", error);
+      
+      if (error?.response?.status === 404) {
+        toast.error("PCAP not found. This traffic might have been dropped by Arkime's BPF rules.", {
+          duration: 5000 
+        });
+      } else {
+        toast.error("Failed to download PCAP. Please try again or check connection.");
+      }
+    }
+  };
+
   return (
     <div className="flex h-full bg-slate-950 text-slate-200 font-sans overflow-hidden">
       <Layer7Sidebar
@@ -292,6 +406,7 @@ export default function Layer7Page() {
           onRowClick={setSelectedEvent}
           onSelect={setSelectedEventId}
           dict={dict.table}
+          onDownloadPcap={handleOpenPcapModal} 
         />
 
         <Layer7Flyout
@@ -304,6 +419,14 @@ export default function Layer7Page() {
           onToggleFieldSelection={toggleFieldSelection}
           selectedFields={selectedFields}
           dict={dict.flyout}
+        />
+
+        <PcapDownloadModal 
+          isOpen={isPcapModalOpen}
+          onClose={() => setIsPcapModalOpen(false)}
+          onConfirm={handleConfirmPcapDownload}
+          eventData={selectedPcapData}
+          t={pcapModalDict[language === "TH" ? "TH" : "EN"]}
         />
       </div>
     </div>

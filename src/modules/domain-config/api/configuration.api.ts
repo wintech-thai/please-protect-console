@@ -61,6 +61,11 @@ export const configurationApi = {
     return getConfig("GetOrgShortName");
   },
 
+  /** GET current organisation description */
+  getOrgDescription(): Promise<ConfigurationEntry> {
+    return getConfig("GetOrgDescription");
+  },
+
   /** SET domain */
   setDomain(value: string): Promise<ConfigurationEntry> {
     return setConfig("SetDomain", value);
@@ -74,5 +79,10 @@ export const configurationApi = {
   /** SET organisation short name */
   setOrgShortName(value: string): Promise<ConfigurationEntry> {
     return setConfig("SetOrgShortName", value);
+  },
+
+  /** SET organisation description */
+  setOrgDescription(value: string): Promise<ConfigurationEntry> {
+    return setConfig("SetOrgDescription", value);
   },
 };

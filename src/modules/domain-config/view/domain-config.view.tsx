@@ -31,6 +31,21 @@ const LOGO_MAX_LABEL = "512 KB";
 
 type T = typeof translations.domainConfig.EN;
 
+function splitOrgDescription(value: string): [string, string] {
+  if (!value) return ["", ""];
+
+  const [description1, ...rest] = value.split("|");
+  return [description1 ?? "", rest.join("|")];
+}
+
+function joinOrgDescription(description1: string, description2: string): string {
+  const left = description1.trim();
+  const right = description2.trim();
+
+  if (!left && !right) return "";
+  return `${left}|${right}`;
+}
+
 // ─── Logo URL validator ───────────────────────────────────────────────────────
 
 /**
@@ -116,6 +131,20 @@ interface ConfigRowProps {
   icon: React.ReactNode;
   t: T;
   onSave: (field: ConfigField, value: string) => Promise<void>;
+  isSaving: boolean;
+  inputWidthClass?: string;
+}
+
+interface DescriptionRowProps {
+  label: string;
+  description: string;
+  placeholder1: string;
+  placeholder2: string;
+  value1: string;
+  value2: string;
+  icon: React.ReactNode;
+  t: T;
+  onSave: (value1: string, value2: string) => Promise<void>;
   isSaving: boolean;
   inputWidthClass?: string;
 }
@@ -328,6 +357,130 @@ const ConfigRow = ({
   );
 };
 
+const DescriptionRow = ({
+  label,
+  description,
+  placeholder1,
+  placeholder2,
+  value1,
+  value2,
+  icon,
+  t,
+  onSave,
+  isSaving,
+  inputWidthClass,
+}: DescriptionRowProps) => {
+  const [editing, setEditing] = useState(false);
+  const [draft1, setDraft1] = useState(value1);
+  const [draft2, setDraft2] = useState(value2);
+
+  const handleEdit = () => {
+    setDraft1(value1);
+    setDraft2(value2);
+    setEditing(true);
+  };
+
+  const handleCancel = () => {
+    setDraft1(value1);
+    setDraft2(value2);
+    setEditing(false);
+  };
+
+  const handleSave = async () => {
+    await onSave(draft1, draft2);
+    setEditing(false);
+  };
+
+  const currentCombined = joinOrgDescription(value1, value2);
+  const draftCombined = joinOrgDescription(draft1, draft2);
+  const canSave = !isSaving && draftCombined !== currentCombined;
+
+  return (
+    <div className="flex flex-col gap-2 py-5 border-b border-slate-800 last:border-b-0">
+      <div className="flex items-center gap-2">
+        <span className="text-slate-400">{icon}</span>
+        <span className="text-base font-semibold text-slate-200">{label}</span>
+        <span className="text-sm text-slate-500 hidden sm:block">
+          — {description}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        {editing ? (
+          <>
+            <div className={`w-full ${inputWidthClass ?? ""} min-w-48 grid gap-2`}>
+              <input
+                autoFocus
+                type="text"
+                value={draft1}
+                placeholder={placeholder1}
+                onChange={(e) => setDraft1(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-600 focus:outline-none focus:border-cyan-500/70 text-slate-100 text-sm rounded-lg px-3 h-10 placeholder:text-slate-600 transition-colors"
+              />
+              <input
+                type="text"
+                value={draft2}
+                placeholder={placeholder2}
+                onChange={(e) => setDraft2(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-600 focus:outline-none focus:border-cyan-500/70 text-slate-100 text-sm rounded-lg px-3 h-10 placeholder:text-slate-600 transition-colors"
+              />
+            </div>
+
+            <button
+              onClick={handleSave}
+              disabled={!canSave}
+              className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors self-start"
+            >
+              {isSaving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
+              {isSaving ? t.saving : t.save}
+            </button>
+
+            <button
+              onClick={handleCancel}
+              disabled={isSaving}
+              className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-sm font-semibold transition-colors self-start"
+            >
+              <X className="w-3.5 h-3.5" />
+              {t.cancel}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className={`w-full ${inputWidthClass ?? ""} grid gap-2`}>
+              <span
+                className={`text-sm font-mono px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-800 truncate ${
+                  value1 ? "text-slate-100" : "text-slate-600 italic"
+                }`}
+              >
+                {value1 || t.noValue}
+              </span>
+              <span
+                className={`text-sm font-mono px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-800 truncate ${
+                  value2 ? "text-slate-100" : "text-slate-600 italic"
+                }`}
+              >
+                {value2 || t.noValue}
+              </span>
+            </div>
+
+            <button
+              onClick={handleEdit}
+              className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-semibold transition-colors"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              {t.edit}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Main View ────────────────────────────────────────────────────────────────
 
 export default function DomainConfigView() {
@@ -381,6 +534,8 @@ export default function DomainConfigView() {
   const domain = data?.domain?.configValue ?? "";
   const logo = data?.logo?.configValue ?? "";
   const shortName = data?.shortName?.configValue ?? "";
+  const orgDescription = data?.orgDescription?.configValue ?? "";
+  const [description1, description2] = splitOrgDescription(orgDescription);
 
   return (
     <div className="w-full h-full bg-slate-950 text-slate-200 overflow-y-auto">
@@ -409,6 +564,21 @@ export default function DomainConfigView() {
             icon={<Tag className="w-4 h-4" />}
             t={t}
             onSave={handleSave}
+            isSaving={isPending}
+            inputWidthClass="md:w-1/2"
+          />
+          <DescriptionRow
+            label={t.orgDescription}
+            description={t.orgDescriptionDesc}
+            placeholder1={t.description1Placeholder}
+            placeholder2={t.description2Placeholder}
+            value1={description1}
+            value2={description2}
+            icon={<Tag className="w-4 h-4" />}
+            t={t}
+            onSave={(value1, value2) =>
+              handleSave("orgDescription", joinOrgDescription(value1, value2))
+            }
             isSaving={isPending}
             inputWidthClass="md:w-1/2"
           />

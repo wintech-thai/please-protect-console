@@ -1,7 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ChevronRight, MoreVertical, Tag as TagIcon } from "lucide-react";
+import { ChevronRight, MoreVertical, Tag as TagIcon, Download, Eye } from "lucide-react"; 
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Layer4TableProps {
   sessions: any[];
@@ -16,6 +23,7 @@ interface Layer4TableProps {
   onItemsPerPageChange: (limit: number) => void;
   t: any; 
   onAddFilter?: (key: string, value: any, operator: "==" | "!=") => void;
+  onDownloadPcap?: (session: any) => void; 
 }
 
 export function Layer4Table({
@@ -30,6 +38,7 @@ export function Layer4Table({
   onPageChange,
   onItemsPerPageChange,
   t,
+  onDownloadPcap, 
 }: Layer4TableProps) {
   
   const getProtocolColor = (proto: string) => {
@@ -164,10 +173,27 @@ export function Layer4Table({
                     <td className="px-4 py-2.5 text-[12.5px] font-mono text-slate-300 text-right truncate">{session.packets}</td>
                     <td className="px-4 py-2.5 text-[12.5px] font-mono text-emerald-400 font-medium text-right truncate">{session.databytes}</td>
 
-                    <td className="px-4 py-2.5 text-center">
-                      <button className="p-1 rounded text-slate-500 hover:bg-slate-700 mx-auto block">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                    <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-700 mx-auto block transition-colors outline-none">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        
+                        <DropdownMenuContent align="end" className="w-48 bg-[#0B1120] border-slate-800 text-slate-300">
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              if (onDownloadPcap) {
+                                onDownloadPcap(session);
+                              }
+                            }}
+                            className="hover:bg-cyan-950 focus:bg-cyan-950 text-cyan-400 focus:text-cyan-400 cursor-pointer font-medium"
+                          >
+                            <Download className="w-3.5 h-3.5 mr-2" /> {t?.downloadPcap || "Download PCAP"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 );
@@ -188,7 +214,7 @@ export function Layer4Table({
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
             >
-              {[25, 50, 100, 200].map(v => <option key={v} value={v}>{v}</option>)}
+              {[25,50,100,200].map(v => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
           <span className="font-mono">

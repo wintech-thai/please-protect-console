@@ -196,6 +196,9 @@ export const translations = {
       alerts: "Event Alerts",
       eventIoc: "Event IoC",
       subnetMapping: "Subnet Mapping",
+      analytics: "Analytics",
+      eventSummary: "Event Summary",
+      mitreSummary: "MITRE Summary",
       administrator: "Administrator",
       users: "Users",
       roles: "Custom Roles",
@@ -220,6 +223,9 @@ export const translations = {
       alerts: "การแจ้งเตือน",
       eventIoc: "เหตุการณ์ IoC",
       subnetMapping: "ผังข้อมูลซับเน็ต",
+      analytics: "Analytics",
+      eventSummary: "สรุปเหตุการณ์",
+      mitreSummary: "สรุป MITRE",
       administrator: "การจัดการระบบ",
       users: "ผู้ใช้",
       roles: "สิทธิ์ตามบทบาท",
@@ -228,6 +234,79 @@ export const translations = {
       system: "ระบบ",
 
       language: "ภาษา"
+    }
+  },
+
+  diagram: {
+    EN: {
+      header: {
+        title: "Network Diagram",
+        subtitle: "Visual representation of the RTARF Sensor's deployment within your network infrastructure.",
+      },
+      card: {
+        title: "Architecture Diagram",
+        subtitle: "Passive Monitoring Mode (Out-of-band)",
+      },
+      status: {
+        online: "Online & Monitoring",
+        offline: "Sensor Offline",
+        warning: "High Latency",
+      },
+      nodes: {
+        internet: "Internet",
+        wan: "WAN",
+        firewall: "Firewall",
+        gateway: "Gateway",
+        coreSwitch: "Core Switch",
+        networkHub: "Network Hub",
+        mirrorPort: "Mirror Port (SPAN)",
+        yourSensor: "📍 Your Sensor",
+        sensorName: "RTARF SENSOR",
+        ip: "IP",
+        internalLan: "Internal LAN",
+      },
+      legends: {
+        passiveTitle: "Passive Monitoring",
+        passiveDesc: "Operates out-of-band by receiving mirrored traffic from the core switch, ensuring zero impact on network performance or stability.",
+        protectedTitle: "Protected Area",
+        protectedDesc1: "Continuously analyzes all traffic within the internal network (",
+        protectedDesc2: ") in real-time 24/7."
+      }
+    },
+    TH: {
+      header: {
+        title: "แผนผังการติดตั้งระบบเครือข่าย",
+        subtitle: "ภาพรวมการติดตั้งและตำแหน่งของเซ็นเซอร์เฝ้าระวังในระบบเครือข่าย",
+      },
+      card: {
+        title: "แผนผังสถาปัตยกรรม",
+        subtitle: "โหมดเฝ้าระวังแบบ Passive (Out-of-band)",
+      },
+      status: {
+        online: "ออนไลน์และกำลังเฝ้าระวัง",
+        offline: "เซ็นเซอร์ขาดการเชื่อมต่อ",
+        warning: "ความหน่วงสัญญาณสูง",
+      },
+      nodes: {
+        internet: "อินเทอร์เน็ต",
+        wan: "WAN",
+        firewall: "ไฟร์วอลล์",
+        gateway: "เกตเวย์",
+        coreSwitch: "คอร์สวิตช์",
+        networkHub: "ศูนย์กลางเครือข่าย",
+        mirrorPort: "สำเนาข้อมูล (Mirror Port)",
+        yourSensor: "📍 เซ็นเซอร์ของคุณ",
+        sensorName: "RTARF SENSOR",
+        ip: "ไอพี",
+        internalLan: "เครือข่ายภายใน",
+      },
+      legends: {
+        passiveTitle: "การเฝ้าระวังแบบ Passive",
+        passiveDesc: "ระบบทำงานแบบ Out-of-band โดยรับสำเนาข้อมูล (Mirror Traffic) จากสวิตช์หลัก ทำให้ไม่มีผลกระทบต่อความเร็วหรือเสถียรภาพของเครือข่ายเดิม",
+        protectedTitle: "พื้นที่คุ้มครอง",
+        protectedDesc1: "ดูแลและวิเคราะห์ทราฟฟิกทั้งหมดที่วิ่งเข้า-ออกระบบภายใน (",
+        protectedDesc2: ") อย่างต่อเนื่องแบบเรียลไทม์ 24/7"
+      }
     }
   },
 
@@ -251,6 +330,11 @@ export const translations = {
       indices: "Indices",
       backupHistory: "Backup History",
       restoreHistory: "Restore History",
+      analytics: "Analytics",
+      analyticsOverview: "Overview",
+      analyticsThreats: "Threats",
+      eventSummary: "Event Summary",
+      mitreSummary: "MITRE Summary",
     },
     TH: {
       system: "ระบบ",
@@ -271,6 +355,11 @@ export const translations = {
       indices: "ดัชนี",
       backupHistory: "ประวัติการสำรอง",
       restoreHistory: "ประวัติการกู้คืน",
+      analytics: "Analytics",
+      analyticsOverview: "Overview",
+      analyticsThreats: "Threats",
+      eventSummary: "สรุปเหตุการณ์",
+      mitreSummary: "สรุป MITRE",
     },
   },
 
@@ -2086,10 +2175,14 @@ export const translations = {
   domainConfig: {
     EN: {
       title: "Settings",
-      subtitle: "Manage your organisation's domain, logo, and short name",
+      subtitle: "Manage your organisation's domain, logo, short name, and descriptions",
       shortName: "Short Name",
       shortNameDesc: "Display name used across the console",
       shortNamePlaceholder: "e.g. RTARF",
+      orgDescription: "Description",
+      orgDescriptionDesc: "Organisation descriptions",
+      description1Placeholder: "Description1",
+      description2Placeholder: "Description2",
       domain: "Domain",
       domainDesc: "Public domain of the organisation",
       domainPlaceholder: "e.g. example.com",
@@ -2112,10 +2205,14 @@ export const translations = {
     },
     TH: {
       title: "การตั้งค่า",
-      subtitle: "จัดการโดเมน โลโก้ และชื่อย่อขององค์กร",
+      subtitle: "จัดการโดเมน โลโก้ ชื่อย่อ และคำอธิบายขององค์กร",
       shortName: "ชื่อย่อ",
       shortNameDesc: "ชื่อที่แสดงในระบบ",
       shortNamePlaceholder: "เช่น RTARF",
+      orgDescription: "คำอธิบาย",
+      orgDescriptionDesc: "คำอธิบายองค์กร",
+      description1Placeholder: "Description1",
+      description2Placeholder: "Description2",
       domain: "โดเมน",
       domainDesc: "โดเมนสาธารณะขององค์กร",
       domainPlaceholder: "เช่น example.com",

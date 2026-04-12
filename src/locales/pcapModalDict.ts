@@ -1,0 +1,30 @@
+export const pcapModalDict = {
+  EN: {
+    title: "Download PCAP File",
+    description: "You are about to download the packet capture (PCAP) for this event. The system will automatically extract traffic from 5 minutes before and 5 minutes after the event time.",
+    connDetails: "Connection Details",
+    source: "Source",
+    destination: "Destination",
+    port: "Port",
+    extractionWindow: "Extraction Window (10 Mins Total)",
+    startTime: "Start Time (-5m)",
+    endTime: "End Time (+5m)",
+    cancel: "Cancel",
+    confirm: "Download",
+    processing: "Processing...",
+  },
+  TH: {
+    title: "ดาวน์โหลดไฟล์ PCAP",
+    description: "คุณกำลังจะดาวน์โหลดไฟล์บันทึกการรับส่งข้อมูล (PCAP) สำหรับเหตุการณ์นี้ ระบบจะทำการดึงข้อมูลการจราจรโดยอัตโนมัติตั้งแต่ 5 นาทีก่อนหน้า จนถึง 5 นาทีหลังเวลาที่เกิดเหตุ",
+    connDetails: "รายละเอียดการเชื่อมต่อ",
+    source: "ต้นทาง (Source)",
+    destination: "ปลายทาง (Destination)",
+    port: "พอร์ต",
+    extractionWindow: "ช่วงเวลาที่ดึงข้อมูล (รวม 10 นาที)",
+    startTime: "เวลาเริ่มต้น (-5 นาที)",
+    endTime: "เวลาสิ้นสุด (+5 นาที)",
+    cancel: "ยกเลิก",
+    confirm: "ดาวน์โหลด",
+    processing: "กำลังดำเนินการ...",
+  }
+};

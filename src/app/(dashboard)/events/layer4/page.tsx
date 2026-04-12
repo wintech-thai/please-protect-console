@@ -7,6 +7,7 @@ import timezone from "dayjs/plugin/timezone";
 import { toast } from "sonner";
 import { Filter, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { pcapModalDict } from "@/locales/pcapModalDict";
 
 // Services & Types
 import { arkimeService } from "@/lib/elasticsearch";
@@ -19,6 +20,8 @@ import { Layer4TopNav } from "@/components/layer4/Layer4TopNav";
 import { Layer4Histogram } from "@/components/layer4/Layer4Histogram";
 import { Layer4Table } from "@/components/layer4/Layer4Table";
 import { Layer4Flyout } from "@/components/layer4/Layer4Flyout";
+
+import { PcapDownloadModal, PcapEventData } from "@/components/pcap-download-modal";
 
 import { useLanguage } from "@/context/LanguageContext";
 import { translations } from "@/locales/dict";
@@ -56,6 +59,7 @@ export default function Layer4Page() {
   const { language, setLanguage } = useLanguage();
   const langKey = (language === "TH" ? "TH" : "EN") as "EN" | "TH";
   const dict = layer4Dict[langKey];
+  const modalT = pcapModalDict[langKey];
 
   const toggleLanguage = () => {
     const nextLang = language === "EN" ? "TH" : "EN";
@@ -87,6 +91,9 @@ export default function Layer4Page() {
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+
+  const [isPcapModalOpen, setIsPcapModalOpen] = useState(false);
+  const [selectedPcapData, setSelectedPcapData] = useState<PcapEventData | null>(null);
 
   const timeDict: TimePickerTranslations = useMemo(() => {
     const picker =
@@ -165,6 +172,46 @@ export default function Layer4Page() {
     },
     [],
   );
+
+  const handleOpenPcapModal = useCallback((session: any) => {
+    const sessionTime = new Date(session.startTime);
+    
+    setSelectedPcapData({
+      srcIp: session.srcIp,
+      srcPort: session.srcPort,
+      destIp: session.dstIp,
+      destPort: session.dstPort,
+      timestamp: sessionTime,
+    });
+    setIsPcapModalOpen(true);
+  }, []);
+
+  const handleConfirmPcapDownload = async (data: PcapEventData, startTime: Date, endTime: Date) => {
+    try {
+      const orgId = getOrgId();
+      if (!orgId) throw new Error("Organization ID is missing.");
+
+      const toastId = toast.loading("Preparing PCAP file for download...");
+
+      const startUnix = Math.floor(startTime.getTime() / 1000);
+      const endUnix = Math.floor(endTime.getTime() / 1000);
+
+      await arkimeService.downloadPcap(
+        orgId,
+        data.srcIp,
+        data.srcPort,
+        data.destIp,
+        data.destPort,
+        startUnix,
+        endUnix
+      );
+
+      toast.success("PCAP downloaded successfully!", { id: toastId });
+    } catch (error) {
+      console.error("PCAP Download failed:", error);
+      toast.error("Failed to download PCAP. Please try again or check connection.");
+    }
+  };
 
   const fetchMetadata = useCallback(async () => {
     const orgId = getOrgId();
@@ -601,6 +648,7 @@ export default function Layer4Page() {
             onItemsPerPageChange={setItemsPerPage}
             t={dict.table}
             onAddFilter={handleAddFilter}
+            onDownloadPcap={handleOpenPcapModal}
           />
         </div>
 
@@ -615,6 +663,14 @@ export default function Layer4Page() {
           onClose={() => setDetailSession(null)}
           onAddFilter={handleAddFilter}
           t={dict}
+        />
+        
+        <PcapDownloadModal 
+          isOpen={isPcapModalOpen}
+          onClose={() => setIsPcapModalOpen(false)}
+          onConfirm={handleConfirmPcapDownload}
+          eventData={selectedPcapData}
+          t={modalT} 
         />
       </div>
     </div>

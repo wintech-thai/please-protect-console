@@ -1,7 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ChevronRight, MoreVertical, Trash2 } from "lucide-react";
+import { ChevronRight, MoreVertical, Trash2, ExternalLink, Eye } from "lucide-react"; 
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface IocTableProps {
   data: any[];
@@ -16,6 +23,7 @@ interface IocTableProps {
   onItemsPerPageChange: (limit: number) => void;
   onDelete?: (id: string, e: React.MouseEvent) => void;
   t?: any;
+  onGoToLayer7?: (ioc: any) => void; 
 }
 
 export function IocTable({
@@ -31,6 +39,7 @@ export function IocTable({
   onItemsPerPageChange,
   onDelete,
   t,
+  onGoToLayer7, 
 }: IocTableProps) {
   
   const getTypeColor = (type: string) => {
@@ -148,10 +157,28 @@ export function IocTable({
                       {ioc.lastSeenDate}
                     </td>
 
-                    <td className="px-4 py-3.5 text-center">
-                      <button className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700 rounded transition-colors">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                    <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors outline-none block mx-auto">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        
+                        <DropdownMenuContent align="end" className="w-48 bg-[#0B1120] border-slate-800 text-slate-300">
+                          
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              if (onGoToLayer7) {
+                                onGoToLayer7(ioc);
+                              }
+                            }}
+                            className="hover:bg-cyan-950 focus:bg-cyan-950 text-cyan-400 focus:text-cyan-400 cursor-pointer font-medium"
+                          >
+                            {t?.goToLayer7 || "Go to event (Layer 7)"} 
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
 
                     <td className="px-4 py-3.5 text-center">
