@@ -269,11 +269,15 @@ export default function SignInView() {
           </button>
         </form>
 
-        <div className="mt-8 text-center border-t border-blue-900/30 pt-6">
-          <p className="text-[10px] text-blue-400/50 uppercase tracking-[0.2em]">
-            Royal Thai Armed Forces <br /> Cyber Security Center
-          </p>
-        </div>
+        {branding.description.length > 0 && (
+          <div className="mt-8 text-center border-t border-blue-900/30 pt-6">
+            {branding.description.map((line, i) => (
+              <p key={i} className="text-[10px] text-blue-400/50 uppercase tracking-[0.2em]">
+                {line}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

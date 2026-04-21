@@ -90,7 +90,7 @@ export default function IndexManagementPage() {
     }
   };
 
-  const displayTotal = filteredIndices.length;
+  const displayTotal = totalIndices;
   const totalPages = Math.ceil(displayTotal / limit) || 1;
 
   return (
