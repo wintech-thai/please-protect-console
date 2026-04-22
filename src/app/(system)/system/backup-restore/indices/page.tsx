@@ -49,8 +49,7 @@ export default function IndexManagementPage() {
   const fetchIndicesData = async () => {
     setIsLoading(true);
     try {
-      const offset = (page - 1) * limit;
-      const response = await indicesApi.getIndices({ offset, limit });
+      const response = await indicesApi.getIndices({ offset: 0, limit: 10000 });
       setIndices(response.data || []);
       setTotalIndices(response.total || 0);
     } catch (error) {
@@ -61,7 +60,7 @@ export default function IndexManagementPage() {
     }
   };
 
-  useEffect(() => { fetchIndicesData(); }, [page, limit]);
+  useEffect(() => { fetchIndicesData(); }, []);
 
   // --- 4. Logic & Filtering ---
   const filteredIndices = useMemo(() => {
@@ -90,8 +89,9 @@ export default function IndexManagementPage() {
     }
   };
 
-  const displayTotal = totalIndices;
+  const displayTotal = filteredIndices.length;
   const totalPages = Math.ceil(displayTotal / limit) || 1;
+  const pagedIndices = filteredIndices.slice((page - 1) * limit, page * limit);
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-950 text-slate-300 p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden">
@@ -125,8 +125,8 @@ export default function IndexManagementPage() {
 
         {/* --- Table Container --- */}
         <div className="flex-1 flex flex-col min-h-0 bg-slate-900/40 border border-slate-800 rounded-xl shadow-2xl overflow-hidden backdrop-blur-sm">
-          <IndexTable 
-            indices={filteredIndices}
+          <IndexTable
+            indices={pagedIndices}
             isLoading={isLoading}
             selectedIndices={selectedIndices}
             onToggleSelect={(name) => setSelectedIndices(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name])}
