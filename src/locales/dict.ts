@@ -315,7 +315,7 @@ export const translations = {
       system: "System",
       organization: "Organization",
       operations: "Operations",
-      firmwareManagement: "Firmware Management",
+      firmwareManagement: "Firmware",
       interfaces: "Interfaces",
       systemLogs: "System Logs",
       workloads: "Workloads",
@@ -341,7 +341,7 @@ export const translations = {
       system: "ระบบ",
       organization: "องค์กร",
       operations: "ปฏิบัติการ",
-      firmwareManagement: "จัดการ Firmware",
+      firmwareManagement: "Firmware",
       interfaces: "Interfaces",
       systemLogs: "บันทึกระบบ",
       workloads: "ภาระงาน",
@@ -367,7 +367,7 @@ export const translations = {
 
   firmware: {
     EN: {
-      title: "Firmware Management",
+      title: "Firmware",
       subtitle: "View current firmware version and upgrade history",
       refresh: "Refresh",
       currentVersion: "Current Version",
@@ -385,12 +385,13 @@ export const translations = {
         fromVersion: "From Version",
         toVersion: "To Version",
         status: "Status",
-        succeedCount: "succeedCount",
-        failedCount: "failedCount",
+        succeedCount: "Succeed",
+        failedCount: "Failed",
       },
       status: {
         done: "Done",
         running: "Running",
+        submitted: "Submitted",
         failed: "Failed",
       },
       flyout: {
@@ -423,12 +424,13 @@ export const translations = {
         fromVersion: "จากเวอร์ชัน",
         toVersion: "เป็นเวอร์ชัน",
         status: "สถานะ",
-        succeedCount: "succeedCount",
-        failedCount: "failedCount",
+        succeedCount: "สำเร็จ",
+        failedCount: "ล้มเหลว",
       },
       status: {
         done: "สำเร็จ",
         running: "กำลังทำงาน",
+        submitted: "รอดำเนินการ",
         failed: "ล้มเหลว",
       },
       flyout: {

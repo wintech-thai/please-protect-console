@@ -18,7 +18,10 @@ function VersionCard({ label, version, isLoading }: { label: string; version?: s
     <div className="flex flex-col gap-1 bg-slate-900 border border-slate-800 rounded-xl px-6 py-4 min-w-[180px]">
       <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">{label}</span>
       {isLoading ? (
-        <div className="h-7 w-24 bg-slate-800 rounded animate-pulse" />
+        <div className="flex items-center gap-2 h-7">
+          <div className="w-5 h-5 border-2 border-slate-700 border-t-cyan-400 rounded-full animate-spin" />
+          <span className="text-sm text-slate-500">Loading…</span>
+        </div>
       ) : (
         <span className="text-xl font-bold font-mono text-white">{version ?? "—"}</span>
       )}
@@ -46,9 +49,12 @@ export function FirmwareView() {
   const currentVersion = localVersion.data;
   const availableVersion = remoteVersion.data;
 
-  const hasRunningJob = jobs.some((j) => j.status === "Running");
+  const latestJob = jobs[0] ?? null;
+  const latestJobInProgress = !!latestJob && latestJob.status !== "Done" && latestJob.status !== "Failed";
+  const hasRunningJob = latestJob?.status === "Running";
   const versionsMatch = !!currentVersion && !!availableVersion && currentVersion === availableVersion;
-  const upgradeDisabled = versionsMatch || hasRunningJob || upgrade.isPending;
+  const isVersionLoading = localVersion.isLoading || remoteVersion.isLoading;
+  const upgradeDisabled = isVersionLoading || versionsMatch || latestJobInProgress || upgrade.isPending;
 
   const handleUpgrade = async () => {
     if (!currentVersion || !availableVersion) return;
@@ -105,7 +111,7 @@ export function FirmwareView() {
             className={cn(
               "flex items-center gap-2 px-5 h-11 rounded-lg border text-sm font-semibold transition-all",
               upgradeDisabled
-                ? "border-slate-700 bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
+                ? "border-slate-700 bg-slate-800 text-slate-500 opacity-50"
                 : "border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500/60",
             )}
           >
