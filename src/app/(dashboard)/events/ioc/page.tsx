@@ -117,7 +117,9 @@ export default function IocPage() {
         break;
       case "domain":
       case "fqdn":
-        searchField = "dns.question.name"; 
+        searchField = (ioc.source || "").toLowerCase().includes("zeek.ssl")
+          ? "zeek.ssl.server.name"
+          : "dns.question.name";
         break;
       case "url":
         searchField = "url.original";
@@ -421,7 +423,7 @@ export default function IocPage() {
             onItemsPerPageChange={setItemsPerPage}
             onDelete={handleOpenDeleteModal}
             t={dict.table}
-            onGoToLayer7={handleGoToLayer7} // 🚀 2. ส่ง Prop ลง Table
+            onGoToLayer7={handleGoToLayer7} 
           />
         </div>
 

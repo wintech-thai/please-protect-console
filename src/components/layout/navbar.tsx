@@ -117,7 +117,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
       href: "/events/layer7",
       children: [
         { label: t.layer7 || "Layer 7", href: "/events/layer7", icon: <Layers className="w-4 h-4 mr-2" /> },
-        { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> },
+        // { label: (t as any).layer4 || "Layer4 Events", href: "/events/layer4", icon: <Activity className="w-4 h-4 mr-2" /> },
         { isDivider: true },
         { label: t.alerts || "Event Alerts", href: "/events/alerts", icon: <AlertTriangle className="w-4 h-4 mr-2" /> },
         { label: t.eventIoc || "Event IoC", href: "/events/ioc", icon: <Target className="w-4 h-4 mr-2" /> },
