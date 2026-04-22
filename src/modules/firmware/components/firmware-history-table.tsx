@@ -23,6 +23,10 @@ const STATUS_STYLE: Record<string, { cls: string; icon: React.ReactNode }> = {
     cls: "bg-blue-500/10 text-blue-400 border-blue-500/25",
     icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
   },
+  Submitted: {
+    cls: "bg-yellow-500/10 text-yellow-400 border-yellow-500/25",
+    icon: <Clock className="w-3.5 h-3.5" />,
+  },
   Failed: {
     cls: "bg-red-500/10 text-red-400 border-red-500/25",
     icon: <XCircle className="w-3.5 h-3.5" />,
@@ -105,6 +109,7 @@ export function FirmwareHistoryTable({ data, onSelect }: FirmwareHistoryTablePro
   const statusLabels: Record<string, string> = {
     Done: t.status.done,
     Running: t.status.running,
+    Submitted: t.status.submitted,
     Failed: t.status.failed,
   };
 
