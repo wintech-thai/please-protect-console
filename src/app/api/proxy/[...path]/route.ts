@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
+import https from "https";
+
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 const BACKEND_URL = process.env.BACKEND_URL;
 
@@ -16,7 +19,6 @@ async function handleProxy(
     console.log(`🚀 Proxying [${req.method}] to: ${targetUrl}`);
 
     // จัดการ Body ---
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let body: any = null;
     const contentType = req.headers.get("content-type");
 
@@ -58,6 +60,9 @@ async function handleProxy(
     const headers: Record<string, string> = {};
     if (contentType) headers["Content-Type"] = contentType;
 
+    const apiKey = process.env.API_KEY;
+    if (apiKey) headers["X-API-Key"] = apiKey;
+
     const isLoginPath = endpoint.toLowerCase().includes("login");
     if (!isLoginPath) {
         const authHeader = req.headers.get("Authorization");
@@ -70,9 +75,10 @@ async function handleProxy(
         method: req.method,
         url: targetUrl,
         headers: headers,
-        data: body, 
-        validateStatus: () => true, 
-        responseType: 'arraybuffer' 
+        data: body,
+        validateStatus: () => true,
+        responseType: 'arraybuffer',
+        httpsAgent,
     });
 
     console.log(`📥 Backend Status: ${response.status}`);
