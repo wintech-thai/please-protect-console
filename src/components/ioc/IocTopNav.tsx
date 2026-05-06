@@ -6,7 +6,7 @@ import {
   ShieldAlert,
   Search,
   Info,
-  Filter
+  ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -50,8 +50,19 @@ export function IocTopNav({
 }: IocTopNavProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [iocDropdownOpen, setIocDropdownOpen] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const iocDropdownRef = useRef<HTMLDivElement>(null);
+
+  const IOC_OPTIONS = [
+    { label: dict?.allTypes || "All Types", value: "All" },
+    { label: "SourceIP",        value: "SourceIP" },
+    { label: "DestinationIP",   value: "DestinationIP" },
+    { label: "Domain",          value: "Domain" },
+    { label: "FileHashSha256",  value: "FileHashSha256" },
+    { label: "FileHashMD5",     value: "FileHashMD5" },
+  ];
 
   const filteredSuggestions = useMemo(() => {
     if (!luceneQuery || !fields.length) return [];
@@ -106,6 +117,16 @@ export function IocTopNav({
         setActiveIndex(-1);
       }
     };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (iocDropdownRef.current && !iocDropdownRef.current.contains(e.target as Node)) {
+        setIocDropdownOpen(false);
+      }
+    }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -185,26 +206,37 @@ export function IocTopNav({
         <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           {/* IoC Type Dropdown */}
           {onIocTypeFilterChange && (
-            <div className="relative flex-1 sm:flex-none flex items-center min-w-[140px]">
-              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                <Filter size={14} />
-              </div>
-              <select
-                value={iocTypeFilter}
-                onChange={(e) => onIocTypeFilterChange(e.target.value)}
+            <div className="relative flex-none" ref={iocDropdownRef}>
+              <button
+                onClick={() => setIocDropdownOpen((o) => !o)}
                 disabled={isLoading}
-                className="w-full h-10 pl-8 pr-8 bg-slate-900 border border-slate-700 hover:border-slate-600 focus:border-blue-500 text-slate-200 text-xs font-bold rounded-lg outline-none cursor-pointer appearance-none transition-colors tracking-tight"
+                className="h-10 pl-3 pr-2.5 flex items-center gap-2 bg-slate-900 border border-slate-700 hover:border-slate-600 rounded-lg text-xs font-bold text-slate-200 transition-colors whitespace-nowrap"
               >
-                <option value="All">{dict?.allTypes || "All Types"}</option>
-                <option value="SourceIP">SourceIP</option>
-                <option value="DestinationIP">DestinationIP</option>
-                <option value="Domain">Domain</option>
-                <option value="FileHashSha256">FileHashSha256</option>
-                <option value="FileHashMD5">FileHashMD5</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <svg width="8" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
+                <span className={cn(iocTypeFilter !== "All" ? "text-rose-400" : "text-slate-400")}>
+                  {IOC_OPTIONS.find((o) => o.value === iocTypeFilter)?.label ?? iocTypeFilter}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              </button>
+
+              {iocDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 w-44 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                  {IOC_OPTIONS.map((opt) => {
+                    const active = iocTypeFilter === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => { onIocTypeFilterChange(opt.value); setIocDropdownOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 text-xs font-semibold hover:bg-slate-800 transition-colors",
+                          active ? "text-blue-400 bg-slate-800/60" : "text-slate-300"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

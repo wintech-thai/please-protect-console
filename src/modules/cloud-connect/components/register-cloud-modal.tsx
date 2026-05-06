@@ -7,9 +7,9 @@ import {
   Key,
   Link as LinkIcon,
   Loader2,
-  Save,
   Activity,
   Pencil,
+  Check,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cloudConnectDict } from "../cloud-connect.dict";
@@ -35,33 +35,34 @@ interface RegisterCloudModalProps {
   onClose: () => void;
 }
 
-export function RegisterCloudModal({
-  isOpen,
-  onClose,
-}: RegisterCloudModalProps) {
+export function RegisterCloudModal({ isOpen, onClose }: RegisterCloudModalProps) {
   const { language } = useLanguage();
   const t =
-    cloudConnectDict[language as keyof typeof cloudConnectDict]
-      ?.registerModal || cloudConnectDict.EN.registerModal;
+    cloudConnectDict[language as keyof typeof cloudConnectDict]?.registerModal ||
+    cloudConnectDict.EN.registerModal;
 
   const { data: config, isLoading, refetch } = useCloudConfig();
   const { mutateAsync: saveConfig } = useSaveCloudConfig();
 
-  const [endpoint, setEndpoint] = useState("");
-  const [connectKey, setConnectKey] = useState("");
-  const [isKeyEdited, setIsKeyEdited] = useState(false);
-  const [isEndpointEdited, setIsEndpointEdited] = useState(false);
-  const [isSyncEnabled, setIsSyncEnabled] = useState(false);
+  // ── Endpoint ──
+  const [isEndpointEditing, setIsEndpointEditing] = useState(false);
+  const [endpointDraft, setEndpointDraft] = useState("");
+  const [isSavingEndpoint, setIsSavingEndpoint] = useState(false);
 
-  const [isSaving, setIsSaving] = useState(false);
+  // ── Connect Key ──
+  const [isKeyEditing, setIsKeyEditing] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [isSavingKey, setIsSavingKey] = useState(false);
+
+  // ── Sync Toggle ──
+  const [isSyncEnabled, setIsSyncEnabled] = useState(false);
+  const [isSavingSync, setIsSavingSync] = useState(false);
 
   useEffect(() => {
     if (config && isOpen) {
-      setEndpoint(config.cloudUrl?.configValue || "");
-      setConnectKey(config.cloudConnectKey?.configValue || "");
       setIsSyncEnabled(config.cloudConnectFlag?.configValue === "true");
-      setIsKeyEdited(false);
-      setIsEndpointEdited(false);
+      setIsEndpointEditing(false);
+      setIsKeyEditing(false);
     }
   }, [config, isOpen]);
 
@@ -73,50 +74,47 @@ export function RegisterCloudModal({
     return `${key.slice(0, 2)}${"•".repeat(Math.max(8, key.length - 4))}${key.slice(-2)}`;
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
+  const handleSaveEndpoint = async () => {
+    setIsSavingEndpoint(true);
     try {
-      const promises = [];
-      if (
-        (isEndpointEdited || !config?.cloudUrl?.configValue) &&
-        endpoint !== (config?.cloudUrl?.configValue || "")
-      ) {
-        promises.push(saveConfig({ field: "cloudUrl", value: endpoint }));
-      }
-      // If the user hasn't edited the key, we don't save the masked/original key back
-      if (
-        isKeyEdited &&
-        connectKey !== (config?.cloudConnectKey?.configValue || "")
-      ) {
-        promises.push(
-          saveConfig({ field: "cloudConnectKey", value: connectKey }),
-        );
-      }
-      if (
-        isSyncEnabled !==
-        (config?.cloudConnectFlag?.configValue === "true")
-      ) {
-        promises.push(
-          saveConfig({
-            field: "cloudConnectFlag",
-            value: isSyncEnabled ? "true" : "false",
-          }),
-        );
-      }
-
-      await Promise.all(promises);
+      await saveConfig({ field: "cloudUrl", value: endpointDraft });
       toast.success(t.saveSuccess);
-      refetch();
-      onClose();
-    } catch (error) {
-      if (error instanceof Error) {
-        console.log('[CLOUD CONNECT]: ', error.message)
-      } else {
-        console.log('[CLOUD CONNECT]: ', error)
-      }
+      await refetch();
+      setIsEndpointEditing(false);
+    } catch {
       toast.error(t.saveError);
     } finally {
-      setIsSaving(false);
+      setIsSavingEndpoint(false);
+    }
+  };
+
+  const handleSaveKey = async () => {
+    setIsSavingKey(true);
+    try {
+      await saveConfig({ field: "cloudConnectKey", value: keyDraft });
+      toast.success(t.saveSuccess);
+      await refetch();
+      setIsKeyEditing(false);
+    } catch {
+      toast.error(t.saveError);
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
+
+  const handleToggleSync = async () => {
+    const next = !isSyncEnabled;
+    setIsSyncEnabled(next);
+    setIsSavingSync(true);
+    try {
+      await saveConfig({ field: "cloudConnectFlag", value: next ? "true" : "false" });
+      toast.success(t.saveSuccess);
+      await refetch();
+    } catch {
+      toast.error(t.saveError);
+      setIsSyncEnabled(!next);
+    } finally {
+      setIsSavingSync(false);
     }
   };
 
@@ -149,16 +147,16 @@ export function RegisterCloudModal({
                   <LinkIcon className="w-4 h-4 text-slate-400" /> {t.endpoint}
                 </label>
                 <p className="text-xs text-slate-500 mb-2">{t.endpointDesc}</p>
-                {!isEndpointEdited && config?.cloudUrl?.configValue ? (
+                {!isEndpointEditing ? (
                   <div className="flex items-center gap-3">
-                    <span
-                      className="w-full bg-slate-900 border border-slate-800 text-slate-400 text-sm rounded-lg px-4 py-3 select-none flex items-center overflow-x-auto whitespace-nowrap no-scrollbar"
-                      title={config.cloudUrl.configValue}
-                    >
-                      {config.cloudUrl.configValue}
+                    <span className="w-full bg-slate-900 border border-slate-800 text-slate-400 text-sm rounded-lg px-4 py-3 select-none flex items-center overflow-x-auto whitespace-nowrap no-scrollbar">
+                      {config?.cloudUrl?.configValue || <span className="italic text-slate-600">Not set</span>}
                     </span>
                     <button
-                      onClick={() => setIsEndpointEdited(true)}
+                      onClick={() => {
+                        setEndpointDraft(config?.cloudUrl?.configValue || "");
+                        setIsEndpointEditing(true);
+                      }}
                       className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2"
                     >
                       <Pencil className="w-3.5 h-3.5" /> {t.edit}
@@ -167,28 +165,28 @@ export function RegisterCloudModal({
                 ) : (
                   <div className="flex items-center gap-3">
                     <input
-                      autoFocus={isEndpointEdited}
+                      autoFocus
                       type="text"
-                      value={endpoint}
-                      onChange={(e) => setEndpoint(e.target.value)}
+                      value={endpointDraft}
+                      onChange={(e) => setEndpointDraft(e.target.value)}
                       placeholder={t.endpointPlaceholder}
                       className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
                     />
-                    {config?.cloudUrl?.configValue && (
-                      <button
-                        onClick={() => {
-                          setIsEndpointEdited(false);
-                          setEndpoint(config?.cloudUrl?.configValue || "");
-                        }}
-                        className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center transition-colors shrink-0"
-                        title={t.cancel}
-                      >
-                        <X className="w-4 h-4" />{" "}
-                        <span className="ml-1.5 text-sm font-medium">
-                          {t.cancel}
-                        </span>
-                      </button>
-                    )}
+                    <button
+                      onClick={handleSaveEndpoint}
+                      disabled={isSavingEndpoint || !endpointDraft.trim() || endpointDraft === config?.cloudUrl?.configValue}
+                      className="flex items-center gap-1.5 px-4 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
+                    >
+                      {isSavingEndpoint ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      {isSavingEndpoint ? t.saving : t.save}
+                    </button>
+                    <button
+                      onClick={() => setIsEndpointEditing(false)}
+                      disabled={isSavingEndpoint}
+                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-1.5 text-sm font-medium transition-colors shrink-0"
+                    >
+                      <X className="w-4 h-4" /> {t.cancel}
+                    </button>
                   </div>
                 )}
               </div>
@@ -199,15 +197,17 @@ export function RegisterCloudModal({
                   <Key className="w-4 h-4 text-slate-400" /> {t.key}
                 </label>
                 <p className="text-xs text-slate-500 mb-2">{t.keyDesc}</p>
-                {!isKeyEdited && config?.cloudConnectKey?.configValue ? (
+                {!isKeyEditing ? (
                   <div className="flex items-center gap-3">
                     <span className="w-full bg-slate-900 border border-slate-800 text-slate-400 font-mono text-sm rounded-lg px-4 py-3 select-none flex items-center">
-                      {maskKey(config.cloudConnectKey.configValue)}
+                      {config?.cloudConnectKey?.configValue
+                        ? maskKey(config.cloudConnectKey.configValue)
+                        : <span className="italic text-slate-600">Not set</span>}
                     </span>
                     <button
                       onClick={() => {
-                        setIsKeyEdited(true);
-                        setConnectKey("");
+                        setKeyDraft("");
+                        setIsKeyEditing(true);
                       }}
                       className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2"
                     >
@@ -217,30 +217,28 @@ export function RegisterCloudModal({
                 ) : (
                   <div className="flex items-center gap-3">
                     <input
-                      autoFocus={isKeyEdited}
+                      autoFocus
                       type="password"
-                      value={connectKey}
-                      onChange={(e) => setConnectKey(e.target.value)}
+                      value={keyDraft}
+                      onChange={(e) => setKeyDraft(e.target.value)}
                       placeholder={t.keyPlaceholder}
                       className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
                     />
-                    {config?.cloudConnectKey?.configValue && (
-                      <button
-                        onClick={() => {
-                          setIsKeyEdited(false);
-                          setConnectKey(
-                            config?.cloudConnectKey?.configValue || "",
-                          );
-                        }}
-                        className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center justify-center transition-colors shrink-0"
-                        title={t.cancel}
-                      >
-                        <X className="w-4 h-4" />{" "}
-                        <span className="ml-1.5 text-sm font-medium">
-                          {t.cancel}
-                        </span>
-                      </button>
-                    )}
+                    <button
+                      onClick={handleSaveKey}
+                      disabled={isSavingKey || !keyDraft.trim()}
+                      className="flex items-center gap-1.5 px-4 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
+                    >
+                      {isSavingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      {isSavingKey ? t.saving : t.save}
+                    </button>
+                    <button
+                      onClick={() => setIsKeyEditing(false)}
+                      disabled={isSavingKey}
+                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-1.5 text-sm font-medium transition-colors shrink-0"
+                    >
+                      <X className="w-4 h-4" /> {t.cancel}
+                    </button>
                   </div>
                 )}
               </div>
@@ -253,9 +251,10 @@ export function RegisterCloudModal({
                 <p className="text-xs text-slate-500 mb-2">{t.syncDesc}</p>
                 <div className="flex items-center gap-4 mt-2">
                   <button
-                    onClick={() => setIsSyncEnabled(!isSyncEnabled)}
+                    onClick={handleToggleSync}
+                    disabled={isSavingSync}
                     className={cn(
-                      "relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer",
+                      "relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer disabled:opacity-60",
                       isSyncEnabled ? "bg-emerald-500" : "bg-slate-700",
                     )}
                   >
@@ -266,41 +265,32 @@ export function RegisterCloudModal({
                       )}
                     />
                   </button>
-                  <span
-                    className={cn(
-                      "text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-md border",
-                      isSyncEnabled
-                        ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                        : "text-slate-400 bg-slate-800 border-slate-700",
-                    )}
-                  >
-                    {isSyncEnabled ? t.enabled : t.disabled}
-                  </span>
+                  {isSavingSync ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                  ) : (
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-md border",
+                        isSyncEnabled
+                          ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                          : "text-slate-400 bg-slate-800 border-slate-700",
+                      )}
+                    >
+                      {isSyncEnabled ? t.enabled : t.disabled}
+                    </span>
+                  )}
                 </div>
               </div>
             </>
           )}
         </ModalBody>
 
-        <ModalFooter className="bg-slate-900 border-t border-slate-800 p-5">
+        <ModalFooter className="bg-[#0b0f19] border-t border-slate-800 px-6 py-4 flex justify-end">
           <button
             onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium bg-transparent hover:bg-slate-800 text-slate-300 rounded-lg transition-colors border-0 disabled:opacity-50"
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors"
           >
-            {t.cancel}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || isLoading}
-            className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 shadow-lg shadow-blue-900/20"
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            {isSaving ? t.saving : t.save}
+            {t.save}
           </button>
         </ModalFooter>
       </ModalContent>
