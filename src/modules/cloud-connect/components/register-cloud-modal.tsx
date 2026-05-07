@@ -290,7 +290,7 @@ export function RegisterCloudModal({ isOpen, onClose }: RegisterCloudModalProps)
             onClick={onClose}
             className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-colors"
           >
-            {t.save}
+            {t.close}
           </button>
         </ModalFooter>
       </ModalContent>
