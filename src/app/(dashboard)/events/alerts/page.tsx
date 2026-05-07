@@ -86,6 +86,7 @@ export default function AlertsPage() {
 
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [severityFilter, setSeverityFilter] = useState<number[]>([]);
 
   const timeDict: TimePickerTranslations = useMemo(() => {
     const picker = (translations as any).timePicker?.[language] || (translations as any).timePicker?.EN || {};
@@ -180,6 +181,10 @@ export default function AlertsPage() {
 
       if (luceneQuery) {
         boolQuery.must.push({ query_string: { query: luceneQuery } });
+      }
+
+      if (severityFilter.length > 0) {
+        boolQuery.must.push({ terms: { "alert.severity": severityFilter } });
       }
 
       activeFilters.forEach((f) => {
@@ -282,7 +287,7 @@ export default function AlertsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [luceneQuery, activeFilters, timeRange, page, itemsPerPage, refreshKey, language]);
+  }, [luceneQuery, activeFilters, severityFilter, timeRange, page, itemsPerPage, refreshKey, language]);
 
   useEffect(() => {
     fetchData();
@@ -330,6 +335,8 @@ export default function AlertsPage() {
           isLoading={isLoading}
           dict={dict.header}
           fields={fieldsMetadata}
+          severityFilter={severityFilter}
+          onSeverityFilterChange={(val) => { setSeverityFilter(val); setPage(1); }}
         />
 
         {activeFilters.length > 0 && (

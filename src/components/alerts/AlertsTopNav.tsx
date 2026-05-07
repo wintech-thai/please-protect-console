@@ -1,6 +1,7 @@
 "use client";
 
-import { PanelLeft, PanelLeftClose, RefreshCw, Activity } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { PanelLeft, PanelLeftClose, RefreshCw, Activity, ChevronDown, Check } from "lucide-react";
 import {
   AdvancedTimeRangeSelector,
   TimeRangeValue,
@@ -8,6 +9,12 @@ import {
 } from "@/components/ui/advanced-time-selector";
 import { cn } from "@/lib/utils";
 import { KqlSearchInput } from "@/components/layer7/KqlSearchInput";
+
+const SEVERITY_OPTIONS = [
+  { label: "High",   value: 1, color: "text-red-500" },
+  { label: "Medium", value: 2, color: "text-orange-400" },
+  { label: "Low",    value: 3, color: "text-emerald-400" },
+];
 
 interface AlertsTopNavProps {
   isSidebarOpen?: boolean;
@@ -22,6 +29,8 @@ interface AlertsTopNavProps {
   fields?: any[];
   dict: any;
   timeDict: TimePickerTranslations;
+  severityFilter: number[];
+  onSeverityFilterChange: (val: number[]) => void;
 }
 
 export function AlertsTopNav({
@@ -37,7 +46,36 @@ export function AlertsTopNav({
   fields = [],
   dict,
   timeDict,
+  severityFilter,
+  onSeverityFilterChange,
 }: AlertsTopNavProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function toggleSeverity(val: number) {
+    onSeverityFilterChange(
+      severityFilter.includes(val)
+        ? severityFilter.filter((v) => v !== val)
+        : [...severityFilter, val]
+    );
+  }
+
+  const severityLabel =
+    severityFilter.length === 0
+      ? "All Severity"
+      : SEVERITY_OPTIONS.filter((o) => severityFilter.includes(o.value))
+          .map((o) => o.label)
+          .join(", ");
 
   if (!dict) return null;
 
@@ -78,6 +116,47 @@ export function AlertsTopNav({
             fields={fields ? fields.map((f) => f.exp) : []}
             placeholder={dict?.searchPlaceholder || "Filter your data using KQL syntax"}
           />
+        </div>
+
+        {/* Severity Dropdown */}
+        <div className="relative flex-none" ref={dropdownRef}>
+          <button
+            onClick={() => setDropdownOpen((o) => !o)}
+            className="h-10 pl-3 pr-2.5 flex items-center gap-2 bg-slate-900 border border-slate-700 hover:border-slate-600 rounded-lg text-xs font-bold text-slate-200 transition-colors whitespace-nowrap"
+          >
+            <span className={cn(severityFilter.length > 0 ? "text-rose-400" : "text-slate-400")}>
+              {severityLabel}
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute top-full left-0 mt-1 w-40 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
+              {SEVERITY_OPTIONS.map((opt) => {
+                const active = severityFilter.includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => toggleSeverity(opt.value)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold hover:bg-slate-800 transition-colors"
+                  >
+                    <span className={cn("w-4 h-4 rounded border flex items-center justify-center flex-shrink-0", active ? "bg-blue-600 border-blue-500" : "border-slate-600")}>
+                      {active && <Check className="w-2.5 h-2.5 text-white" />}
+                    </span>
+                    <span className={opt.color}>{opt.label}</span>
+                  </button>
+                );
+              })}
+              {severityFilter.length > 0 && (
+                <button
+                  onClick={() => onSeverityFilterChange([])}
+                  className="w-full px-3 py-2 text-xs text-slate-500 hover:text-white hover:bg-slate-800 border-t border-slate-700 transition-colors text-left"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Time Selector */}

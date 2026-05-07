@@ -56,10 +56,15 @@ const getIntervalByRange = (durationSec: number) => {
   return { interval: "3h", stepSec: 10800 };
 };
 
+const EXCLUDED_DATASETS = ["suricata.eve"];
+
 const buildBaseMust = (fromDate: string, toDate: string) => [
   { range: { "@timestamp": { gte: fromDate, lte: toDate } } },
   { wildcard: { "event.dataset": "*" } },
 ];
+
+const buildMustNot = () =>
+  EXCLUDED_DATASETS.map((ds) => ({ term: { "event.dataset.keyword": ds } }));
 
 const isFielddataError = (error: unknown) => {
   const reason = JSON.stringify((error as { response?: { data?: unknown } })?.response?.data || "").toLowerCase();
@@ -78,12 +83,15 @@ async function executeDashboardQuery(
     ? [{ terms: { "event.dataset.keyword": params.selectedDatasets } }]
     : [];
 
+  const mustNot = buildMustNot();
+
   const [optionsResponse, response] = await Promise.all([
     esService.search<unknown>(endpointByOrg(orgId), {
       size: 0,
       query: {
         bool: {
           must: baseMust,
+          must_not: mustNot,
         },
       },
       aggs: {
@@ -96,6 +104,7 @@ async function executeDashboardQuery(
       query: {
         bool: {
           must: [...baseMust, ...selectedDatasetFilter],
+          must_not: mustNot,
         },
       },
       aggs: {
