@@ -335,6 +335,7 @@ export const translations = {
       analyticsOverview: "Overview",
       analyticsThreats: "Threats",
       eventSummary: "Event Summary",
+      geoipAttackMap: "GeoIP Attack Map",
       mitreSummary: "MITRE Summary",
     },
     TH: {
@@ -361,6 +362,7 @@ export const translations = {
       analyticsOverview: "Overview",
       analyticsThreats: "Threats",
       eventSummary: "สรุปเหตุการณ์",
+      geoipAttackMap: "แผนที่การโจมตี GeoIP",
       mitreSummary: "สรุป MITRE",
     },
   },
