@@ -194,10 +194,11 @@ export default function GeoIPAttackMapView() {
       if (!mapRef.current || (mapRef.current as any)._leaflet_id) return;
 
       const map = L.map(mapRef.current, { zoomControl: true, attributionControl: false }).setView([20, 0], 2);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: "© OpenStreetMap contributors © CARTO",
-        subdomains: "abcd",
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        subdomains: "abc",
         maxZoom: 19,
+        className: "osm-dark-tiles",
       }).addTo(map);
 
       const syncCanvas = () => {

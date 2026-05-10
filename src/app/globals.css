@@ -42,6 +42,11 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #404452; /* สีตอน Hover ให้สว่างขึ้นเล็กน้อย */
   }
+
+  /* GeoIP Attack Map — dark tiles with clear water/land distinction */
+  .osm-dark-tiles {
+    filter: invert(1) hue-rotate(180deg) brightness(0.72) saturate(1.4);
+  }
 }
 
 @layer base {
