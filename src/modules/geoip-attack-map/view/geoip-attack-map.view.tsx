@@ -309,7 +309,7 @@ export default function GeoIPAttackMapView() {
       </div>
 
       {/* Map */}
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0 isolate">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <div ref={mapRef} className="w-full h-full" />
         <canvas
