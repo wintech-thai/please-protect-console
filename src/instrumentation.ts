@@ -8,5 +8,8 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { startTerminalWsServer } = await import("@/lib/terminal-ws-server");
     startTerminalWsServer();
+
+    const { startGeoIPWsServer } = await import("@/lib/geoip-ws-server");
+    startGeoIPWsServer();
   }
 }

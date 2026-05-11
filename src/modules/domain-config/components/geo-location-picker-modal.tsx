@@ -205,7 +205,7 @@ export function GeoLocationPickerModal({ initial, onConfirm, onClose, t }: GeoLo
 
   return (
     <div className="fixed inset-0 z-1000 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-5xl mx-4 flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
@@ -234,6 +234,30 @@ export function GeoLocationPickerModal({ initial, onConfirm, onClose, t }: GeoLo
               {isSearching && (
                 <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin text-slate-400" />
               )}
+              {/* Suggestions — absolute overlay so it doesn't push content down */}
+              {showSuggestions && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-[9999] bg-slate-900 border border-slate-700 rounded-lg overflow-hidden shadow-xl">
+                  <div className="px-3 py-1.5 bg-slate-800/60 border-b border-slate-700">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Suggestions</span>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                    {searchResults.map((r, i) => (
+                      <button
+                        key={i}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleSelectResult(r);
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 transition-colors border-b border-slate-800 last:border-0 flex items-start gap-2"
+                      >
+                        <MapPin className="w-3 h-3 text-slate-500 mt-0.5 shrink-0" />
+                        <span>{r.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <button
               onClick={handleSearch}
@@ -246,35 +270,10 @@ export function GeoLocationPickerModal({ initial, onConfirm, onClose, t }: GeoLo
           </div>
         </div>
 
-        {/* Suggestions — in normal flow, above map */}
-        {showSuggestions && searchResults.length > 0 && (
-          <div className="mx-5 mb-2 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden shadow-lg">
-            <div className="px-3 py-1.5 bg-slate-800/60 border-b border-slate-700">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Suggestions</span>
-            </div>
-            <div className="max-h-40 overflow-y-auto custom-scrollbar">
-              {searchResults.map((r, i) => (
-                <button
-                  key={i}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    handleSelectResult(r);
-                  }}
-                  className="w-full text-left px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 transition-colors border-b border-slate-800 last:border-0 flex items-start gap-2"
-                >
-                  <MapPin className="w-3 h-3 text-slate-500 mt-0.5 shrink-0" />
-                  <span>{r.display_name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Map */}
         <div className="px-5">
           <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-          <div ref={mapRef} className="w-full h-64 rounded-lg overflow-hidden border border-slate-700" />
+          <div ref={mapRef} className="w-full h-80 rounded-lg overflow-hidden border border-slate-700" />
         </div>
 
         {/* Info */}

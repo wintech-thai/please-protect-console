@@ -4,19 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Globe, Wifi, WifiOff, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { geoipAttackMapDict } from "../geoip-attack-map.dict";
-
-interface AttackEvent {
-  id: string;
-  src_lat: number;
-  src_lng: number;
-  dst_lat: number;
-  dst_lng: number;
-  src_country: string;
-  dst_country: string;
-  dataset: string;
-  src_ip: string;
-  dst_ip: string;
-}
+import { useGeoIPWebSocket, type AttackEvent } from "../hooks/use-geoip-websocket";
 
 interface Arc extends AttackEvent {
   startTime: number;
@@ -70,12 +58,15 @@ export default function GeoIPAttackMapView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const leafletMap = useRef<any>(null);
   const arcsRef = useRef<Arc[]>([]);
+  const seenIdsRef = useRef<Set<string>>(new Set());
   const rafRef = useRef<number | null>(null);
-  const esRef = useRef<EventSource | null>(null);
 
-  const [status, setStatus] = useState<"connecting" | "live" | "disconnected">("connecting");
   const [totalAttacks, setTotalAttacks] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+
+  const [orgId] = useState(() =>
+    typeof window !== "undefined" ? (localStorage.getItem("orgId") ?? "temp") : "temp"
+  );
 
   // Filter options fetched from /api/geoip-attack-map/options
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({ datasets: [], srcCountries: [], dstCountries: [] });
@@ -227,43 +218,35 @@ export default function GeoIPAttackMapView() {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [draw]);
 
-  // SSE connection — reconnect when filters change
-  useEffect(() => {
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("orgId") ?? "temp" : "temp";
-    const es = new EventSource(`/api/geoip-attack-map/stream?orgId=${orgId}`);
-    esRef.current = es;
-    setStatus("connecting");
+  const filterDatasetRef = useRef(filterDataset);
+  const filterSrcCountryRef = useRef(filterSrcCountry);
+  const filterDstCountryRef = useRef(filterDstCountry);
+  useEffect(() => { filterDatasetRef.current = filterDataset; }, [filterDataset]);
+  useEffect(() => { filterSrcCountryRef.current = filterSrcCountry; }, [filterSrcCountry]);
+  useEffect(() => { filterDstCountryRef.current = filterDstCountry; }, [filterDstCountry]);
 
-    es.onopen = () => setStatus("live");
+  const handleAttack = useCallback((event: AttackEvent) => {
+    if (seenIdsRef.current.has(event.id)) return;
+    seenIdsRef.current.add(event.id);
+    if (seenIdsRef.current.size > 5000) {
+      const first = seenIdsRef.current.values().next().value;
+      if (first) seenIdsRef.current.delete(first);
+    }
 
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "connected") { setStatus("live"); return; }
-        if (msg.type !== "attack") return;
+    if (filterDatasetRef.current && event.dataset !== filterDatasetRef.current) return;
+    if (filterSrcCountryRef.current && event.src_country !== filterSrcCountryRef.current) return;
+    if (filterDstCountryRef.current && event.dst_country !== filterDstCountryRef.current) return;
 
-        const event = msg as AttackEvent;
+    arcsRef.current.push({
+      ...event,
+      startTime: Date.now(),
+      duration: 30000,
+      color: getColor(event.dataset),
+    });
+    setTotalAttacks((n) => n + 1);
+  }, []);
 
-        // client-side filter
-        if (filterDataset && event.dataset !== filterDataset) return;
-        if (filterSrcCountry && event.src_country !== filterSrcCountry) return;
-        if (filterDstCountry && event.dst_country !== filterDstCountry) return;
-
-        arcsRef.current.push({
-          ...event,
-          startTime: Date.now(),
-          duration: 8000,
-          color: getColor(event.dataset),
-        });
-
-        setTotalAttacks((n) => n + 1);
-      } catch {}
-    };
-
-    es.onerror = () => setStatus("disconnected");
-
-    return () => { es.close(); esRef.current = null; };
-  }, [filterDataset, filterSrcCountry, filterDstCountry]);
+  const { status } = useGeoIPWebSocket({ orgId, onAttack: handleAttack });
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-100 gap-0 custom-scrollbar">
