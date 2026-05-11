@@ -85,4 +85,14 @@ export const configurationApi = {
   setOrgDescription(value: string): Promise<ConfigurationEntry> {
     return setConfig("SetOrgDescription", value);
   },
+
+  /** GET current sensor geolocation (returns JSON string in configValue) */
+  getCurrentGeoLocation(): Promise<ConfigurationEntry> {
+    return getConfig("GetCurrentGeoLocation");
+  },
+
+  /** SET sensor geolocation (value must be JSON string) */
+  setCurrentGeoLocation(value: string): Promise<ConfigurationEntry> {
+    return setConfig("SetCurrentGeoLocation", value);
+  },
 };

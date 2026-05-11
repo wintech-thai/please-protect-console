@@ -11,6 +11,8 @@ import {
   Tag,
   Image as ImageIcon,
   RefreshCw,
+  MapPin,
+  Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/context/LanguageContext";
@@ -20,6 +22,8 @@ import {
   useSaveField,
   type ConfigField,
 } from "../hooks/use-domain-config";
+import { useGeoLocation, useSaveGeoLocation, type GeoLocation } from "../hooks/use-geolocation";
+import { GeoLocationPickerModal } from "../components/geo-location-picker-modal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -492,6 +496,27 @@ export default function DomainConfigView() {
 
   const { data, isLoading, isError, refetch, isFetching } = useAllConfig();
   const { mutateAsync, isPending } = useSaveField();
+  const { data: geoData, isLoading: isGeoLoading, refetch: refetchGeo } = useGeoLocation();
+  const { mutateAsync: saveGeo, isPending: isSavingGeo } = useSaveGeoLocation();
+  const [showGeoPicker, setShowGeoPicker] = useState(false);
+  const [isOpeningPicker, setIsOpeningPicker] = useState(false);
+
+  const handleOpenGeoPicker = async () => {
+    setIsOpeningPicker(true);
+    await refetchGeo();
+    setIsOpeningPicker(false);
+    setShowGeoPicker(true);
+  };
+
+  const handleSaveGeo = async (geo: GeoLocation) => {
+    try {
+      await saveGeo(geo);
+      toast.success(t.saveSuccess);
+      setShowGeoPicker(false);
+    } catch {
+      toast.error(t.saveError);
+    }
+  };
 
   const handleSave = async (field: ConfigField, value: string) => {
     try {
@@ -606,7 +631,73 @@ export default function DomainConfigView() {
             isSaving={isPending}
           />
         </div>
+
+        {/* GeoIP Location card */}
+        <div className="mt-8 rounded-xl border border-slate-800 bg-slate-900/60 px-6 py-5">
+          <div className="flex items-center gap-2 mb-1">
+            <MapPin className="w-4 h-4 text-slate-400" />
+            <span className="text-base font-semibold text-slate-200">{t.geoTitle}</span>
+            <span className="text-sm text-slate-500 hidden sm:block">— {t.geoDesc}</span>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">{t.geoHint}</p>
+
+          {isGeoLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" /> {t.saving}
+            </div>
+          ) : geoData ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {[
+                { label: t.geoLatitude,  value: String(geoData.latitude) },
+                { label: t.geoLongitude, value: String(geoData.longitude) },
+                { label: t.geoCountry,   value: geoData.country || "—" },
+                { label: t.geoCity,      value: geoData.city || "—" },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-slate-800/50 border border-slate-800 rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-0.5">{label}</span>
+                  <span className="text-sm font-mono text-slate-100">{value}</span>
+                </div>
+              ))}
+              {geoData.site_name && (
+                <div className="col-span-2 md:col-span-4 bg-slate-800/50 border border-slate-800 rounded-lg px-3 py-2">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-0.5">{t.geoSiteName}</span>
+                  <span className="text-sm text-slate-100">{geoData.site_name}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-600 italic mb-4">{t.geoNotSet}</p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenGeoPicker}
+              disabled={isSavingGeo || isOpeningPicker}
+              className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-semibold transition-colors disabled:opacity-60"
+            >
+              {isOpeningPicker ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pencil className="w-3.5 h-3.5" />}
+              {t.geoEditBtn}
+            </button>
+            <button
+              onClick={() => refetchGeo()}
+              disabled={isGeoLoading}
+              className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-sm transition-colors"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              {t.geoRefreshBtn}
+            </button>
+          </div>
+        </div>
       </div>
+
+      {showGeoPicker && (
+        <GeoLocationPickerModal
+          initial={geoData ?? null}
+          onConfirm={handleSaveGeo}
+          onClose={() => setShowGeoPicker(false)}
+          t={t}
+        />
+      )}
     </div>
   );
 }

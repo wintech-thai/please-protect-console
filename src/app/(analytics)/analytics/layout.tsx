@@ -63,7 +63,7 @@ export default function AnalyticsLayout({
             onToggleGroup={handleToggleGroup}
             onMobileOpenChange={setMobileOpen}
           />
-          <main className="flex-1 overflow-auto flex flex-col">{children}</main>
+          <main className="flex-1 overflow-auto flex flex-col custom-scrollbar">{children}</main>
         </div>
       </div>
     </AuthGuard>
