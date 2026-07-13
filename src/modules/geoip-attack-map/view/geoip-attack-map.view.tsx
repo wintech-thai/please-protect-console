@@ -30,7 +30,7 @@ const DATASET_COLORS: Record<string, string> = {
   "sql": "#fb923c",
   "rdp": "#ef4444",
   "ftp": "#34d399",
-  "connection": "#38bdf8",
+  "connection": "#ec4899",
 };
 
 function getColor(dataset: string): string {
