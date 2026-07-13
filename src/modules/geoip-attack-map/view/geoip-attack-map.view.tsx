@@ -10,6 +10,8 @@ interface Arc extends AttackEvent {
   startTime: number;
   duration: number;
   color: string;
+  _pts?: { x: number; y: number }[];
+  _geomVersion?: number;
 }
 
 interface FilterOptions {
@@ -49,6 +51,8 @@ function getBezierPoint(
 }
 
 const OPTIONS_POLL_INTERVAL = 30_000; // poll every 30s
+const SEGMENTS = 60;
+const MAX_CONCURRENT_ARCS = 200;
 
 export default function GeoIPAttackMapView() {
   const { language } = useLanguage();
@@ -60,6 +64,9 @@ export default function GeoIPAttackMapView() {
   const arcsRef = useRef<Arc[]>([]);
   const seenIdsRef = useRef<Set<string>>(new Set());
   const rafRef = useRef<number | null>(null);
+  const geomVersionRef = useRef(0);
+  const lastActiveCountRef = useRef(0);
+  const lastActiveCountTimeRef = useRef(0);
 
   const [totalAttacks, setTotalAttacks] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
@@ -123,47 +130,59 @@ export default function GeoIPAttackMapView() {
       const alpha = progress < 0.6 ? 1 : 1 - (progress - 0.6) / 0.4;
 
       try {
-        const srcPt = map.latLngToContainerPoint([arc.src_lat, arc.src_lng]);
-        const dstPt = map.latLngToContainerPoint([arc.dst_lat, arc.dst_lng]);
+        if (arc._geomVersion !== geomVersionRef.current) {
+          const srcPt = map.latLngToContainerPoint([arc.src_lat, arc.src_lng]);
+          const dstPt = map.latLngToContainerPoint([arc.dst_lat, arc.dst_lng]);
 
-        const mx = (srcPt.x + dstPt.x) / 2;
-        const my = (srcPt.y + dstPt.y) / 2;
-        const dx = dstPt.x - srcPt.x;
-        const dy = dstPt.y - srcPt.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 1) { alive.push(arc); continue; }
+          const mx = (srcPt.x + dstPt.x) / 2;
+          const my = (srcPt.y + dstPt.y) / 2;
+          const dx = dstPt.x - srcPt.x;
+          const dy = dstPt.y - srcPt.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
 
-        const offset = Math.min(dist * 0.35, 180);
-        const cp = { x: mx - (dy / dist) * offset, y: my + (dx / dist) * offset };
-
-        const segments = 60;
-        const steps = Math.floor(segments * drawT);
-
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = arc.color;
-        ctx.lineWidth = 1.5;
-        ctx.shadowColor = arc.color;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-
-        let first = true;
-        for (let i = 0; i <= steps; i++) {
-          const pt = getBezierPoint(srcPt, cp, dstPt, i / segments);
-          if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
-          else ctx.lineTo(pt.x, pt.y);
+          if (dist < 1) {
+            arc._pts = undefined;
+          } else {
+            const offset = Math.min(dist * 0.35, 180);
+            const cp = { x: mx - (dy / dist) * offset, y: my + (dx / dist) * offset };
+            const pts: { x: number; y: number }[] = new Array(SEGMENTS + 1);
+            for (let i = 0; i <= SEGMENTS; i++) pts[i] = getBezierPoint(srcPt, cp, dstPt, i / SEGMENTS);
+            arc._pts = pts;
+          }
+          arc._geomVersion = geomVersionRef.current;
         }
+
+        if (!arc._pts) { alive.push(arc); continue; }
+        const pts = arc._pts;
+
+        const steps = Math.floor(SEGMENTS * drawT);
+
+        ctx.strokeStyle = arc.color;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i <= steps; i++) ctx.lineTo(pts[i].x, pts[i].y);
+
+        // soft wide pass + crisp bright pass — cheaper than ctx.shadowBlur on a long stroked path
+        ctx.lineWidth = 4;
+        ctx.globalAlpha = alpha * 0.25;
         ctx.stroke();
 
-        // dot at tip
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = alpha;
+        ctx.stroke();
+
+        // dot at tip — shadowBlur is cheap here since it's a small, fixed-size shape
         if (drawT > 0) {
-          const tip = getBezierPoint(srcPt, cp, dstPt, steps / segments);
+          const tip = pts[steps];
+          ctx.shadowColor = arc.color;
+          ctx.shadowBlur = 6;
           ctx.beginPath();
           ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
           ctx.fillStyle = arc.color;
           ctx.fill();
+          ctx.shadowBlur = 0;
         }
 
-        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
       } catch {}
 
@@ -172,7 +191,11 @@ export default function GeoIPAttackMapView() {
     }
 
     arcsRef.current = alive;
-    setActiveCount(active);
+    if (active !== lastActiveCountRef.current && now - lastActiveCountTimeRef.current > 200) {
+      lastActiveCountRef.current = active;
+      lastActiveCountTimeRef.current = now;
+      setActiveCount(active);
+    }
     rafRef.current = requestAnimationFrame(draw);
   }, []);
 
@@ -198,6 +221,7 @@ export default function GeoIPAttackMapView() {
         if (!canvas || !container) return;
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
+        geomVersionRef.current++;
       };
       map.on("resize move zoom", syncCanvas);
       syncCanvas();
@@ -243,6 +267,7 @@ export default function GeoIPAttackMapView() {
       duration: 30000,
       color: getColor(event.dataset),
     });
+    if (arcsRef.current.length > MAX_CONCURRENT_ARCS) arcsRef.current.shift();
     setTotalAttacks((n) => n + 1);
   }, []);
 
