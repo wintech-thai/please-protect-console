@@ -8,7 +8,6 @@ import { useGeoIPWebSocket, type AttackEvent } from "../hooks/use-geoip-websocke
 
 interface Arc extends AttackEvent {
   startTime: number;
-  duration: number;
   color: string;
   _pts?: { x: number; y: number }[];
   _geomVersion?: number;
@@ -24,17 +23,24 @@ const DATASET_COLORS: Record<string, string> = {
   "suricata": "#f97316",
   "http": "#22d3ee",
   "https": "#22d3ee",
+  "ssl": "#22d3ee",
   "ssh": "#a855f7",
   "telnet": "#a855f7",
   "dns": "#facc15",
   "sql": "#fb923c",
   "rdp": "#ef4444",
   "ftp": "#34d399",
+  "connection": "#38bdf8",
 };
 
 function getColor(dataset: string): string {
-  const key = dataset.toLowerCase().split(".")[0];
-  return DATASET_COLORS[key] ?? "#ef4444";
+  // dataset names come in two shapes: plain ("suricata") or namespaced ("zeek.ssh") —
+  // the meaningful protocol is the last segment for namespaced names, the whole
+  // string for plain ones, so try suffix first and fall back to the prefix.
+  const parts = dataset.toLowerCase().split(".");
+  const suffix = parts[parts.length - 1];
+  const prefix = parts[0];
+  return DATASET_COLORS[suffix] ?? DATASET_COLORS[prefix] ?? "#ef4444";
 }
 
 function getBezierPoint(
@@ -53,6 +59,9 @@ function getBezierPoint(
 const OPTIONS_POLL_INTERVAL = 30_000; // poll every 30s
 const SEGMENTS = 60;
 const MAX_CONCURRENT_ARCS = 200;
+const ARC_TRAVEL_MS = 900; // time for the line to travel src → dst
+const ARC_FADE_MS = 2200; // time the fully-drawn line lingers & fades after arriving
+const ARC_LIFETIME_MS = ARC_TRAVEL_MS + ARC_FADE_MS;
 
 export default function GeoIPAttackMapView() {
   const { language } = useLanguage();
@@ -122,12 +131,11 @@ export default function GeoIPAttackMapView() {
 
     for (const arc of arcsRef.current) {
       const elapsed = now - arc.startTime;
-      if (elapsed >= arc.duration) continue;
+      if (elapsed >= ARC_LIFETIME_MS) continue;
 
-      // 0→0.6 draw phase, 0.6→1.0 fade phase
-      const progress = elapsed / arc.duration;
-      const drawT = Math.min(progress / 0.6, 1);
-      const alpha = progress < 0.6 ? 1 : 1 - (progress - 0.6) / 0.4;
+      // travel phase: 0 → ARC_TRAVEL_MS, then linger/fade phase: ARC_TRAVEL_MS → ARC_LIFETIME_MS
+      const drawT = Math.min(elapsed / ARC_TRAVEL_MS, 1);
+      const alpha = elapsed <= ARC_TRAVEL_MS ? 1 : 1 - (elapsed - ARC_TRAVEL_MS) / ARC_FADE_MS;
 
       try {
         if (arc._geomVersion !== geomVersionRef.current) {
@@ -264,7 +272,6 @@ export default function GeoIPAttackMapView() {
     arcsRef.current.push({
       ...event,
       startTime: Date.now(),
-      duration: 30000,
       color: getColor(event.dataset),
     });
     if (arcsRef.current.length > MAX_CONCURRENT_ARCS) arcsRef.current.shift();
@@ -322,12 +329,12 @@ export default function GeoIPAttackMapView() {
         <Select label={t.filterSrcCountry} value={filterSrcCountry} onChange={setFilterSrcCountry} placeholder={t.allCountries} options={filterOptions.srcCountries} />
         <Select label={t.filterDstCountry} value={filterDstCountry} onChange={setFilterDstCountry} placeholder={t.allCountries} options={filterOptions.dstCountries} />
 
-        {/* Legend */}
+        {/* Legend — reflects the datasets actually seen in the live stream, not a static list */}
         <div className="ml-auto flex items-center gap-3 flex-wrap">
-          {Object.entries(DATASET_COLORS).slice(0, 5).map(([key, color]) => (
-            <div key={key} className="flex items-center gap-1 text-[10px] text-slate-400">
-              <span className="inline-block w-3 h-0.5 rounded" style={{ background: color }} />
-              {key.toUpperCase()}
+          {filterOptions.datasets.map((ds) => (
+            <div key={ds} className="flex items-center gap-1 text-[10px] text-slate-400">
+              <span className="inline-block w-3 h-0.5 rounded" style={{ background: getColor(ds) }} />
+              {ds.toUpperCase()}
             </div>
           ))}
         </div>
