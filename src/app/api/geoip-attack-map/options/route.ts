@@ -15,6 +15,20 @@ function parseStreamEntry(fields: string[]): Record<string, string> {
   return obj;
 }
 
+// Persist every distinct value ever seen across polls (module scope survives
+// across requests for the life of the server process) — so a dataset/country
+// that scrolls out of the last SCAN_COUNT entries doesn't disappear from the
+// filter dropdowns once it's been seen at least once.
+const seenDatasets = new Set<string>();
+const seenSrcCountries = new Set<string>();
+const seenDstCountries = new Set<string>();
+
+// Seed with dataset types already known to exist on this sensor, so they don't
+// disappear from the filter dropdown while waiting for one to reoccur in live
+// traffic after a server restart clears the accumulated set above.
+const KNOWN_DATASETS = ["zeek.connection", "zeek.ssh", "zeek.ssl", "zeek.weird"];
+for (const d of KNOWN_DATASETS) seenDatasets.add(d);
+
 export async function GET() {
   const redis = new Redis({
     host: process.env.REDIS_HOST ?? "redis-master.redis.svc.cluster.local",
@@ -27,7 +41,13 @@ export async function GET() {
   try {
     await redis.connect();
   } catch {
-    return NextResponse.json({ datasets: [], srcCountries: [], dstCountries: [] });
+    // Redis hiccup — fall back to whatever we've accumulated so far instead of
+    // wiping the dropdowns empty.
+    return NextResponse.json({
+      datasets: [...seenDatasets].sort(),
+      srcCountries: [...seenSrcCountries].sort(),
+      dstCountries: [...seenDstCountries].sort(),
+    });
   }
 
   try {
@@ -35,10 +55,6 @@ export async function GET() {
     const entries = await redis.xrevrange(STREAM_KEY, "+", "-", "COUNT", SCAN_COUNT) as
       | [string, string[]][]
       | null;
-
-    const datasets = new Set<string>();
-    const srcCountries = new Set<string>();
-    const dstCountries = new Set<string>();
 
     if (entries) {
       for (const [, fields] of entries) {
@@ -49,16 +65,16 @@ export async function GET() {
         const dataset = String(raw.dataset ?? raw.protocol ?? "");
         const srcCountry = String(raw.source_country ?? raw.src_country ?? raw.country ?? "");
         const dstCountry = String(raw.dest_country ?? raw.dst_country ?? "");
-        if (dataset) datasets.add(dataset);
-        if (srcCountry && srcCountry !== "null") srcCountries.add(srcCountry);
-        if (dstCountry && dstCountry !== "null") dstCountries.add(dstCountry);
+        if (dataset) seenDatasets.add(dataset);
+        if (srcCountry && srcCountry !== "null") seenSrcCountries.add(srcCountry);
+        if (dstCountry && dstCountry !== "null") seenDstCountries.add(dstCountry);
       }
     }
 
     return NextResponse.json({
-      datasets: [...datasets].sort(),
-      srcCountries: [...srcCountries].sort(),
-      dstCountries: [...dstCountries].sort(),
+      datasets: [...seenDatasets].sort(),
+      srcCountries: [...seenSrcCountries].sort(),
+      dstCountries: [...seenDstCountries].sort(),
     });
   } finally {
     redis.quit().catch(() => {});
