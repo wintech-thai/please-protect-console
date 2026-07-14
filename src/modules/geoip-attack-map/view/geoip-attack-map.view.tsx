@@ -33,6 +33,17 @@ const DATASET_COLORS: Record<string, string> = {
   "connection": "#ec4899",
 };
 
+// deterministic hue from a string so the same dataset name always gets the same
+// generated color across reloads/tabs/users, without needing a manual color entry
+function hashHue(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) % 360;
+}
+
 function getColor(dataset: string): string {
   // dataset names come in two shapes: plain ("suricata") or namespaced ("zeek.ssh") —
   // the meaningful protocol is the last segment for namespaced names, the whole
@@ -40,7 +51,10 @@ function getColor(dataset: string): string {
   const parts = dataset.toLowerCase().split(".");
   const suffix = parts[parts.length - 1];
   const prefix = parts[0];
-  return DATASET_COLORS[suffix] ?? DATASET_COLORS[prefix] ?? "#ef4444";
+  const known = DATASET_COLORS[suffix] ?? DATASET_COLORS[prefix];
+  if (known) return known;
+  // unmapped dataset — auto-generate a distinct, stable color instead of a shared fallback
+  return `hsl(${hashHue(suffix || prefix)}, 80%, 62%)`;
 }
 
 function getBezierPoint(
