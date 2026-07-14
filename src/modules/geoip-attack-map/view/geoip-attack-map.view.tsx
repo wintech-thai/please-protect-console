@@ -10,6 +10,7 @@ interface Arc extends AttackEvent {
   startTime: number;
   color: string;
   _pts?: { x: number; y: number }[];
+  _pulsePt?: { x: number; y: number };
   _geomVersion?: number;
 }
 
@@ -172,50 +173,71 @@ export default function GeoIPAttackMapView() {
           const dy = dstPt.y - srcPt.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 1) {
+          if (dist < 4) {
+            // src/dst collapse to (almost) the same point on screen at this zoom —
+            // a line would be invisible, so pulse a ring at that point instead so the
+            // event still gets some visible feedback on the map.
             arc._pts = undefined;
+            arc._pulsePt = { x: mx, y: my };
           } else {
             const offset = Math.min(dist * 0.35, 180);
             const cp = { x: mx - (dy / dist) * offset, y: my + (dx / dist) * offset };
             const pts: { x: number; y: number }[] = new Array(SEGMENTS + 1);
             for (let i = 0; i <= SEGMENTS; i++) pts[i] = getBezierPoint(srcPt, cp, dstPt, i / SEGMENTS);
             arc._pts = pts;
+            arc._pulsePt = undefined;
           }
           arc._geomVersion = geomVersionRef.current;
         }
 
-        if (!arc._pts) { alive.push(arc); continue; }
-        const pts = arc._pts;
-
-        const steps = Math.floor(SEGMENTS * drawT);
-
-        ctx.strokeStyle = arc.color;
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i <= steps; i++) ctx.lineTo(pts[i].x, pts[i].y);
-
-        // soft wide pass + crisp bright pass — cheaper than ctx.shadowBlur on a long stroked path
-        ctx.lineWidth = 4;
-        ctx.globalAlpha = alpha * 0.25;
-        ctx.stroke();
-
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = alpha;
-        ctx.stroke();
-
-        // dot at tip — shadowBlur is cheap here since it's a small, fixed-size shape
-        if (drawT > 0) {
-          const tip = pts[steps];
-          ctx.shadowColor = arc.color;
-          ctx.shadowBlur = 6;
+        if (arc._pulsePt) {
+          const p = arc._pulsePt;
+          const radius = 3 + drawT * 10;
+          ctx.globalAlpha = alpha;
+          ctx.strokeStyle = arc.color;
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = arc.color;
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
+          ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
 
-        ctx.globalAlpha = 1;
+          ctx.fillStyle = arc.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.globalAlpha = 1;
+        } else if (arc._pts) {
+          const pts = arc._pts;
+          const steps = Math.floor(SEGMENTS * drawT);
+
+          ctx.strokeStyle = arc.color;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i <= steps; i++) ctx.lineTo(pts[i].x, pts[i].y);
+
+          // soft wide pass + crisp bright pass — cheaper than ctx.shadowBlur on a long stroked path
+          ctx.lineWidth = 4;
+          ctx.globalAlpha = alpha * 0.25;
+          ctx.stroke();
+
+          ctx.lineWidth = 1.5;
+          ctx.globalAlpha = alpha;
+          ctx.stroke();
+
+          // dot at tip — shadowBlur is cheap here since it's a small, fixed-size shape
+          if (drawT > 0) {
+            const tip = pts[steps];
+            ctx.shadowColor = arc.color;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = arc.color;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+
+          ctx.globalAlpha = 1;
+        }
       } catch {}
 
       alive.push(arc);
@@ -408,9 +430,9 @@ export default function GeoIPAttackMapView() {
               </span>
               LIVE EVENT FEED
             </div>
-            <div className="flex flex-col px-2.5 py-1.5 max-h-60 overflow-hidden">
+            <div className="flex flex-col px-2.5 py-1.5 max-h-36 overflow-y-auto overflow-x-hidden custom-scrollbar pointer-events-auto">
               {eventLog.map((line) => (
-                <div key={line.id} className="animate-log-in flex gap-1.5 whitespace-nowrap overflow-hidden text-[10px] leading-relaxed">
+                <div key={line.id} className="animate-log-in flex gap-1.5 whitespace-nowrap overflow-hidden text-[10px] leading-relaxed shrink-0">
                   <span className="text-slate-600 shrink-0">
                     {new Date(line.time).toLocaleTimeString("en-GB")}
                   </span>
