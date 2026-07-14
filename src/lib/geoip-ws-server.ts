@@ -44,6 +44,49 @@ function parseStreamEntry(fields: string[]): Record<string, string> {
   return obj;
 }
 
+// --- Demo/stress-test data generator (server-side) ---
+// Pushed over the same WebSocket connection as real attacks, at a controlled
+// rate, so we can verify the server -> client push path itself holds up under
+// heavy volume (not just frontend rendering).
+const DEMO_INTERVAL_MS = 60; // ~16-17 events/sec
+const DEMO_LOCATIONS = [
+  { country: "United States", lat: 37.09, lng: -95.71 },
+  { country: "China", lat: 35.86, lng: 104.2 },
+  { country: "Russia", lat: 61.52, lng: 105.32 },
+  { country: "Germany", lat: 51.17, lng: 10.45 },
+  { country: "Brazil", lat: -14.24, lng: -51.93 },
+  { country: "India", lat: 20.59, lng: 78.96 },
+  { country: "United Kingdom", lat: 55.38, lng: -3.44 },
+  { country: "Japan", lat: 36.2, lng: 138.25 },
+  { country: "Thailand", lat: 15.87, lng: 100.99 },
+  { country: "South Africa", lat: -30.56, lng: 22.94 },
+  { country: "Australia", lat: -25.27, lng: 133.78 },
+  { country: "Canada", lat: 56.13, lng: -106.35 },
+];
+const DEMO_DATASETS = ["suricata", "http", "https", "ssh", "telnet", "dns", "zeek.connection", "zeek.ssl", "zeek.ssh"];
+
+function randomDemoIp(): string {
+  return `${1 + Math.floor(Math.random() * 223)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;
+}
+
+function genDemoAttackPayload() {
+  const src = DEMO_LOCATIONS[Math.floor(Math.random() * DEMO_LOCATIONS.length)];
+  const dst = DEMO_LOCATIONS[Math.floor(Math.random() * DEMO_LOCATIONS.length)];
+  return {
+    type: "attack",
+    id: `demo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    src_lat: src.lat + (Math.random() - 0.5) * 4,
+    src_lng: src.lng + (Math.random() - 0.5) * 4,
+    dst_lat: dst.lat + (Math.random() - 0.5) * 4,
+    dst_lng: dst.lng + (Math.random() - 0.5) * 4,
+    src_country: src.country,
+    dst_country: dst.country,
+    dataset: DEMO_DATASETS[Math.floor(Math.random() * DEMO_DATASETS.length)],
+    src_ip: randomDemoIp(),
+    dst_ip: randomDemoIp(),
+  };
+}
+
 let started = false;
 
 export function startGeoIPWsServer() {
@@ -114,15 +157,39 @@ async function handleGeoIPStream(ws: WebSocket, orgId: string) {
 
   let lastId = "$";
   let closed = false;
+  let demoTimer: ReturnType<typeof setInterval> | null = null;
+
+  const stopDemo = () => {
+    if (demoTimer) {
+      clearInterval(demoTimer);
+      demoTimer = null;
+    }
+  };
+
+  ws.on("message", (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString()) as { type?: string; enabled?: boolean };
+      if (msg.type !== "demo") return;
+      stopDemo();
+      if (msg.enabled) {
+        console.log(`[GeoIP WS] demo mode ON — orgId=${orgId}`);
+        demoTimer = setInterval(() => send(genDemoAttackPayload()), DEMO_INTERVAL_MS);
+      } else {
+        console.log(`[GeoIP WS] demo mode OFF — orgId=${orgId}`);
+      }
+    } catch {}
+  });
 
   ws.on("close", () => {
     closed = true;
+    stopDemo();
     console.log(`[GeoIP WS] client disconnected — orgId=${orgId}`);
     redis.quit().catch(() => {});
   });
 
   ws.on("error", () => {
     closed = true;
+    stopDemo();
     redis.quit().catch(() => {});
   });
 

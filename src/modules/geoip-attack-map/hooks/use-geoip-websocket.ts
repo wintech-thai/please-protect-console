@@ -86,5 +86,15 @@ export function useGeoIPWebSocket({ orgId, onAttack }: UseGeoIPWebSocketOptions)
     };
   }, [connect]);
 
-  return { status };
+  // Tell the server to start/stop pushing synthetic load-test traffic over this
+  // same connection — this exercises the real server -> client push path under
+  // volume, unlike client-generated fake events which only test rendering.
+  const setDemo = useCallback((enabled: boolean) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "demo", enabled }));
+    }
+  }, []);
+
+  return { status, setDemo };
 }

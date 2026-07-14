@@ -87,48 +87,6 @@ interface LogLine {
   text: string;
 }
 
-// --- Demo/stress-test data generator ---
-// Spawns synthetic events at a high rate through the exact same handleAttack
-// path as real WS data, so toggling this on is a faithful way to verify the
-// map stays smooth under much heavier load than current real traffic.
-const DEMO_INTERVAL_MS = 60; // ~16-17 events/sec — enough sustained load to prove smoothness without being overwhelming to watch
-const DEMO_LOCATIONS = [
-  { country: "United States", lat: 37.09, lng: -95.71 },
-  { country: "China", lat: 35.86, lng: 104.2 },
-  { country: "Russia", lat: 61.52, lng: 105.32 },
-  { country: "Germany", lat: 51.17, lng: 10.45 },
-  { country: "Brazil", lat: -14.24, lng: -51.93 },
-  { country: "India", lat: 20.59, lng: 78.96 },
-  { country: "United Kingdom", lat: 55.38, lng: -3.44 },
-  { country: "Japan", lat: 36.2, lng: 138.25 },
-  { country: "Thailand", lat: 15.87, lng: 100.99 },
-  { country: "South Africa", lat: -30.56, lng: 22.94 },
-  { country: "Australia", lat: -25.27, lng: 133.78 },
-  { country: "Canada", lat: 56.13, lng: -106.35 },
-];
-const DEMO_DATASETS = ["suricata", "http", "https", "ssh", "telnet", "dns", "zeek.connection", "zeek.ssl", "zeek.ssh"];
-
-function randomDemoIp(): string {
-  return `${1 + Math.floor(Math.random() * 223)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;
-}
-
-function genDemoAttack(): AttackEvent {
-  const src = DEMO_LOCATIONS[Math.floor(Math.random() * DEMO_LOCATIONS.length)];
-  const dst = DEMO_LOCATIONS[Math.floor(Math.random() * DEMO_LOCATIONS.length)];
-  return {
-    id: `demo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    src_lat: src.lat + (Math.random() - 0.5) * 4,
-    src_lng: src.lng + (Math.random() - 0.5) * 4,
-    dst_lat: dst.lat + (Math.random() - 0.5) * 4,
-    dst_lng: dst.lng + (Math.random() - 0.5) * 4,
-    src_country: src.country,
-    dst_country: dst.country,
-    dataset: DEMO_DATASETS[Math.floor(Math.random() * DEMO_DATASETS.length)],
-    src_ip: randomDemoIp(),
-    dst_ip: randomDemoIp(),
-  };
-}
-
 export default function GeoIPAttackMapView() {
   const { language } = useLanguage();
   const t = geoipAttackMapDict[language as "EN" | "TH"] ?? geoipAttackMapDict.EN;
@@ -380,22 +338,24 @@ export default function GeoIPAttackMapView() {
     ].slice(0, MAX_LOG_LINES));
   }, []);
 
-  // Demo/stress-test mode — spawns synthetic events through the same handleAttack
-  // path as real traffic, to verify the map stays smooth under heavy load.
+  // Demo/stress-test mode — the server generates synthetic events and pushes them
+  // over the same WebSocket connection as real traffic (see setDemo below), so this
+  // exercises the actual server -> client push path under load, not just rendering.
   useEffect(() => {
-    if (!demoMode) return;
-    const timer = setInterval(() => handleAttack(genDemoAttack()), DEMO_INTERVAL_MS);
-    return () => {
-      clearInterval(timer);
-      // leaving demo mode — clear out simulated data so it doesn't linger mixed in with real counts
-      arcsRef.current = [];
-      setTotalAttacks(0);
-      setActiveCount(0);
-      setEventLog([]);
-    };
-  }, [demoMode, handleAttack]);
+    if (demoMode) return;
+    // leaving demo mode — clear out simulated data so it doesn't linger mixed in with real counts
+    arcsRef.current = [];
+    setTotalAttacks(0);
+    setActiveCount(0);
+    setEventLog([]);
+  }, [demoMode]);
 
-  const { status } = useGeoIPWebSocket({ orgId, onAttack: handleAttack });
+  const { status, setDemo } = useGeoIPWebSocket({ orgId, onAttack: handleAttack });
+
+  const handleDemoToggle = (enabled: boolean) => {
+    setDemoMode(enabled);
+    setDemo(enabled);
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-100 gap-0 custom-scrollbar">
@@ -446,14 +406,23 @@ export default function GeoIPAttackMapView() {
         <Select label={t.filterSrcCountry} value={filterSrcCountry} onChange={setFilterSrcCountry} placeholder={t.allCountries} options={filterOptions.srcCountries} />
         <Select label={t.filterDstCountry} value={filterDstCountry} onChange={setFilterDstCountry} placeholder={t.allCountries} options={filterOptions.dstCountries} />
 
-        <label className="flex items-center gap-1.5 text-xs text-amber-400 cursor-pointer shrink-0">
-          <input
-            type="checkbox"
-            checked={demoMode}
-            onChange={(e) => setDemoMode(e.target.checked)}
-            className="accent-amber-500"
-          />
-          {t.simulateLoad}
+        <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none shrink-0">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={demoMode}
+            onClick={() => handleDemoToggle(!demoMode)}
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
+              demoMode ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]" : "bg-slate-700"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                demoMode ? "translate-x-[18px]" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+          <span className={demoMode ? "text-amber-400 font-medium" : ""}>{t.simulateLoad}</span>
         </label>
 
         {/* Legend — reflects the datasets actually seen in the live stream, not a static list */}
