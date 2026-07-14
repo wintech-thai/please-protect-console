@@ -76,6 +76,15 @@ const MAX_CONCURRENT_ARCS = 200;
 const ARC_TRAVEL_MS = 900; // time for the line to travel src → dst
 const ARC_FADE_MS = 2200; // time the fully-drawn line lingers & fades after arriving
 const ARC_LIFETIME_MS = ARC_TRAVEL_MS + ARC_FADE_MS;
+const MAX_LOG_LINES = 20;
+
+interface LogLine {
+  id: string;
+  time: number;
+  dataset: string;
+  color: string;
+  text: string;
+}
 
 export default function GeoIPAttackMapView() {
   const { language } = useLanguage();
@@ -93,6 +102,7 @@ export default function GeoIPAttackMapView() {
 
   const [totalAttacks, setTotalAttacks] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+  const [eventLog, setEventLog] = useState<LogLine[]>([]);
 
   const [orgId] = useState(() =>
     typeof window !== "undefined" ? (localStorage.getItem("orgId") ?? "temp") : "temp"
@@ -283,13 +293,26 @@ export default function GeoIPAttackMapView() {
     if (filterSrcCountryRef.current && event.src_country !== filterSrcCountryRef.current) return;
     if (filterDstCountryRef.current && event.dst_country !== filterDstCountryRef.current) return;
 
+    const color = getColor(event.dataset);
     arcsRef.current.push({
       ...event,
       startTime: Date.now(),
-      color: getColor(event.dataset),
+      color,
     });
     if (arcsRef.current.length > MAX_CONCURRENT_ARCS) arcsRef.current.shift();
     setTotalAttacks((n) => n + 1);
+
+    const country = event.dst_country || event.src_country || "—";
+    setEventLog((prev) => [
+      {
+        id: event.id,
+        time: Date.now(),
+        dataset: event.dataset,
+        color,
+        text: `${event.src_ip || "?"} → ${event.dst_ip || "?"} (${country})`,
+      },
+      ...prev,
+    ].slice(0, MAX_LOG_LINES));
   }, []);
 
   const { status } = useGeoIPWebSocket({ orgId, onAttack: handleAttack });
@@ -368,6 +391,35 @@ export default function GeoIPAttackMapView() {
             <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-700">
               <Loader2 className="w-4 h-4 animate-spin" />
               {t.noData}
+            </div>
+          </div>
+        )}
+
+        {/* Live event feed */}
+        {eventLog.length > 0 && (
+          <div
+            className="absolute bottom-3 left-3 w-95 max-w-[calc(100%-1.5rem)] rounded-lg border border-cyan-900/50 bg-slate-950/80 backdrop-blur-sm font-mono pointer-events-none"
+            style={{ zIndex: 600 }}
+          >
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-slate-800 text-[10px] tracking-wider text-cyan-400">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500" />
+              </span>
+              LIVE EVENT FEED
+            </div>
+            <div className="flex flex-col px-2.5 py-1.5 max-h-60 overflow-hidden">
+              {eventLog.map((line) => (
+                <div key={line.id} className="animate-log-in flex gap-1.5 whitespace-nowrap overflow-hidden text-[10px] leading-relaxed">
+                  <span className="text-slate-600 shrink-0">
+                    {new Date(line.time).toLocaleTimeString("en-GB")}
+                  </span>
+                  <span className="font-bold shrink-0" style={{ color: line.color }}>
+                    {line.dataset.toUpperCase()}
+                  </span>
+                  <span className="text-slate-400 truncate">{line.text}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
