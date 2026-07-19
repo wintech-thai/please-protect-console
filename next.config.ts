@@ -2,11 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Keep geoip-lite as a native require so Next.js traces it into the
+  // standalone bundle. Without this, the dynamic require() in geoip-lookup.ts
+  // is invisible to static analysis and the module is omitted entirely.
+  serverExternalPackages: ['geoip-lite'],
   outputFileTracingIncludes: {
-    // geoip-lite reads .dat binary files at runtime — Next.js standalone file
-    // tracing misses these because they are not imported via require/import.
-    // Explicitly include them so country lookup works in the container.
-    '**': ['./node_modules/geoip-lite/data/**/*'],
+    // Explicitly include data files — file tracing picks up JS imports but
+    // misses binary .dat files that are read at runtime via fs, not require().
+    '**': ['./node_modules/geoip-lite/**/*'],
   },
 };
 
