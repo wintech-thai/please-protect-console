@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import type { Socket } from "net";
 import Redis from "ioredis";
 import https from "https";
+import { resolveCountryFromIp } from "./geoip-lookup";
 
 const STREAM_KEY = "geoip-attack-map";
 
@@ -237,6 +238,13 @@ async function handleGeoIPStream(ws: WebSocket, orgId: string) {
             continue;
           }
 
+          const srcIp = String(raw.source_ip ?? raw.src_ip ?? "");
+          const dstIp = String(raw.dest_ip ?? raw.dst_ip ?? "");
+          let srcCountry = String(raw.source_country ?? raw.src_country ?? raw.country ?? "");
+          let dstCountry = String(raw.dest_country ?? raw.dst_country ?? "");
+          if (!srcCountry || srcCountry === "null") srcCountry = resolveCountryFromIp(srcIp);
+          if (!dstCountry || dstCountry === "null") dstCountry = resolveCountryFromIp(dstIp);
+
           const payload = {
             type: "attack",
             id,
@@ -244,11 +252,11 @@ async function handleGeoIPStream(ws: WebSocket, orgId: string) {
             src_lng: srcLng,
             dst_lat: dstLat,
             dst_lng: dstLng,
-            src_country: String(raw.source_country ?? raw.src_country ?? raw.country ?? ""),
-            dst_country: String(raw.dest_country ?? raw.dst_country ?? ""),
+            src_country: srcCountry,
+            dst_country: dstCountry,
             dataset: String(raw.dataset ?? raw.protocol ?? ""),
-            src_ip: String(raw.source_ip ?? raw.src_ip ?? ""),
-            dst_ip: String(raw.dest_ip ?? raw.dst_ip ?? ""),
+            src_ip: srcIp,
+            dst_ip: dstIp,
           };
 
           console.log(`[GeoIP WS] → sending attack id=${id} dataset=${payload.dataset} ${payload.src_lat},${payload.src_lng} → ${payload.dst_lat},${payload.dst_lng}`);

@@ -117,6 +117,13 @@ export default function GeoIPAttackMapView() {
   const [filterSrcCountry, setFilterSrcCountry] = useState("");
   const [filterDstCountry, setFilterDstCountry] = useState("");
 
+  // Track countries/datasets seen from live WebSocket events so they appear in
+  // the dropdowns even when they don't exist yet in the Redis stream history
+  // (e.g. demo mode events never touch Redis).
+  const liveSeenDatasetsRef = useRef(new Set<string>());
+  const liveSeenSrcRef = useRef(new Set<string>());
+  const liveSeenDstRef = useRef(new Set<string>());
+
   // Poll options endpoint periodically
   useEffect(() => {
     const fetchOptions = async () => {
@@ -310,6 +317,22 @@ export default function GeoIPAttackMapView() {
     if (seenIdsRef.current.size > 5000) {
       const first = seenIdsRef.current.values().next().value;
       if (first) seenIdsRef.current.delete(first);
+    }
+
+    // Accumulate distinct values from live events so they show in filter dropdowns
+    // regardless of whether they exist in the Redis stream history (demo mode bypasses Redis).
+    const newDs = !!event.dataset && !liveSeenDatasetsRef.current.has(event.dataset);
+    const newSrc = !!event.src_country && !liveSeenSrcRef.current.has(event.src_country);
+    const newDst = !!event.dst_country && !liveSeenDstRef.current.has(event.dst_country);
+    if (newDs) liveSeenDatasetsRef.current.add(event.dataset);
+    if (newSrc) liveSeenSrcRef.current.add(event.src_country);
+    if (newDst) liveSeenDstRef.current.add(event.dst_country);
+    if (newDs || newSrc || newDst) {
+      setFilterOptions((prev) => ({
+        datasets: newDs ? [...new Set([...prev.datasets, event.dataset])].sort() : prev.datasets,
+        srcCountries: newSrc ? [...new Set([...prev.srcCountries, event.src_country])].sort() : prev.srcCountries,
+        dstCountries: newDst ? [...new Set([...prev.dstCountries, event.dst_country])].sort() : prev.dstCountries,
+      }));
     }
 
     if (filterDatasetRef.current && event.dataset !== filterDatasetRef.current) return;

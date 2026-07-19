@@ -40,6 +40,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# geoip-lite data files are not traced by Next.js standalone — copy explicitly
+# so that country lookup works at runtime for public source IPs.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/geoip-lite/data ./node_modules/geoip-lite/data
+
 USER nextjs
 
 EXPOSE 3000

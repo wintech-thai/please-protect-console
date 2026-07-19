@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Redis from "ioredis";
+import { resolveCountryFromIp } from "@/lib/geoip-lookup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,11 +64,17 @@ export async function GET() {
         try { raw = JSON.parse(rawFields.data ?? "{}"); } catch { continue; }
 
         const dataset = String(raw.dataset ?? raw.protocol ?? "");
-        const srcCountry = String(raw.source_country ?? raw.src_country ?? raw.country ?? "");
-        const dstCountry = String(raw.dest_country ?? raw.dst_country ?? "");
+        let srcCountry = String(raw.source_country ?? raw.src_country ?? raw.country ?? "");
+        let dstCountry = String(raw.dest_country ?? raw.dst_country ?? "");
+        if (!srcCountry || srcCountry === "null") {
+          srcCountry = resolveCountryFromIp(String(raw.source_ip ?? raw.src_ip ?? ""));
+        }
+        if (!dstCountry || dstCountry === "null") {
+          dstCountry = resolveCountryFromIp(String(raw.dest_ip ?? raw.dst_ip ?? ""));
+        }
         if (dataset) seenDatasets.add(dataset);
-        if (srcCountry && srcCountry !== "null") seenSrcCountries.add(srcCountry);
-        if (dstCountry && dstCountry !== "null") seenDstCountries.add(dstCountry);
+        if (srcCountry) seenSrcCountries.add(srcCountry);
+        if (dstCountry) seenDstCountries.add(dstCountry);
       }
     }
 
