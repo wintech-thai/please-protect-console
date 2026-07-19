@@ -10,6 +10,9 @@ export interface NodeData {
   type: NodeType;
   tag?: string;
   icon: React.ElementType;
+  // Override the PromQL output query when the default events_out_total metric
+  // is unreliable (e.g. pipelines that push via filter-stage Redis XADD).
+  outputQuery?: string;
 }
 
 export type NodeRates = Record<string, { inputRate: number; outputRate: number }>;

@@ -31,7 +31,7 @@ function buildPrometheusQueries(node: NodeData) {
   if (node.type === "Processor") {
     return {
       input: `sum(rate(logstash_node_pipeline_events_in_total{job="${tag}"}[1m]))`,
-      output: `sum(rate(logstash_node_pipeline_events_out_total{job="${tag}"}[1m]))`,
+      output: node.outputQuery ?? `sum(rate(logstash_node_pipeline_events_out_total{job="${tag}"}[1m]))`,
     };
   }
   return null;
@@ -95,6 +95,10 @@ export const useNodes = (t: DataFlowTranslations) =>
         description: t.nodes.receiverDesc,
         type: "Processor",
         tag: "logstash-beat-receiver-redis",
+        // events_out_total stays at 0 because this pipeline pushes to Redis via
+        // a filter-stage XADD, not a standard output plugin. Use filtered_total
+        // instead which is always incremented as events pass through the pipeline.
+        outputQuery: `sum(rate(logstash_node_pipeline_events_filtered_total{job="logstash-beat-receiver-redis"}[1m]))`,
         icon: Server,
       },
       {
