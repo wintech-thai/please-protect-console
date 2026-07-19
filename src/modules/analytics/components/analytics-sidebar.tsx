@@ -11,14 +11,14 @@ export function getAnalyticsMenu(t: SidebarTranslations): SidebarEntry[] {
       icon: <LayoutDashboard className="size-5" />,
       children: [
         {
-          label: t.eventSummary,
-          href: "/analytics/overview/event-summary",
-          icon: <BarChart3 className="size-5" />,
-        },
-        {
           label: t.geoipAttackMap,
           href: "/analytics/overview/geoip-attack-map",
           icon: <Globe className="size-5" />,
+        },
+        {
+          label: t.eventSummary,
+          href: "/analytics/overview/event-summary",
+          icon: <BarChart3 className="size-5" />,
         },
       ],
     },

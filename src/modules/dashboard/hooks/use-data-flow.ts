@@ -2,9 +2,8 @@
 
 import { useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData, type UseQueryOptions } from "@tanstack/react-query";
-import { Activity, Server, Database, Cpu, Router } from "lucide-react";
+import { Server, Database, Cpu, Router, GitMerge } from "lucide-react";
 import { prometheusApi } from "../api/prometheus.api";
-import { kafkaAdminApi, aggregateLagByGroup, buildTopicStats } from "../api/kafka-admin.api";
 import { esService } from "@/lib/elasticsearch";
 import { networkInterfaceApi } from "../api/network-interface.api";
 import dayjs from "dayjs";
@@ -13,9 +12,6 @@ import type {
   NodeRates,
   HistoryPoint,
   DataFlowTranslations,
-  KafkaTopicDetails,
-  KafkaGroupLagSummary,
-  KafkaTopicStats,
 } from "../types/data-flow.types";
 import type { TimeRangeValue } from "@/components/ui/advanced-time-selector";
 import { getTimeParams } from "@/modules/dashboard/utils/time-params";
@@ -29,13 +25,13 @@ const getOrgId = () =>
 const parseRate = (result: { value: [number, string] }[]): number =>
   result.length > 0 ? parseFloat(result[0].value[1]) : 0;
 
-/** Build PromQL queries for a Processor node only (Topics no longer use Prometheus) */
+/** Build PromQL queries for a Processor (Logstash) node */
 function buildPrometheusQueries(node: NodeData) {
   const tag = node.tag;
   if (node.type === "Processor") {
     return {
       input: `sum(rate(logstash_node_pipeline_events_in_total{job="${tag}"}[1m]))`,
-      output: `sum(rate(logstash_node_pipeline_events_out_total{job="${tag}"}[1m]))`,
+      output: node.outputQuery ?? `sum(rate(logstash_node_pipeline_events_out_total{job="${tag}"}[1m]))`,
     };
   }
   return null;
@@ -98,45 +94,35 @@ export const useNodes = (t: DataFlowTranslations) =>
         name: t.nodes.receiver,
         description: t.nodes.receiverDesc,
         type: "Processor",
-        tag: "logstash-beat-receiver",
+        tag: "logstash-beat-receiver-redis",
+        // events_out_total stays at 0 because this pipeline pushes to Redis via
+        // a filter-stage XADD, not a standard output plugin. Use filtered_total
+        // instead which is always incremented as events pass through the pipeline.
+        outputQuery: `sum(rate(logstash_node_pipeline_events_filtered_total{job="logstash-beat-receiver-redis"}[1m]))`,
         icon: Server,
       },
       {
-        id: "topic1",
-        name: t.nodes.topicRaw,
-        description: t.nodes.topicRawDesc.replace(
-          "{tag}",
-          "received-topic-beat"
-        ),
-        type: "Topic",
-        tag: "received-topic-beat",
-        icon: Activity,
+        id: "aggregator1",
+        name: t.nodes.aggregator,
+        description: t.nodes.aggregatorDesc,
+        type: "Processor",
+        tag: "logstash-aggregator-redis",
+        icon: GitMerge,
       },
       {
         id: "transformer1",
         name: t.nodes.transformer,
         description: t.nodes.transformerDesc,
         type: "Processor",
-        tag: "logstash-transformer",
+        tag: "logstash-transformer-redis",
         icon: Cpu,
-      },
-      {
-        id: "topic2",
-        name: t.nodes.topicTransformed,
-        description: t.nodes.topicTransformedDesc.replace(
-          "{tag}",
-          "transformed-topic-beat"
-        ),
-        type: "Topic",
-        tag: "transformed-topic-beat",
-        icon: Activity,
       },
       {
         id: "dispatcher1",
         name: t.nodes.dispatcher,
         description: t.nodes.dispatcherDesc,
         type: "Processor",
-        tag: "logstash-dispatcher-es",
+        tag: "logstash-dispatcher-redis",
         icon: Server,
       },
       {
@@ -163,25 +149,19 @@ export const dataFlowKeys = {
     timeRange.type === "absolute" && timeRange.start && timeRange.end
       ? ([...dataFlowKeys.all, "history", nodeId, "absolute", timeRange.start, timeRange.end] as const)
       : ([...dataFlowKeys.all, "history", nodeId, "relative", timeRange.value] as const),
-  kafkaTopicDetails: (topicName: string | null) =>
-    [...dataFlowKeys.all, "kafkaTopicDetails", topicName] as const,
   networkInterfaces: ["dataFlow", "networkInterfaces"] as const,
 };
 
 // ─── Fetch functions ─────────────────────────────────────────────────
 
 /**
- * Fetch rates for all metric nodes.
- *
- * Topics are intentionally excluded from Prometheus queries.
- * Connection lines adjacent to Topics are coloured based on the
- * neighbouring Processor node's inputRate instead (see getConnectionHasData).
+ * Fetch rates for all metric nodes (Processor via Prometheus, DataStore via ES).
  */
 async function fetchNodeRates(
   nodes: NodeData[],
   timeRange: TimeRangeValue,
 ): Promise<NodeRates> {
-  // Only Processor nodes use Prometheus; Topics use KafkaAdmin; DataStore uses ES
+  // Processor nodes use Prometheus; DataStore uses ES
   const prometheusNodes = nodes.filter((n) => n.type === "Processor");
   const esNodes = nodes.filter((n) => n.type === "DataStore");
   const isRelative = timeRange.type === "relative";
@@ -253,14 +233,11 @@ async function fetchNodeRates(
   return rates;
 }
 
-/** Fetch history for a single node. Topics have no time-series chart. */
+/** Fetch history for a single node. */
 async function fetchNodeHistory(
   node: NodeData,
   timeRange: TimeRangeValue,
 ): Promise<HistoryPoint[]> {
-  // Topic nodes no longer have a time-series chart
-  if (node.type === "Topic") return [];
-
   const { start, end, step } = getTimeParams(timeRange);
 
   // DataStore → ES date_histogram
@@ -286,56 +263,12 @@ async function fetchNodeHistory(
   return mergeHistoryResults(inHist, outHist, end - start);
 }
 
-/**
- * Fetch Kafka topic details: topic info, offsets, and per-group lag (all in parallel).
- *
- * - GetTopicByName   → partition metadata (leader, replicas, isr, hasError)
- * - GetTopicOffsets  → begin/end offsets per partition → used to compute totalMessages
- * - GetTopicLag      → flat rows per (group × partition) → aggregated into per-group summaries
- *
- * replicationFactor is derived from partitions[0].replicas.length.
- * totalMessages is derived from sum of (endOffset - beginOffset) across all partitions.
- */
-async function fetchKafkaTopicDetails(topicName: string): Promise<KafkaTopicDetails> {
-  const [topicInfoResult, topicOffsetsResult, topicLagResult] = await Promise.allSettled([
-    kafkaAdminApi.getTopicByName(topicName),
-    kafkaAdminApi.getTopicOffsets(topicName),
-    kafkaAdminApi.getTopicLag(topicName),
-  ]);
-
-  const lagRows =
-    topicLagResult.status === "fulfilled" && Array.isArray(topicLagResult.value)
-      ? topicLagResult.value
-      : [];
-
-  const groupLagSummaries: KafkaGroupLagSummary[] = aggregateLagByGroup(lagRows);
-
-  let topicStats: KafkaTopicStats | null = null;
-  if (topicInfoResult.status === "fulfilled") {
-    const offsets =
-      topicOffsetsResult.status === "fulfilled" &&
-      topicOffsetsResult.value != null &&
-      !Array.isArray(topicOffsetsResult.value)
-        ? topicOffsetsResult.value
-        : null;
-    topicStats = buildTopicStats(topicInfoResult.value, offsets);
-  }
-
-  return {
-    topicStats,
-    groupLagSummaries,
-  };
-}
-
 // ─── Hooks ───────────────────────────────────────────────────────────
 
 type NodeRatesOptions = Omit<UseQueryOptions<NodeRates>, "queryKey" | "queryFn">;
 
 /**
  * Polls current rates for ALL metric nodes (Processor / DataStore).
- *
- * Topic nodes are NOT included in the rates map; their adjacent connection
- * lines derive colour from the neighbouring Processor node's inputRate.
  *
  * For **relative** ranges the query key is stable (e.g. ["relative","1h"]),
  * and `getTimeParams()` is called inside queryFn so timestamps are always fresh.
@@ -356,9 +289,10 @@ export function useNodeRates(
    * Determine whether the connection between nodes[index] → nodes[index+1]
    * has active data flowing through it.
    *
-   * For connections that touch a Kafka Topic node, we deliberately look at
-   * the INPUT rate of the downstream Processor (right node) instead of the
-   * Topic's output, because Kafka metrics are no longer polled via Prometheus.
+   * Some Logstash pipelines report outputRate as 0 even while genuinely
+   * forwarding events (e.g. a custom Redis push not counted by the
+   * pipeline "output" metric), so a zero left outputRate falls back to
+   * the right node's inputRate instead of being treated as "no data".
    */
   const getConnectionHasData = useCallback(
     (index: number): boolean => {
@@ -366,14 +300,7 @@ export function useNodeRates(
       const left = nodes[index];
       const right = nodes[index + 1];
 
-      // If the LEFT node is a Topic, check the RIGHT node's input rate
-      if (left.type === "Topic") {
-        if (rates[right.id]) return rates[right.id].inputRate > 0;
-        return true; // no data yet → assume flowing
-      }
-
-      // Otherwise prefer the left node's output rate, fall back to right's input
-      if (rates[left.id]) return rates[left.id].outputRate > 0;
+      if (rates[left.id]?.outputRate) return true;
       if (rates[right.id]) return rates[right.id].inputRate > 0;
       return true; // no metrics → assume flowing
     },
@@ -398,9 +325,7 @@ type NodeHistoryOptions = Omit<UseQueryOptions<HistoryPoint[]>, "queryKey" | "qu
 
 /**
  * Fetches history for the currently selected node.
- *
- * For Topic nodes this always resolves to an empty array (no chart).
- * For Processor / DataStore nodes it queries Prometheus / ES as before.
+ * Processor / DataStore nodes query Prometheus / ES respectively.
  */
 export function useNodeHistory(
   node: NodeData | null,
@@ -410,31 +335,7 @@ export function useNodeHistory(
   return useQuery<HistoryPoint[]>({
     queryKey: dataFlowKeys.history(node?.id ?? null, timeRange),
     queryFn: () => fetchNodeHistory(node!, timeRange),
-    enabled: !!node && node.type !== "Topic",
-    placeholderData: keepPreviousData,
-    ...options,
-  });
-}
-
-type KafkaTopicDetailsOptions = Omit<
-  UseQueryOptions<KafkaTopicDetails>,
-  "queryKey" | "queryFn"
->;
-
-/**
- * Fetches Kafka-Admin details (topic info + consumer groups + lag) for a
- * Topic node.  The query is only enabled when the selected node is a Topic.
- */
-export function useKafkaTopicDetails(
-  node: NodeData | null,
-  options?: KafkaTopicDetailsOptions,
-) {
-  const topicName = node?.type === "Topic" ? (node.tag ?? null) : null;
-
-  return useQuery<KafkaTopicDetails>({
-    queryKey: dataFlowKeys.kafkaTopicDetails(topicName),
-    queryFn: () => fetchKafkaTopicDetails(topicName!),
-    enabled: !!topicName,
+    enabled: !!node,
     placeholderData: keepPreviousData,
     ...options,
   });

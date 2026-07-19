@@ -40,6 +40,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# geoip-lite is loaded via dynamic require() so Next.js static analysis cannot
+# trace it. Copy the entire module (JS + data files) explicitly as a safety net.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/geoip-lite ./node_modules/geoip-lite
+
 USER nextjs
 
 EXPOSE 3000

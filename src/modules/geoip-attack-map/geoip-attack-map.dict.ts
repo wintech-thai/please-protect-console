@@ -13,6 +13,8 @@ export const geoipAttackMapDict = {
     live: "Live",
     disconnected: "Disconnected",
     noData: "Waiting for attack events...",
+    simulateLoad: "Simulate load",
+    demoModeWarning: "DEMO MODE — showing simulated data, not real traffic",
   },
   TH: {
     title: "แผนที่การโจมตี GeoIP",
@@ -28,5 +30,7 @@ export const geoipAttackMapDict = {
     live: "ไลฟ์",
     disconnected: "ขาดการเชื่อมต่อ",
     noData: "กำลังรอข้อมูลการโจมตี...",
+    simulateLoad: "จำลองโหลดข้อมูล",
+    demoModeWarning: "โหมดทดสอบ — ข้อมูลจำลอง ไม่ใช่ traffic จริง",
   },
 } as const;

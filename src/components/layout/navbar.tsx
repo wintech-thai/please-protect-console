@@ -127,7 +127,7 @@ export function Navbar({ hasSidebar, onToggleSidebar }: NavbarProps) {
     },
     {
       label: t.analytics || "Analytics",
-      href: "/analytics/overview/event-summary",
+      href: "/analytics/overview/geoip-attack-map",
     },
     {
       label: t.administrator,

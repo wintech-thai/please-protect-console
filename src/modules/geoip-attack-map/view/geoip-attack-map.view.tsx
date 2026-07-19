@@ -4,24 +4,14 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Globe, Wifi, WifiOff, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { geoipAttackMapDict } from "../geoip-attack-map.dict";
-
-interface AttackEvent {
-  id: string;
-  src_lat: number;
-  src_lng: number;
-  dst_lat: number;
-  dst_lng: number;
-  src_country: string;
-  dst_country: string;
-  dataset: string;
-  src_ip: string;
-  dst_ip: string;
-}
+import { useGeoIPWebSocket, type AttackEvent } from "../hooks/use-geoip-websocket";
 
 interface Arc extends AttackEvent {
   startTime: number;
-  duration: number;
   color: string;
+  _pts?: { x: number; y: number }[];
+  _pulsePt?: { x: number; y: number };
+  _geomVersion?: number;
 }
 
 interface FilterOptions {
@@ -34,17 +24,38 @@ const DATASET_COLORS: Record<string, string> = {
   "suricata": "#f97316",
   "http": "#22d3ee",
   "https": "#22d3ee",
+  "ssl": "#22d3ee",
   "ssh": "#a855f7",
   "telnet": "#a855f7",
   "dns": "#facc15",
   "sql": "#fb923c",
   "rdp": "#ef4444",
   "ftp": "#34d399",
+  "connection": "#ec4899",
 };
 
+// deterministic hue from a string so the same dataset name always gets the same
+// generated color across reloads/tabs/users, without needing a manual color entry
+function hashHue(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) % 360;
+}
+
 function getColor(dataset: string): string {
-  const key = dataset.toLowerCase().split(".")[0];
-  return DATASET_COLORS[key] ?? "#ef4444";
+  // dataset names come in two shapes: plain ("suricata") or namespaced ("zeek.ssh") —
+  // the meaningful protocol is the last segment for namespaced names, the whole
+  // string for plain ones, so try suffix first and fall back to the prefix.
+  const parts = dataset.toLowerCase().split(".");
+  const suffix = parts[parts.length - 1];
+  const prefix = parts[0];
+  const known = DATASET_COLORS[suffix] ?? DATASET_COLORS[prefix];
+  if (known) return known;
+  // unmapped dataset — auto-generate a distinct, stable color instead of a shared fallback
+  return `hsl(${hashHue(suffix || prefix)}, 80%, 62%)`;
 }
 
 function getBezierPoint(
@@ -61,6 +72,20 @@ function getBezierPoint(
 }
 
 const OPTIONS_POLL_INTERVAL = 30_000; // poll every 30s
+const SEGMENTS = 60;
+const MAX_CONCURRENT_ARCS = 200;
+const ARC_TRAVEL_MS = 900; // time for the line to travel src → dst
+const ARC_FADE_MS = 2200; // time the fully-drawn line lingers & fades after arriving
+const ARC_LIFETIME_MS = ARC_TRAVEL_MS + ARC_FADE_MS;
+const MAX_LOG_LINES = 20;
+
+interface LogLine {
+  id: string;
+  time: number;
+  dataset: string;
+  color: string;
+  text: string;
+}
 
 export default function GeoIPAttackMapView() {
   const { language } = useLanguage();
@@ -70,12 +95,20 @@ export default function GeoIPAttackMapView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const leafletMap = useRef<any>(null);
   const arcsRef = useRef<Arc[]>([]);
+  const seenIdsRef = useRef<Set<string>>(new Set());
   const rafRef = useRef<number | null>(null);
-  const esRef = useRef<EventSource | null>(null);
+  const geomVersionRef = useRef(0);
+  const lastActiveCountRef = useRef(0);
+  const lastActiveCountTimeRef = useRef(0);
 
-  const [status, setStatus] = useState<"connecting" | "live" | "disconnected">("connecting");
   const [totalAttacks, setTotalAttacks] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+  const [eventLog, setEventLog] = useState<LogLine[]>([]);
+  const [demoMode, setDemoMode] = useState(false);
+
+  const [orgId] = useState(() =>
+    typeof window !== "undefined" ? (localStorage.getItem("orgId") ?? "temp") : "temp"
+  );
 
   // Filter options fetched from /api/geoip-attack-map/options
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({ datasets: [], srcCountries: [], dstCountries: [] });
@@ -83,6 +116,13 @@ export default function GeoIPAttackMapView() {
   const [filterDataset, setFilterDataset] = useState("");
   const [filterSrcCountry, setFilterSrcCountry] = useState("");
   const [filterDstCountry, setFilterDstCountry] = useState("");
+
+  // Track countries/datasets seen from live WebSocket events so they appear in
+  // the dropdowns even when they don't exist yet in the Redis stream history
+  // (e.g. demo mode events never touch Redis).
+  const liveSeenDatasetsRef = useRef(new Set<string>());
+  const liveSeenSrcRef = useRef(new Set<string>());
+  const liveSeenDstRef = useRef(new Set<string>());
 
   // Poll options endpoint periodically
   useEffect(() => {
@@ -124,56 +164,88 @@ export default function GeoIPAttackMapView() {
 
     for (const arc of arcsRef.current) {
       const elapsed = now - arc.startTime;
-      if (elapsed >= arc.duration) continue;
+      if (elapsed >= ARC_LIFETIME_MS) continue;
 
-      // 0→0.6 draw phase, 0.6→1.0 fade phase
-      const progress = elapsed / arc.duration;
-      const drawT = Math.min(progress / 0.6, 1);
-      const alpha = progress < 0.6 ? 1 : 1 - (progress - 0.6) / 0.4;
+      // travel phase: 0 → ARC_TRAVEL_MS, then linger/fade phase: ARC_TRAVEL_MS → ARC_LIFETIME_MS
+      const drawT = Math.min(elapsed / ARC_TRAVEL_MS, 1);
+      const alpha = elapsed <= ARC_TRAVEL_MS ? 1 : 1 - (elapsed - ARC_TRAVEL_MS) / ARC_FADE_MS;
 
       try {
-        const srcPt = map.latLngToContainerPoint([arc.src_lat, arc.src_lng]);
-        const dstPt = map.latLngToContainerPoint([arc.dst_lat, arc.dst_lng]);
+        if (arc._geomVersion !== geomVersionRef.current) {
+          const srcPt = map.latLngToContainerPoint([arc.src_lat, arc.src_lng]);
+          const dstPt = map.latLngToContainerPoint([arc.dst_lat, arc.dst_lng]);
 
-        const mx = (srcPt.x + dstPt.x) / 2;
-        const my = (srcPt.y + dstPt.y) / 2;
-        const dx = dstPt.x - srcPt.x;
-        const dy = dstPt.y - srcPt.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 1) { alive.push(arc); continue; }
+          const mx = (srcPt.x + dstPt.x) / 2;
+          const my = (srcPt.y + dstPt.y) / 2;
+          const dx = dstPt.x - srcPt.x;
+          const dy = dstPt.y - srcPt.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
 
-        const offset = Math.min(dist * 0.35, 180);
-        const cp = { x: mx - (dy / dist) * offset, y: my + (dx / dist) * offset };
-
-        const segments = 60;
-        const steps = Math.floor(segments * drawT);
-
-        ctx.globalAlpha = alpha;
-        ctx.strokeStyle = arc.color;
-        ctx.lineWidth = 1.5;
-        ctx.shadowColor = arc.color;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-
-        let first = true;
-        for (let i = 0; i <= steps; i++) {
-          const pt = getBezierPoint(srcPt, cp, dstPt, i / segments);
-          if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
-          else ctx.lineTo(pt.x, pt.y);
+          if (dist < 4) {
+            // src/dst collapse to (almost) the same point on screen at this zoom —
+            // a line would be invisible, so pulse a ring at that point instead so the
+            // event still gets some visible feedback on the map.
+            arc._pts = undefined;
+            arc._pulsePt = { x: mx, y: my };
+          } else {
+            const offset = Math.min(dist * 0.35, 180);
+            const cp = { x: mx - (dy / dist) * offset, y: my + (dx / dist) * offset };
+            const pts: { x: number; y: number }[] = new Array(SEGMENTS + 1);
+            for (let i = 0; i <= SEGMENTS; i++) pts[i] = getBezierPoint(srcPt, cp, dstPt, i / SEGMENTS);
+            arc._pts = pts;
+            arc._pulsePt = undefined;
+          }
+          arc._geomVersion = geomVersionRef.current;
         }
-        ctx.stroke();
 
-        // dot at tip
-        if (drawT > 0) {
-          const tip = getBezierPoint(srcPt, cp, dstPt, steps / segments);
+        if (arc._pulsePt) {
+          const p = arc._pulsePt;
+          const radius = 3 + drawT * 10;
+          ctx.globalAlpha = alpha;
+          ctx.strokeStyle = arc.color;
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = arc.color;
-          ctx.fill();
-        }
+          ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
 
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
+          ctx.fillStyle = arc.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.globalAlpha = 1;
+        } else if (arc._pts) {
+          const pts = arc._pts;
+          const steps = Math.floor(SEGMENTS * drawT);
+
+          ctx.strokeStyle = arc.color;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i <= steps; i++) ctx.lineTo(pts[i].x, pts[i].y);
+
+          // soft wide pass + crisp bright pass — cheaper than ctx.shadowBlur on a long stroked path
+          ctx.lineWidth = 4;
+          ctx.globalAlpha = alpha * 0.25;
+          ctx.stroke();
+
+          ctx.lineWidth = 1.5;
+          ctx.globalAlpha = alpha;
+          ctx.stroke();
+
+          // dot at tip — shadowBlur is cheap here since it's a small, fixed-size shape
+          if (drawT > 0) {
+            const tip = pts[steps];
+            ctx.shadowColor = arc.color;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = arc.color;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+
+          ctx.globalAlpha = 1;
+        }
       } catch {}
 
       alive.push(arc);
@@ -181,7 +253,11 @@ export default function GeoIPAttackMapView() {
     }
 
     arcsRef.current = alive;
-    setActiveCount(active);
+    if (active !== lastActiveCountRef.current && now - lastActiveCountTimeRef.current > 200) {
+      lastActiveCountRef.current = active;
+      lastActiveCountTimeRef.current = now;
+      setActiveCount(active);
+    }
     rafRef.current = requestAnimationFrame(draw);
   }, []);
 
@@ -207,6 +283,7 @@ export default function GeoIPAttackMapView() {
         if (!canvas || !container) return;
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
+        geomVersionRef.current++;
       };
       map.on("resize move zoom", syncCanvas);
       syncCanvas();
@@ -227,47 +304,84 @@ export default function GeoIPAttackMapView() {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [draw]);
 
-  // SSE connection — reconnect when filters change
+  const filterDatasetRef = useRef(filterDataset);
+  const filterSrcCountryRef = useRef(filterSrcCountry);
+  const filterDstCountryRef = useRef(filterDstCountry);
+  useEffect(() => { filterDatasetRef.current = filterDataset; }, [filterDataset]);
+  useEffect(() => { filterSrcCountryRef.current = filterSrcCountry; }, [filterSrcCountry]);
+  useEffect(() => { filterDstCountryRef.current = filterDstCountry; }, [filterDstCountry]);
+
+  const handleAttack = useCallback((event: AttackEvent) => {
+    if (seenIdsRef.current.has(event.id)) return;
+    seenIdsRef.current.add(event.id);
+    if (seenIdsRef.current.size > 5000) {
+      const first = seenIdsRef.current.values().next().value;
+      if (first) seenIdsRef.current.delete(first);
+    }
+
+    // Accumulate distinct values from live events so they show in filter dropdowns
+    // regardless of whether they exist in the Redis stream history (demo mode bypasses Redis).
+    const newDs = !!event.dataset && !liveSeenDatasetsRef.current.has(event.dataset);
+    const newSrc = !!event.src_country && !liveSeenSrcRef.current.has(event.src_country);
+    const newDst = !!event.dst_country && !liveSeenDstRef.current.has(event.dst_country);
+    if (newDs) liveSeenDatasetsRef.current.add(event.dataset);
+    if (newSrc) liveSeenSrcRef.current.add(event.src_country);
+    if (newDst) liveSeenDstRef.current.add(event.dst_country);
+    if (newDs || newSrc || newDst) {
+      setFilterOptions((prev) => ({
+        datasets: newDs ? [...new Set([...prev.datasets, event.dataset])].sort() : prev.datasets,
+        srcCountries: newSrc ? [...new Set([...prev.srcCountries, event.src_country])].sort() : prev.srcCountries,
+        dstCountries: newDst ? [...new Set([...prev.dstCountries, event.dst_country])].sort() : prev.dstCountries,
+      }));
+    }
+
+    if (filterDatasetRef.current && event.dataset !== filterDatasetRef.current) return;
+    if (filterSrcCountryRef.current && event.src_country !== filterSrcCountryRef.current) return;
+    if (filterDstCountryRef.current && event.dst_country !== filterDstCountryRef.current) return;
+
+    const color = getColor(event.dataset);
+    arcsRef.current.push({
+      ...event,
+      startTime: Date.now(),
+      color,
+    });
+    if (arcsRef.current.length > MAX_CONCURRENT_ARCS) arcsRef.current.shift();
+    setTotalAttacks((n) => n + 1);
+
+    const country = event.dst_country || event.src_country || "—";
+    setEventLog((prev) => [
+      {
+        id: event.id,
+        time: Date.now(),
+        dataset: event.dataset,
+        color,
+        text: `${event.src_ip || "?"} → ${event.dst_ip || "?"} (${country})`,
+      },
+      ...prev,
+    ].slice(0, MAX_LOG_LINES));
+  }, []);
+
+  // Demo/stress-test mode — the server generates synthetic events and pushes them
+  // over the same WebSocket connection as real traffic (see setDemo below), so this
+  // exercises the actual server -> client push path under load, not just rendering.
   useEffect(() => {
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("orgId") ?? "temp" : "temp";
-    const es = new EventSource(`/api/geoip-attack-map/stream?orgId=${orgId}`);
-    esRef.current = es;
-    setStatus("connecting");
+    if (demoMode) return;
+    // leaving demo mode — clear out simulated data so it doesn't linger mixed in with real counts
+    arcsRef.current = [];
+    setTotalAttacks(0);
+    setActiveCount(0);
+    setEventLog([]);
+  }, [demoMode]);
 
-    es.onopen = () => setStatus("live");
+  const { status, setDemo } = useGeoIPWebSocket({ orgId, onAttack: handleAttack });
 
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "connected") { setStatus("live"); return; }
-        if (msg.type !== "attack") return;
-
-        const event = msg as AttackEvent;
-
-        // client-side filter
-        if (filterDataset && event.dataset !== filterDataset) return;
-        if (filterSrcCountry && event.src_country !== filterSrcCountry) return;
-        if (filterDstCountry && event.dst_country !== filterDstCountry) return;
-
-        arcsRef.current.push({
-          ...event,
-          startTime: Date.now(),
-          duration: 8000,
-          color: getColor(event.dataset),
-        });
-
-        setTotalAttacks((n) => n + 1);
-      } catch {}
-    };
-
-    es.onerror = () => setStatus("disconnected");
-
-    return () => { es.close(); esRef.current = null; };
-  }, [filterDataset, filterSrcCountry, filterDstCountry]);
+  const handleDemoToggle = (enabled: boolean) => {
+    setDemoMode(enabled);
+    setDemo(enabled);
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-100 gap-0 custom-scrollbar">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-cyan-400" />
@@ -314,19 +428,44 @@ export default function GeoIPAttackMapView() {
         <Select label={t.filterSrcCountry} value={filterSrcCountry} onChange={setFilterSrcCountry} placeholder={t.allCountries} options={filterOptions.srcCountries} />
         <Select label={t.filterDstCountry} value={filterDstCountry} onChange={setFilterDstCountry} placeholder={t.allCountries} options={filterOptions.dstCountries} />
 
-        {/* Legend */}
+        <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none shrink-0">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={demoMode}
+            onClick={() => handleDemoToggle(!demoMode)}
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ${
+              demoMode ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]" : "bg-slate-700"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                demoMode ? "translate-x-[18px]" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+          <span className={demoMode ? "text-amber-400 font-medium" : ""}>{t.simulateLoad}</span>
+        </label>
+
+        {/* Legend — reflects the datasets actually seen in the live stream, not a static list */}
         <div className="ml-auto flex items-center gap-3 flex-wrap">
-          {Object.entries(DATASET_COLORS).slice(0, 5).map(([key, color]) => (
-            <div key={key} className="flex items-center gap-1 text-[10px] text-slate-400">
-              <span className="inline-block w-3 h-0.5 rounded" style={{ background: color }} />
-              {key.toUpperCase()}
+          {filterOptions.datasets.map((ds) => (
+            <div key={ds} className="flex items-center gap-1 text-[10px] text-slate-400">
+              <span className="inline-block w-3 h-0.5 rounded" style={{ background: getColor(ds) }} />
+              {ds.toUpperCase()}
             </div>
           ))}
         </div>
       </div>
 
+      {demoMode && (
+        <div className="flex items-center justify-center gap-1.5 px-5 py-1 bg-amber-500/10 border-b border-amber-500/30 text-[11px] font-bold tracking-wide text-amber-400 shrink-0">
+          ⚠ {t.demoModeWarning}
+        </div>
+      )}
+
       {/* Map */}
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-0 isolate">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <div ref={mapRef} className="w-full h-full" />
         <canvas
@@ -339,6 +478,35 @@ export default function GeoIPAttackMapView() {
             <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-700">
               <Loader2 className="w-4 h-4 animate-spin" />
               {t.noData}
+            </div>
+          </div>
+        )}
+
+        {/* Live event feed */}
+        {eventLog.length > 0 && (
+          <div
+            className="absolute bottom-3 left-3 w-95 max-w-[calc(100%-1.5rem)] rounded-lg border border-cyan-900/50 bg-slate-950/80 backdrop-blur-sm font-mono pointer-events-none"
+            style={{ zIndex: 600 }}
+          >
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-slate-800 text-[10px] tracking-wider text-cyan-400">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500" />
+              </span>
+              LIVE EVENT FEED
+            </div>
+            <div className="flex flex-col px-2.5 py-1.5 max-h-36 overflow-y-auto overflow-x-hidden custom-scrollbar pointer-events-auto">
+              {eventLog.map((line) => (
+                <div key={line.id} className="animate-log-in flex gap-1.5 whitespace-nowrap overflow-hidden text-[10px] leading-relaxed shrink-0">
+                  <span className="text-slate-600 shrink-0">
+                    {new Date(line.time).toLocaleTimeString("en-GB")}
+                  </span>
+                  <span className="font-bold shrink-0" style={{ color: line.color }}>
+                    {line.dataset.toUpperCase()}
+                  </span>
+                  <span className="text-slate-400 truncate">{line.text}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
