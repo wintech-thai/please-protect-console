@@ -382,7 +382,6 @@ export default function GeoIPAttackMapView() {
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-100 gap-0 custom-scrollbar">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-cyan-400" />
